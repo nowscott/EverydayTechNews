@@ -1,6 +1,13 @@
 # EverydayTechNews
 Automatically sending tech news to your email every morning.
 
+## Switch to Chinese
+
+[![readme-cn][readme-cn-image]][readme-cn-url]
+
+[readme-cn-url]:https://github.com/NowScott/EverydayTechNews/blob/main/README_CN.md "Chinese Version"
+[readme-cn-image]:https://img.shields.io/badge/%E4%B8%AD%E6%96%87%E7%89%88%E6%9C%AC-red
+
 ## Original Intention behind Creation
 
 When I was young, the elders in my family used to subscribe to newspapers. However, with the advent of technology, newspapers gradually faded from our view, replaced by the overwhelming flood of internet news.

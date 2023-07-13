@@ -1,5 +1,12 @@
-# EverydayTechNews
-Automatically sending tech news to your email every morning.
+# 每日科技新闻
+每天早晨自动发送科技新闻到你的邮箱。
+
+## 切换为英语
+
+[![readme][readme-image]][readme-url]
+
+[readme-url]:https://github.com/NowScott/EverydayTechNews/blob/main/README.md "英文版本"
+[readme-image]:https://img.shields.io/badge/English_Version-blue
 
 ## 创建初衷
 
