@@ -6,8 +6,8 @@ from email.header import Header
 from email.mime.text import MIMEText
 
 def send_message(receiver,text):
-    user = "nowautor@163.com"
-    password = "FECISOOVEVGKIMIP"
+    user = "example@example.com" #这里放你的邮箱
+    password = "your_password" #这里放smtp的密钥，注意不是账号的密码
     server = "smtp.163.com"
     msg = MIMEText(text, 'html', 'utf-8')
     subject = '今日科技早报'

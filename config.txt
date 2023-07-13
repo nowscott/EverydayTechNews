@@ -1,8 +1,5 @@
 {
     "receivers": [
-        "nowscott@qq.com",
-        "1312863489@qq.com",
-        "airplus14@163.com",
-        "2232747498@qq.com"
+        "your_email@example.com",
         ]
 }
