@@ -1,34 +1,39 @@
 import sys
+import json
+import time
 import smtplib
 import requests
 from bs4 import BeautifulSoup
 from email.header import Header
 from email.mime.text import MIMEText
 
-def send_message(receiver,text):
-    user = "example@example.com" #这里放你的邮箱
-    password = "your_password" #这里放smtp的密钥，注意不是账号的密码
+def send_message(sender,password,receiver,text):
+    sender = sender
+    password = password
     server = "smtp.163.com"
     msg = MIMEText(text, 'html', 'utf-8')
     subject = '今日科技早报'
     msg['Subject'] = Header(subject, 'utf-8')  # 邮件主题
-    try:
-        smtpobj = smtplib.SMTP_SSL(server)
-        # 建立连接--qq邮箱服务和端口号（可百度查询）
-        smtpobj.connect(server)    
-        # 登录--发送者账号和口令
-        smtpobj.login(user, password)   
-        # 发送邮件
-        smtpobj.sendmail(user,receiver, msg.as_string()) 
-        print("邮件发送成功")
-    except smtplib.SMTPException:
-        print("无法发送邮件")
-    finally:
-        # 关闭服务器
-        smtpobj.quit()
+    attempt = 1
+    while attempt < 3:
+        try:
+            smtpobj = smtplib.SMTP_SSL(server)
+            smtpobj.connect(server)# 建立连接 
+            smtpobj.login(sender, password)# 登录-发送者账号和口令
+            smtpobj.sendmail(sender,receiver, msg.as_string()) # 发送邮件
+            print("邮件发送成功")
+            return True
+        except smtplib.SMTPException:
+            print("尝试发送邮件失败，进行下一次尝试...")
+            time.sleep(3)
+            attempt += 1
+        finally:
+            smtpobj.quit()# 关闭服务器
+    print("达到最大尝试次数，无法发送邮件")
+    return False
 
 def technews(): 
-    url = 'https://tech.163.com/' 
+    url = 'https://tech.163.com/' #这里我使用的是网易新闻的科技板块，可以按需更换
     html = requests.get(url).text 
     soup = BeautifulSoup(html,'html.parser') 
     displayno = soup.find_all('div',style='display:none;') 
@@ -42,15 +47,14 @@ def technews():
 
 def message():
     text = """
-    <p>今日科技早报<p>
-    {}
+    <p>今日科技早报<p>{}
     """.format(technews())
     return text
 
 if __name__ == "__main__":
     try:
-        with open("config.txt", encoding="utf-8") as f:
-            config = eval(f.read())
+        with open('config.json', 'r') as file:
+            config = json.load(file)
     except FileNotFoundError:
         print("推送消息失败,请检查config.txt文件是否与程序位于同一路径")
         sys.exit(1)
@@ -59,5 +63,7 @@ if __name__ == "__main__":
         sys.exit(1)
     text = message()
     for i in range(len(config['receivers'])):
+        sender = config['sender']
+        password = config['password']
         receiver = config['receivers'][i]
-        send_message(receiver,text)
+        send_message(sender,password,receiver,text)

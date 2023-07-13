@@ -1,0 +1,7 @@
+{
+    "sender": "example@example.com",
+    "password": "smtp_password",
+    "receivers": [
+        "your_email@example.com"
+        ]
+}
