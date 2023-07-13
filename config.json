@@ -1,7 +1,8 @@
 {
-    "sender": "example@example.com",
+    "sender": "send_email@example.com",
     "password": "smtp_password",
+    "server": "smtp.163.com",
     "receivers": [
-        "your_email@example.com"
+        "receive_email@example.com"
         ]
 }
