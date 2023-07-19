@@ -20,7 +20,7 @@ jobs:
         env:
           sending_account: ${{secrets.SENDING_ACCOUNT}}
           sending_password: ${{secrets.SENDING_PASSWORD}}
-          server: ${{vars.SERVER}}
-          receiver_list: ${{vars.RECEIVER_LIST}}
+          server: ${{secrets.SERVER}}
+          receiver_list: ${{secrets.RECEIVER_LIST}}
         run: |
           python src/main.py
