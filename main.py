@@ -52,21 +52,23 @@ def message():
     <p>注：这是一封定时邮件，请勿回复该邮件，如果有任何问题或需求，请直接与我们联系。</p>
     """.format(technews())
     return text
-
 if __name__ == "__main__":
     try:
-        with open('config.json', 'r') as file:
-            config = json.load(file)
-            sender = config['sender']
-            password = config['password']
-            server = config['server']
-    except FileNotFoundError:
-        print("推送消息失败,请检查config.txt文件是否与程序位于同一路径")
+        sending_account = os.getenv('sending_account')
+        sending_password = os.getenv('sending_password')
+        server = os.getenv('server')
+        receiver_list = os.getenv('receiver_list')
+        receivers = receiver_list.split(',')
+    except KeyError:
+        print("推送消息失败，请检查环境变量是否正确设置")
         sys.exit(1)
-    except SyntaxError:
-        print("推送消息失败,请检查配置文件格式是否正确")
+    except ValueError:
+        print("推送消息失败，请检查环境变量 RECEIVERS 的值是否按逗号分隔")
         sys.exit(1)
-    text = message()
-    for i in range(len(config['receivers'])):
-        receiver = config['receivers'][i]
-        send_message(sender,password,server,receiver,text)
+    except Exception as e:
+        print("推送消息失败，发生了一个未处理的异常:", e)
+        sys.exit(1)
+text = message()
+
+for receiver in receivers:
+    send_message(sending_account, sending_password, server, receiver, text)

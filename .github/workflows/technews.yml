@@ -17,5 +17,10 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: run main
+        env:
+          sending_account: ${{vars.SENDING_ACCOUNT}}
+          sending_password: ${{vars.SENDING_PASSWORD}}
+          server: ${{vars.SERVER}}
+          receiver_list: ${{vars.RECEIVER_LIST}}
         run: |
           python main.py
