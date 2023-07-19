@@ -55,20 +55,18 @@ def message():
 
 if __name__ == "__main__":
     try:
-        # 从 GitHub Secrets 中获取配置信息
-        sender = os.getenv('SENDING_ACCOUNT')
-        password = os.getenv('SENDING_PASSWORD')
-        server = os.getenv('SERVER')
-        receiver_list = os.getenv('RECEIVER_LIST')
-        # 如果有任何一个变量为 None，则抛出异常
-        if sender is None or password is None or server is None:
-            raise ValueError('存在未找到的环境变量')
-        if not receiver_list:
-            raise ValueError('未找到环境变量:RECEIVER_LIST')
-    except ValueError as e:
-        print("推送消息失败，缺少配置信息：", e)
+        with open('config.json', 'r') as file:
+            config = json.load(file)
+            sender = config['sender']
+            password = config['password']
+            server = config['server']
+    except FileNotFoundError:
+        print("推送消息失败,请检查config.txt文件是否与程序位于同一路径")
         sys.exit(1)
-    receivers = receiver_list.split(',')
+    except SyntaxError:
+        print("推送消息失败,请检查配置文件格式是否正确")
+        sys.exit(1)
     text = message()
-    for receiver in receivers:
+    for i in range(len(config['receivers'])):
+        receiver = config['receivers'][i]
         send_message(sender,password,server,receiver,text)
