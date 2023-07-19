@@ -1,7 +1,15 @@
 # 每日科技新闻
 每天早晨自动发送科技新闻到你的邮箱。
 
-## 切换为英语
+[![technews][action-image]][action-url]
+[![forks][forks-image]][forks-url]
+
+[action-url]:https://github.com/NowScott/EverydayTechNews/actions/workflows/technews.yml "Action State"
+[action-image]:https://img.shields.io/github/actions/workflow/status/NowScott/EverydayTechNews/technews.yml?label=Action
+[forks-url]:https://github.com/NowScott/EverydayTechNews/forks
+[forks-image]:https://img.shields.io/github/forks/NowScott/EverydayTechNews?label=Forks
+
+# 切换为英语
 
 [![readme][readme-image]][readme-url]
 
@@ -26,40 +34,33 @@
 
 ## 工具部署
 
-这个小工具重新部署起来非常简单，如果你也和我一样，只需要每天看30条科技新闻的话，那么只需要更改配置文件就好。
+在2023年7月19日的更新后，部署将变的更加简单！
 
-由于Fork的库不能设为私有，所以你需要新建一个私有库(防止你的邮箱公开，收信的邮箱还好，主要是发信的那个邮箱，账号密码都在配置文件中)
+由于我将私密性的信息全部放到了仓库的秘密变量中，所以现在可以通过Fork的形式来进行部署。
 
-然后把我这个库中的代码都下载下来上传到你新建的库中。
+首先Fork本仓库：https://github.com/NowScott/EverydayTechNews
 
-config.json文件如下所示
-
-```json
-{
-    "sender": "send_email@example.com",
-    "password": "smtp_password",
-    "server": "smtp.163.com",
-    "receivers": [
-        "receive_email@example.com"
-        ]
-}
+接下来在设置（Settings）中找到Secrets and variables，点击下方的Actions，在右侧你可以看到一个蓝色的按钮写着New repositorys secret，点击这个按钮，新建4个secret，分别是：
+```
+SENDING_ACCOUNT: send_email@example.com
+SENDING_PASSWORD: smtp_password
+SERVER: smtp.163.com
+RECEIVER_LIST: receiver1_email@example.com,receiver2_email@example.com
 ```
 
-对config.json做如下更改：
-
-1. 打开smtp选项，在sender后面输入邮箱地址，并将从SMTP获取的密码放入password字段中。
+1. 前两个分别是要使用的邮箱和SMTP的密钥
 
 2. 关于服务器（server），它取决于您使用的电子邮件地址。这里我提供了使用网易163邮箱地址的示例。其他常用电子邮件提供商的服务器地址列在最后。
 
-3. 我将接收者（receivers）设置为一个列表，这意味着您不仅可以包括自己的邮箱地址，还可以包括朋友的邮箱地址。这样可以共享和讨论相互感兴趣的内容。
+3. 接收者（receivers）用“,”间隔开，不仅可以添加自己的邮箱地址，也可以添加朋友的邮箱地址。这样可以共享和讨论相互感兴趣的内容。
 
 更改完配置信息之后找到.github/workflows/technews.yml这个文件
 
-将第四行和第五行取消注释（因为这个仓库是一个示例仓库，所以无法进行定时运行）。这部分代码的含义是在格林尼治时间（UTC）的每天零点（midnight）执行，换算成北京时间需要加8个小时，即早上8点左右开始执行。然而并非完全准确，一般会在8点45左右结束。有关 cron 的详细规则，请参考这个网站：https://tool.lu/crontab/
+这部分代码的含义是在格林尼治时间（UTC）的每天22:30执行，换算成北京时间需要加8个小时，即早上6:30左右开始执行，然而并非完全准确。你可以根据自己的需求对这部分时间进行更改，有关 cron 的详细规则，请参考这个网站：https://tool.lu/crontab/
 
 接着在上方找到Action，左侧点击technews，右侧找到run workflow尝试运行，如果在下方的运行中没有报错而且邮件能正常发送，那么就成功了。
 
-但是如果你和我不同，需要其他版块的新闻，可能要麻烦一些。
+但是如果你需要其他版块的新闻，可能要麻烦一些。
 
 由于其他版块的排版和科技的不尽相同，所以更换版块意味着要重新写页面解析部分的代码，去找到符合你口味的新闻，我这里就不过多赘述了。
 

@@ -1,6 +1,14 @@
 # EverydayTechNews
 Automatically sending tech news to your email every morning.
 
+[![technews][action-image]][action-url]
+[![forks][forks-image]][forks-url]
+
+[action-url]:https://github.com/NowScott/EverydayTechNews/actions/workflows/technews.yml "Action State"
+[action-image]:https://img.shields.io/github/actions/workflow/status/NowScott/EverydayTechNews/technews.yml?label=Action
+[forks-url]:https://github.com/NowScott/EverydayTechNews/forks
+[forks-image]:https://img.shields.io/github/forks/NowScott/EverydayTechNews?label=Forks
+
 ## Switch to Chinese
 
 [![readme-cn][readme-cn-image]][readme-cn-url]
@@ -27,43 +35,36 @@ This small tool for automatically sending news to email is developed based on Py
 
 ## Tool Deployment
 
-Deploying this small tool is very simple. If you, like me, only need to read 30 pieces of tech news every day, all you need to do is modify the configuration file.
+After the update on July 19, 2023, deployment will become much simpler!
 
-Since the forked repository cannot be set to private, you need to create a new private repository (to prevent your email from being exposed, it's mainly the sender's email used for sending, with the account and password in the configuration file).
+Since I have placed all the sensitive information into the repository's secret variables, now deployment can be done through forking.
 
-Then, download all the code from my repository and upload it to your newly created repository.
+First, fork this repository: https://github.com/NowScott/EverydayTechNews
 
-The config.json file is as follows:
+Next, go to "Settings" and find "Secrets and variables". Click on "Actions" below, and on the right side, you will see a blue button that says "New repository secret". Click on this button to create four secrets:
 
-```json
-{
-    "sender": "send_email@example.com",
-    "password": "smtp_password",
-    "server": "smtp.163.com",
-    "receivers": [
-        "receive_email@example.com"
-        ]
-}
+
 ```
+SENDING_ACCOUNT: send_email@example.com
+SENDING_PASSWORD: smtp_password
+SERVER: smtp.163.com
+RECEIVER_LIST: receiver1_email@example.com,receiver2_email@example.com
+```
+1. The first two are the email address to be used and the secret key for SMTP.
 
-Make the following changes to the config.json file:
+2. Regarding the server, it depends on the email address you are using. Here, I provide an example using a Netease 163 email address. The server addresses for other commonly used email providers are listed at the end.
 
+3. The receivers should be separated by ",". You can add not only your own email address but also your friends' email addresses. This allows you to share and discuss content of mutual interest.
 
-1. Open the smtp option and enter the email address after sender, and put the password obtained from SMTP in the password field.
+After modifying the configuration information, locate the file .github/workflows/technews.yml.
 
-2. Regarding the server, it depends on the email address you are using. Here, I provide the example of using the NetEase 163 email address. The server addresses for other commonly used email providers are listed at the end.
+The meaning of this portion of code is to execute at 22:30 UTC (Greenwich Mean Time) every day. To convert it to Beijing time, you need to add 8 hours, which means it will start executing at around 6:30 AM. However, it may not be entirely accurate. You can modify this part of the time according to your needs. For detailed rules about cron, please refer to this website: https://tool.lu/crontab/
 
-3. I have set the receivers as a list, which means you can not only include your own email address but also your friends' email addresses. This allows you to share and discuss contents of mutual interest.
+After that, locate "Actions" above, click on "technews" on the left side, and find "Run workflow" on the right side. If there are no errors in the "Workflow runs" section below and the emails are being sent correctly, then it is successful.
 
-After making these changes, find the technews.yml file under .github/workflows/.
+However, if you need news from other sections, it may be a bit more complicated.
 
-Uncomment the 4th and 5th lines (since this repository is just an example repository and cannot be scheduled). This part sets the execution time at midnight UTC time. To convert it to Beijing time, add 8 hours, which means it will run around 8 AM (though it's not precise and usually finishes around 8:45 AM). For specific rules regarding cron, please refer to this website: https://tool.lu/crontab/.
-
-Next, find the "Actions" tab, click on "technews" on the left-hand side, and on the right-hand side, find "Run workflow" to try running it. If there are no errors and the emails are sent successfully, then it is a success.
-
-However, if you need news from other categories and not just tech, it may be a bit more complicated.
-
-Since the layout of other categories may differ from tech news, changing the category means rewriting the code for page parsing to find news articles that match your taste. I won't go into further detail here.
+Since the layout of other sections may be different from the technology section, replacing sections means rewriting the code for page parsing to find news that suits your taste. I won't go into too much detail here.
 
 ## Common Email Server Addresses
 
