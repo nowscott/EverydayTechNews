@@ -39,7 +39,7 @@ After the update on July 19, 2023, deployment will become much simpler!
 
 Since I have placed all the sensitive information into the repository's secret variables, now deployment can be done through forking.
 
-First, fork this repository: https://github.com/NowScott/EverydayTechNews
+First, fork this repository: https://github.com/nowscott/EverydayTechNews
 
 Next, go to "Settings" and find "Secrets and variables". Click on "Actions" below, and on the right side, you will see a blue button that says "New repository secret". Click on this button to create four secrets:
 
