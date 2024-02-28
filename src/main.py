@@ -1,12 +1,16 @@
 import sys
 import os
-import json
 import time
 import smtplib
 import requests
 from bs4 import BeautifulSoup
 from email.header import Header
 from email.mime.text import MIMEText
+# from dotenv import load_dotenv
+# # 指定.env文件的路径
+# dotenv_path = '/.env'
+# # 加载.env文件中的环境变量
+# load_dotenv(dotenv_path)
 
 def send_message(sender,password,server,receiver,text):
     sender = sender
@@ -54,10 +58,10 @@ def message():
     return text
 if __name__ == "__main__":
     try:
-        sending_account = os.getenv('sending_account')
-        sending_password = os.getenv('sending_password')
-        server = os.getenv('server')
-        receiver_list = os.getenv('receiver_list')
+        sending_account = os.environ["SENDING_ACCOUNT"]
+        sending_password = os.environ["SENDING_PASSWORD"]
+        server = os.environ["SERVER"]
+        receiver_list = os.environ["RECEIVER_LIST"]
         receivers = receiver_list.split(',')
     except KeyError:
         print("推送消息失败，请检查环境变量是否正确设置")
@@ -68,7 +72,6 @@ if __name__ == "__main__":
     except Exception as e:
         print("推送消息失败，发生了一个未处理的异常:", e)
         sys.exit(1)
-text = message()
-
-for receiver in receivers:
-    send_message(sending_account, sending_password, server, receiver, text)
+    text = message()
+    for receiver in receivers:
+        send_message(sending_account, sending_password, server, receiver, text)
