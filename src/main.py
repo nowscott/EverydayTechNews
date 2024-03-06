@@ -6,16 +6,13 @@ import requests
 from bs4 import BeautifulSoup
 from email.header import Header
 from email.mime.text import MIMEText
-# from dotenv import load_dotenv
-# # 指定.env文件的路径
-# dotenv_path = '/.env'
-# # 加载.env文件中的环境变量
-# load_dotenv(dotenv_path)
+from dotenv import load_dotenv
+# 指定.env文件的路径
+dotenv_path = './.env'
+# 加载.env文件中的环境变量
+load_dotenv(dotenv_path)
 
-def send_message(sender,password,server,receiver,text):
-    sender = sender
-    password = password
-    server = server
+def send_message(sender, password, server, receiver, text):
     msg = MIMEText(text, 'html', 'utf-8')
     subject = '今日科技早报'
     msg['Subject'] = Header(subject, 'utf-8')  # 邮件主题
@@ -33,22 +30,24 @@ def send_message(sender,password,server,receiver,text):
             print("尝试发送邮件失败，进行下一次尝试...")
             time.sleep(3)
             attempt += 1
-    
+
     print("达到最大尝试次数，无法发送邮件")
     return False
 
-def technews(): 
-    url = 'https://tech.163.com/' #这里我使用的是网易新闻的科技板块，可以按需更换
-    html = requests.get(url).text 
-    soup = BeautifulSoup(html,'html.parser') 
-    displayno = soup.find_all('div',style='display:none;') 
-    titles = [] 
-    for d in displayno: 
-        for i in range(len(d.find_all('a'))): 
-            t = d.find_all('a')[i] 
-            titles.append(t) 
+
+def technews():
+    url = 'https://digi.163.com/'  # 这里我使用的是网易新闻的科技板块，可以按需更换
+    html = requests.get(url).text
+    soup = BeautifulSoup(html, 'html.parser')
+    displayno = soup.find_all('div', style='display:none;')
+    titles = []
+    for d in displayno:
+        for i in range(len(d.find_all('a'))):
+            t = d.find_all('a')[i]
+            titles.append(t)
     news = ''.join(['<p>{}</p>'.format(title) for title in titles])
     return news
+
 
 def message():
     text = """
@@ -56,6 +55,8 @@ def message():
     <p>注：这是一封定时邮件，请勿回复该邮件，如果有任何问题或需求，请直接与我们联系。</p>
     """.format(technews())
     return text
+
+
 if __name__ == "__main__":
     try:
         sending_account = os.environ["SENDING_ACCOUNT"]
