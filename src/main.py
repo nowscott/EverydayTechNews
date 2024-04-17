@@ -12,6 +12,7 @@ from email.mime.text import MIMEText
 # # 加载.env文件中的环境变量
 # load_dotenv(dotenv_path)
 
+
 def send_message(sender, password, server, receiver, text):
     msg = MIMEText(text, 'html', 'utf-8')
     subject = '今日科技早报'
@@ -37,7 +38,8 @@ def send_message(sender, password, server, receiver, text):
 
 def extract_news(container):
     news_html = ''
-    items = container.find_all('li', class_='news-moudle_item') if container else []
+    items = container.find_all(
+        'li', class_='news-moudle_item') if container else []
     for item in items:
         a_tag = item.find('a')
         if a_tag:
@@ -46,27 +48,29 @@ def extract_news(container):
             news_html += '<p><a href="{}">{}</a></p>'.format(link, title)
     return news_html
 
+
 def technews():
-    url = "https://news.zol.com.cn/"  
+    url = "https://news.zol.com.cn/"
     response = requests.get(url)
 
     # 确保网络请求成功
     if response.status_code == 200:
         html = response.text
         soup = BeautifulSoup(html, 'html.parser')
-        
+
         # 48小时最热
         hot_48_hours = soup.find('div', id='list-v-1')
         news_48 = '<h2>48小时最热新闻:</h2>' + extract_news(hot_48_hours)
-        
+
         # 7日最热
         hot_7_days = soup.find('div', id='list-v-2')
         news_7 = '<h2>7日最热新闻:</h2>' + extract_news(hot_7_days)
-        
+
         # 返回所有新闻
         return news_48 + news_7
     else:
         return "请求失败，状态码：" + str(response.status_code)
+
 
 def message():
     text = """
@@ -78,7 +82,6 @@ def message():
 
 if __name__ == "__main__":
     text = message()
-    print(text)
     try:
         sending_account = os.environ["SENDING_ACCOUNT"]
         sending_password = os.environ["SENDING_PASSWORD"]
