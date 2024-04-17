@@ -94,11 +94,11 @@ def technews():
 
 def message(name):
     # 使用用户的名字来创建个性化问候
-    greeting = f"尊敬的{name}用户，早上好，以下是今日的科技早报"
+    greeting = f"<strong>早上好{name}，以下是今日的科技早报</strong>"
 
     text = f"""
     <h1>今日科技早报</h1>
-    {greeting}
+    {greeting}</strong>
     <div>{technews()}</div>
     <p>注：这是一封定时邮件，请勿回复该邮件，如果有任何问题或需求，请直接与我们联系。</p>
     """
