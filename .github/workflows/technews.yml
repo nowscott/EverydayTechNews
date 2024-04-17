@@ -25,6 +25,7 @@ jobs:
           SENDING_ACCOUNT: ${{secrets.SENDING_ACCOUNT}}
           SENDING_PASSWORD: ${{secrets.SENDING_PASSWORD}}
           SERVER: ${{secrets.SERVER}}
-          RECEIVER_LIST: ${{secrets.RECEIVER_LIST}}
+          NOTION_API_KEY: ${{secrets.NOTION_API_KEY}}
+          NOTION_DATABASE_ID: ${{secrets.NOTION_DATABASE_ID}}
         run: |
           python src/main.py
