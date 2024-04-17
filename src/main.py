@@ -94,7 +94,7 @@ def technews():
 
 def message(name):
     # 使用用户的名字来创建个性化问候
-    greeting = f"尊敬的{name}，"
+    greeting = f"尊敬的{name}用户，早上好，以下是今日的科技早报"
 
     text = f"""
     <h1>今日科技早报</h1>
