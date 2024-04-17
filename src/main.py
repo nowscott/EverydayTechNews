@@ -35,19 +35,38 @@ def send_message(sender, password, server, receiver, text):
     return False
 
 
-def technews():
-    url = 'https://digi.163.com/'  # 这里我使用的是网易新闻的科技板块，可以按需更换
-    html = requests.get(url).text
-    soup = BeautifulSoup(html, 'html.parser')
-    displayno = soup.find_all('div', style='display:none;')
-    titles = []
-    for d in displayno:
-        for i in range(len(d.find_all('a'))):
-            t = d.find_all('a')[i]
-            titles.append(t)
-    news = ''.join(['<p>{}</p>'.format(title) for title in titles])
-    return news
+def extract_news(container):
+    news_html = ''
+    items = container.find_all('li', class_='news-moudle_item') if container else []
+    for item in items:
+        a_tag = item.find('a')
+        if a_tag:
+            title = a_tag.get_text(strip=True)
+            link = a_tag['href']
+            news_html += '<p><a href="{}">{}</a></p>'.format(link, title)
+    return news_html
 
+def technews():
+    url = "https://news.zol.com.cn/"  
+    response = requests.get(url)
+
+    # 确保网络请求成功
+    if response.status_code == 200:
+        html = response.text
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        # 48小时最热
+        hot_48_hours = soup.find('div', id='list-v-1')
+        news_48 = '<h2>48小时最热新闻:</h2>' + extract_news(hot_48_hours)
+        
+        # 7日最热
+        hot_7_days = soup.find('div', id='list-v-2')
+        news_7 = '<h2>7日最热新闻:</h2>' + extract_news(hot_7_days)
+        
+        # 返回所有新闻
+        return news_48 + news_7
+    else:
+        return "请求失败，状态码：" + str(response.status_code)
 
 def message():
     text = """
@@ -58,6 +77,8 @@ def message():
 
 
 if __name__ == "__main__":
+    text = message()
+    print(text)
     try:
         sending_account = os.environ["SENDING_ACCOUNT"]
         sending_password = os.environ["SENDING_PASSWORD"]
@@ -73,6 +94,5 @@ if __name__ == "__main__":
     except Exception as e:
         print("推送消息失败，发生了一个未处理的异常:", e)
         sys.exit(1)
-    text = message()
     for receiver in receivers:
         send_message(sending_account, sending_password, server, receiver, text)
