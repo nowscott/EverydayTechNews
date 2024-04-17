@@ -38,19 +38,19 @@ def send_message(sender, password, server, receiver, text):
 
 def extract_news(container):
     news_html = ''
-    items = container.find_all(
-        'li', class_='news-moudle_item') if container else []
+    # 注意：下面的类名 'news-moudle_item' 需要根据实际的HTML结构进行调整
+    items = container.find_all('li', class_='newstype1') if container else []
     for item in items:
-        a_tag = item.find('a')
-        if a_tag:
-            title = a_tag.get_text(strip=True)
-            link = a_tag['href']
+        title_tag = item.find('div', class_='news-title').find('a')
+        if title_tag:
+            title = title_tag.get_text(strip=True)
+            link = title_tag['href']
             news_html += '<p><a href="{}">{}</a></p>'.format(link, title)
     return news_html
 
 
 def technews():
-    url = "https://news.zol.com.cn/"
+    url = "https://www.eepw.com.cn/news"  # 使用指定的新闻URL
     response = requests.get(url)
 
     # 确保网络请求成功
@@ -58,16 +58,12 @@ def technews():
         html = response.text
         soup = BeautifulSoup(html, 'html.parser')
 
-        # 48小时最热
-        hot_48_hours = soup.find('div', id='list-v-1')
-        news_48 = '<h2>48小时最热新闻:</h2>' + extract_news(hot_48_hours)
-
-        # 7日最热
-        hot_7_days = soup.find('div', id='list-v-2')
-        news_7 = '<h2>7日最热新闻:</h2>' + extract_news(hot_7_days)
+        # 获取指定的新闻容器
+        news_container = soup.find('div', id='c01')
+        news_html = extract_news(news_container)
 
         # 返回所有新闻
-        return news_48 + news_7
+        return news_html
     else:
         return "请求失败，状态码：" + str(response.status_code)
 
