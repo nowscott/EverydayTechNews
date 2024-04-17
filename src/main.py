@@ -6,12 +6,12 @@ import requests
 from bs4 import BeautifulSoup
 from email.header import Header
 from email.mime.text import MIMEText
-from dotenv import load_dotenv
-# 指定.env文件的路径
-dotenv_path = './.env'
-# 加载.env文件中的环境变量
-load_dotenv(dotenv_path)
-#获取环境变量
+# from dotenv import load_dotenv
+# # 指定.env文件的路径
+# dotenv_path = './.env'
+# # 加载.env文件中的环境变量
+# load_dotenv(dotenv_path)
+# #获取环境变量
 
 def fetch_notion_users(api_key, database_id):
     url = f"https://api.notion.com/v1/databases/{database_id}/query"
