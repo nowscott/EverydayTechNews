@@ -1,6 +1,8 @@
 # 每日科技新闻
 每天早晨自动发送科技新闻到你的邮箱。
 
+点击[这里](https://emai-list-inbox.vercel.app/)订阅每日科技早报
+
 [![technews][action-image]][action-url]
 [![forks][forks-image]][forks-url]
 

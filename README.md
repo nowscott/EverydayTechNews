@@ -1,6 +1,8 @@
 # EverydayTechNews
 Automatically sending tech news to your email every morning.
 
+Click [here](https://emai-list-inbox.vercel.app/) to subscribe to the Daily Tech Morning News.
+
 [![technews][action-image]][action-url]
 [![forks][forks-image]][forks-url]
 
