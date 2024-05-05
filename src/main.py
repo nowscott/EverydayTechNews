@@ -97,10 +97,10 @@ def message(name):
     greeting = f"<strong>早上好{name}，以下是今日的科技早报</strong>"
 
     text = f"""
-    <h1>今日科技早报</h1>
     {greeting}</strong>
     <div>{technews()}</div>
     <p>注：这是一封定时邮件，请勿回复该邮件，如果有任何问题或需求，请直接与我们联系。</p>
+    <p>tips:正在内测新的新闻源，顺利的话很快上线</p>
     """
     return text
 
