@@ -17,7 +17,7 @@ jobs:
         run: |
           git config --global user.name "NowScott"
           git config --global user.email "nowscott@qq.com"
-          git clone https://github.com/nowscott/NewsTest.git
+          git clone https://github.com/nowscott/EverydayTechNews.git
       - name: Checkout repository
         uses: actions/checkout@v4
 
