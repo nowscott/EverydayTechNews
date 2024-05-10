@@ -9,34 +9,34 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+def fetch_news(driver, selector):
+    WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+    news_items = driver.find_elements(By.CSS_SELECTOR, f'{selector} li a')
+    news_data = []
+    for item in news_items:
+        title = item.get_attribute('title')
+        link = item.get_attribute('href')
+        news_data.append({'title': title, 'link': link})
+    return news_data
+
 def fetch_all_news():
     # 设置 Selenium WebDriver
     service = Service(ChromeDriverManager().install())
     options = Options()
     options.headless = True  # type: ignore # 在无头模式下运行
     driver = webdriver.Chrome(service=service, options=options)
-    news_data = {}
+    all_news_data = []
     try:
-        
         # 打开网页
         driver.get('https://digi.ithome.com/')
         # 抓取日榜新闻
-        # 等待 JavaScript 加载新闻项目
-        WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, 'ul.bd.order#d-1'))
-        )
-        # 选择列表中的所有新闻项目
-        news_items = driver.find_elements(By.CSS_SELECTOR, f'ul.bd.order#d-1 li a')
-        news_data = []
-        # 提取每个新闻的标题和链接，并存储到列表中
-        for item in news_items:
-            title = item.get_attribute('title')
-            link = item.get_attribute('href')
-            news_data.append({'title': title, 'link': link})
+        all_news_data.extend(fetch_news(driver, 'ul.bd.order#d-1'))
+        # 抓取另一个 <ul> 中的内容
+        all_news_data.extend(fetch_news(driver, 'ul.bd.order#d-4'))
     finally:
         # 关闭浏览器
         driver.quit()
-    return news_data
+    return all_news_data
 
 def save_news_to_markdown(now,new_news):
     yesterday = now - timedelta(days=1)
@@ -90,11 +90,12 @@ if __name__ == '__main__':
     print("当前时间：", now.strftime("%Y-%m-%d %H:%M:%S %Z"))  # 打印当前的日期和时间以及时区信息
     # 调用函数爬取所有新闻榜单
     print("开始爬取所有新闻...")
-    news = fetch_all_news()
-    print("新闻爬取完成，共爬取到 {} 条新闻。".format(len(news)))
+    new_news = fetch_all_news()
+    print("新闻爬取完成，共爬取到 {} 条新闻。".format(len(new_news)))
+    # print(new_news)
     # 保存新闻到Markdown文件
     print("开始保存新闻到Markdown文件...")
-    save_news_to_markdown(now,news)
+    save_news_to_markdown(now,new_news)
 
 
 
