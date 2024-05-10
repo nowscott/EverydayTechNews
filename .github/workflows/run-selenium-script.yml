@@ -1,0 +1,47 @@
+name: Run Selenium Script
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # At every hour.
+  workflow_dispatch:  # 允许手动触发
+  push:
+    branches:
+      - main  # 触发流程的分支
+
+jobs:
+  setup-and-test:
+    runs-on: macos-latest  # 使用 macOS 环境
+    
+    steps:
+      - name: Set up Git
+        run: |
+          git config --global user.name "NowScott"
+          git config --global user.email "nowscott@qq.com"
+          git clone https://github.com/nowscott/NewsTest.git
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'  # 指定 Python 版本
+
+      - name: Install Chrome and ChromeDriver
+        run: |
+          brew install --cask google-chrome
+          brew install chromedriver
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install selenium webdriver-manager
+
+      - name: Run Selenium script
+        run: |
+          python src/script.py  # 确保脚本路径正确
+      - name: Commit changes
+        run: |
+          git add -A
+          DATE=$(TZ="Asia/Shanghai" date "+%Y-%m-%d %H:%M:%S")
+          git commit -m "Update news markdown file at $DATE" || echo "No changes to commit"
+          git push

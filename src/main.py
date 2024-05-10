@@ -1,18 +1,24 @@
-import sys
 import os
+import re
+import sys
 import time
 import smtplib
 import requests
+import configparser
+from zoneinfo import ZoneInfo  # Python 3.9+
 from bs4 import BeautifulSoup
 from email.header import Header
 from email.mime.text import MIMEText
-# from dotenv import load_dotenv
-# # 指定.env文件的路径
-# dotenv_path = './.env'
-# # 加载.env文件中的环境变量
-# load_dotenv(dotenv_path)
-# #获取环境变量
+from datetime import datetime , timedelta
 
+
+# # 以下部分是本地测试时使用的代码
+# from dotenv import load_dotenv
+# dotenv_path = './.env'
+# load_dotenv(dotenv_path)
+# # 以上部分是本地测试时使用的代码
+
+# #获取环境变量
 def fetch_notion_users(api_key, database_id):
     url = f"https://api.notion.com/v1/databases/{database_id}/query"
     headers = {
@@ -20,33 +26,28 @@ def fetch_notion_users(api_key, database_id):
         "Notion-Version": "2021-05-13",
         "Content-Type": "application/json"
     }
-
     response = requests.post(url, headers=headers)
     if response.status_code != 200:
-        raise Exception("Failed to fetch data from Notion API: " + response.text)
-    
+        raise Exception("Failed to fetch data from Notion API: " + response.text) 
     data = response.json()
     users = []
-
     for result in data.get("results", []):
         user_data = {}
         properties = result.get("properties", {})
-        
         # 假设姓名字段名为 "Name"，邮箱字段名为 "Email"
         name = properties.get("Name", {}).get("title", [{}])[0].get("text", {}).get("content")
         email = properties.get("Email", {}).get("email")
-        
         if name and email:
             user_data["name"] = name
             user_data["email"] = email
             users.append(user_data)
-
     return users
+
 
 def send_message(sender, password, server, receiver, text):
     msg = MIMEText(text, 'html', 'utf-8')
     subject = '今日科技早报'
-    msg['Subject'] = Header(subject, 'utf-8')  # 邮件主题
+    msg['Subject'] = Header(subject, 'utf-8')  # type: ignore # 邮件主题
     attempt = 1
     while attempt <= 3:
         try:
@@ -65,44 +66,54 @@ def send_message(sender, password, server, receiver, text):
     return False
 
 
-def extract_news(container):
-    news_html = ''
-    # 注意：下面的类名 'news-moudle_item' 需要根据实际的HTML结构进行调整
-    items = container.find_all('li', class_='newstype1') if container else []
-    for item in items:
-        title_tag = item.find('div', class_='news-title').find('a')
-        if title_tag:
-            title = title_tag.get_text(strip=True)
-            link = title_tag['href']
-            news_html += '<p><a href="{}">{}</a></p>'.format(link, title)
-    return news_html
+# 创建一个ConfigParser对象
+config = configparser.ConfigParser()
+# 读取配置文件
+config.read('notifications.ini')
+# 获取开头通知、结尾通知和结尾注释内容，如果不存在则设置为空字符串
+start_notification = config.get('开头通知', 'content', fallback='')
+end_notification = config.get('结尾通知', 'content', fallback='')
+end_comment = config.get('结尾注释', 'content', fallback='')
+tz = ZoneInfo('Asia/Shanghai')
+now = datetime.now(tz)
+yesterday = now - timedelta(days=1)
+yesterday_day = yesterday.strftime("%d") 
+yesterday_year_month = yesterday.strftime("%Y-%m")
+yesterday_folder_path = f"news_archive/{yesterday_year_month}"
+yesterday_news_filename = f"{yesterday_folder_path}/{yesterday_day}.md"
+with open(yesterday_news_filename, 'r') as f:
+    yesterday_news = f.read()
 
-def technews():
-    url = "https://www.eepw.com.cn/news"  # 使用指定的新闻URL
-    response = requests.get(url)
-    # 确保网络请求成功
-    if response.status_code == 200:
-        html = response.text
-        soup = BeautifulSoup(html, 'html.parser')
-        # 获取指定的新闻容器
-        news_container = soup.find('div', id='c01')
-        news_html = extract_news(news_container)
-        # 返回所有新闻
-        return news_html
-    else:
-        return "请求失败，状态码：" + str(response.status_code)
+
+def format_news(news_string):
+    # 使用正则表达式提取链接和标题
+    pattern = r'\[(.*?)\]\((.*?)\)'
+    matches = re.findall(pattern, news_string)
+    formatted_news = ''
+    for match in matches:
+        title = match[0]
+        link = match[1]
+        formatted_link = '<p><a href="{}">{}</a></p>'.format(link, title)
+        formatted_news += formatted_link
+    return formatted_news
+
 
 def message(name):
     # 使用用户的名字来创建个性化问候
-    greeting = f"<strong>早上好{name}，以下是今日的科技早报</strong>"
-
+    greeting = f"早上好{name}，以下是今日的科技早报"
+    # 检查配置变量是否为空，如果为空则设置为空字符串
+    start_notification_text = start_notification if start_notification else ''
+    end_notification_text = end_notification if end_notification else ''
+    end_comment_text = end_comment if end_comment else ''
     text = f"""
-    {greeting}</strong>
-    <div>{technews()}</div>
-    <p>注：这是一封定时邮件，请勿回复该邮件，如果有任何问题或需求，请直接与我们联系。</p>
-    <p>tips:正在内测新的新闻源，顺利的话很快上线</p>
+    <h2>{greeting}</h2>
+    <p>{start_notification_text}</p>
+    <div>{format_news(yesterday_news)}</div>
+    <p>{end_notification_text}</p>
+    <p>{end_comment_text}</p>
     """
     return text
+
 
 if __name__ == "__main__":
     try:
@@ -121,3 +132,7 @@ if __name__ == "__main__":
     for user in users:
         personalized_message = message(user['name'])  # 创建个性化消息
         send_message(sending_account, sending_password, server, user['email'], personalized_message)
+
+    # # 以下部分是我本地测试时使用的代码
+    # send_message(sending_account, sending_password, server,'nowscott@qq.com',message('NowScott'))
+    # # 以上部分是我本地测试时使用的代码
