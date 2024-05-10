@@ -4,20 +4,25 @@ from selenium import webdriver
 from datetime import datetime , timedelta
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
+from selenium.common.exceptions import TimeoutException
+from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 def fetch_news(driver, selector):
-    WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
-    news_items = driver.find_elements(By.CSS_SELECTOR, f'{selector} li a')
-    news_data = []
-    for item in news_items:
-        title = item.get_attribute('title')
-        link = item.get_attribute('href')
-        news_data.append({'title': title, 'link': link})
-    return news_data
+    try:
+        WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+        news_items = driver.find_elements(By.CSS_SELECTOR, f'{selector} li a')
+        news_data = []
+        for item in news_items:
+            title = item.get_attribute('title')
+            link = item.get_attribute('href')
+            news_data.append({'title': title, 'link': link})
+        return news_data
+    except TimeoutException as e:
+        print(f"抓取'{selector}'时发生超时异常: {e}")
+        return []
 
 def fetch_all_news():
     # 设置 Selenium WebDriver
