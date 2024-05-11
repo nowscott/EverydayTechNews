@@ -43,5 +43,5 @@ jobs:
         run: |
           git add -A
           DATE=$(TZ="Asia/Shanghai" date "+%Y-%m-%d %H:%M:%S")
-          git commit -m "Update news markdown file at $DATE" || echo "No changes to commit"
+          git commit -m "Update news file at $DATE" || echo "No changes to commit"
           git push

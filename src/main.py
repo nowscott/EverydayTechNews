@@ -6,7 +6,6 @@ import smtplib
 import requests
 import configparser
 from zoneinfo import ZoneInfo  # Python 3.9+
-from bs4 import BeautifulSoup
 from email.header import Header
 from email.mime.text import MIMEText
 from datetime import datetime , timedelta
@@ -131,10 +130,10 @@ if __name__ == "__main__":
     except Exception as e:
         print("推送消息失败，发生了一个未处理的异常:", e)
         sys.exit(1)
-    for user in users:
-        personalized_message = message(user['name'])  # 创建个性化消息
-        send_message(sending_account, sending_password, server, user['email'], personalized_message)
+    # for user in users:
+    #     personalized_message = message(user['name'])  # 创建个性化消息
+    #     send_message(sending_account, sending_password, server, user['email'], personalized_message)
 
-    # # 以下部分是我本地测试时使用的代码
-    # send_message(sending_account, sending_password, server,'nowscott@qq.com',message('NowScott'))
-    # # 以上部分是我本地测试时使用的代码
+    # 以下部分是我本地测试时使用的代码
+    send_message(sending_account, sending_password, server,'nowscott@qq.com',message('NowScott'))
+    # 以上部分是我本地测试时使用的代码
