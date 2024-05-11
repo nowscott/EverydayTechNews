@@ -89,6 +89,8 @@ def format_news(news_string):
     # 使用正则表达式提取链接和标题
     pattern = r'\[(.*?)\]\((.*?)\)'
     matches = re.findall(pattern, news_string)
+    # 限制结果到前25条
+    matches = matches[:25]
     formatted_news = ''
     for match in matches:
         title = match[0]
