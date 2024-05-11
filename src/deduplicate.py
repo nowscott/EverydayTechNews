@@ -16,4 +16,4 @@ def deduplicate_md_news(filename):
         file.writelines(unique_lines)
 
 # 示例：使用该函数对特定的Markdown文件去重
-deduplicate_md_news('news_archive/2024-05/11.md')
+deduplicate_md_news('')
