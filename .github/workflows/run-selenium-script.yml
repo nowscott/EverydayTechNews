@@ -4,9 +4,6 @@ on:
   schedule:
     - cron: '0 * * * *'  # At every hour.
   workflow_dispatch:  # 允许手动触发
-  push:
-    branches:
-      - main  # 触发流程的分支
 
 jobs:
   setup-and-test:

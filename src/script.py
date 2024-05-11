@@ -44,12 +44,11 @@ def fetch_all_news():
     return all_news_data
 
 def save_news_to_markdown(now,new_news):
+    day = now.strftime("%d")
     yesterday = now - timedelta(days=1)
-    year_month = now.strftime("%Y-%m")  # 年-月格式
-    yesterday_year_month = yesterday.strftime("%Y-%m")
-    day = now.strftime("%d")            # 日格式
     yesterday_day = yesterday.strftime("%d") 
-    # 前一天的时间
+    year_month = now.strftime("%Y-%m")
+    yesterday_year_month = yesterday.strftime("%Y-%m")
     folder_path = f"news_archive/{year_month}"  # 文件夹路径
     yesterday_folder_path = f"news_archive/{yesterday_year_month}"
     # 如果文件夹不存在，则创建
@@ -78,14 +77,16 @@ def save_news_to_markdown(now,new_news):
         month_news_set = set(existing_month_news.splitlines())
         for news in new_news:
             markdown_entry = f"- [{news['title']}]({news['link']})\n"
-            # 使用集合来检查新闻条目是否重复
-            if markdown_entry not in yesterday_news and markdown_entry not in month_news_set:
+            # 检查新闻条目是否重复
+            is_new_entry = (markdown_entry not in yesterday_news_set and
+                            markdown_entry not in month_news_set)
+            if is_new_entry:
+                # 写入本月新闻文件
                 f.write(markdown_entry)
-                # 将新写入的条目添加到集合中
                 month_news_set.add(markdown_entry)
-                news_written_count += 1  # 每写入一条新闻，计数器加1
-                # 同时也需要检查并可能添加到今日新闻文件
-                with open(today_news_filename, 'a') as df:
+                news_written_count += 1
+                # 同时写入今日新闻文件
+                with open(TODAY_NEWS_FILE, 'a') as df:
                     df.write(markdown_entry)
     if news_written_count > 0:
         print(f"保存成功，本次更新了 {news_written_count} 条新闻。")

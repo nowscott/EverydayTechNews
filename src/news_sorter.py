@@ -31,7 +31,6 @@ def fetch_news_values(news_list, driver):
             print(f"访问 {title} 时出错: {e}")
             value = "0"  # 如果出现错误，将值设为0
         values_dict[url] = value
-        time.sleep(2)
     return values_dict
 
 def sort_news_by_value(news_list, values_dict):
