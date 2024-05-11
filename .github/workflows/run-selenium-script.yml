@@ -2,8 +2,9 @@ name: Run Selenium Script
 
 on:
   schedule:
-    - cron: '0 * * * *'  # At every hour.
+    - cron: '0 */2 * * *'  # 每两小时的第0分钟执行
   workflow_dispatch:  # 允许手动触发
+
 
 jobs:
   setup-and-test:
