@@ -16,7 +16,7 @@ jobs:
           git config user.name "NowScott"
           git config user.email "nowscott@qq.com"
           git clone https://github.com/nowscott/EverydayTechNews.git
-          
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -32,21 +32,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install selenium webdriver-manager
 
-      - name: Set Environment Variables
+      - name: Run news_sorter.py
+        run: |
+          python src/news_sorter.py
+
+      - name: Set Environment Variables and Run main.py
         env:
           SENDING_ACCOUNT: ${{ secrets.SENDING_ACCOUNT }}
           SENDING_PASSWORD: ${{ secrets.SENDING_PASSWORD }}
           SERVER: ${{ secrets.SERVER }}
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
-        run: |
-          echo "Environment variables set"
-
-      - name: Run news_sorter.py
-        run: |
-          python src/news_sorter.py
-
-      - name: Run main.py
         run: |
           python src/main.py
 
