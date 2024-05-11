@@ -114,19 +114,21 @@ def message(name):
     <p>{end_comment_text}</p>
     """
     return text
-
+def get_env_variable(name):
+    try:
+        return os.environ[name]
+    except KeyError:
+        print(f"环境变量 {name} 未设置，请检查配置。")
+        sys.exit(1)
 
 if __name__ == "__main__":
     try:
-        API_KEY = os.environ["NOTION_API_KEY"]
-        DATABASE_ID = os.environ["NOTION_DATABASE_ID"]
-        sending_account = os.environ["SENDING_ACCOUNT"]
-        sending_password = os.environ["SENDING_PASSWORD"]
-        server = os.environ["SERVER"]
-        users = fetch_notion_users(API_KEY, DATABASE_ID)
-    except KeyError:
-        print("推送消息失败，请检查环境变量是否正确设置")
-        sys.exit(1)
+        API_KEY = get_env_variable("NOTION_API_KEY")
+        DATABASE_ID = get_env_variable("NOTION_DATABASE_ID")
+        sending_account = get_env_variable("SENDING_ACCOUNT")
+        sending_password = get_env_variable("SENDING_PASSWORD")
+        server = get_env_variable("SERVER")
+        users = fetch_notion_users(API_KEY, DATABASE_ID)  # 确保这个函数调用不抛出KeyError
     except Exception as e:
         print("推送消息失败，发生了一个未处理的异常:", e)
         sys.exit(1)
