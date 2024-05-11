@@ -72,14 +72,17 @@ def save_news_to_markdown(now,new_news):
     news_written_count = 0  # 设置计数器来跟踪写入的新闻条数
     with open(yesterday_news_filename, 'r') as f:
         yesterday_news = f.read()
-    # 读取现有文件内容
     with open(month_news_filename, 'r+') as f:
         existing_month_news = f.read()
+        # 创建一个集合来跟踪已存在的新闻条目
+        month_news_set = set(existing_month_news.splitlines())
         for news in new_news:
             markdown_entry = f"- [{news['title']}]({news['link']})\n"
-            # 如果新闻不存在于昨日新闻和本月新闻中，那么认定这是一条新的，添加到本月新闻和今日新闻中
-            if markdown_entry not in yesterday_news and markdown_entry not in existing_month_news:
+            # 使用集合来检查新闻条目是否重复
+            if markdown_entry not in yesterday_news and markdown_entry not in month_news_set:
                 f.write(markdown_entry)
+                # 将新写入的条目添加到集合中
+                month_news_set.add(markdown_entry)
                 news_written_count += 1  # 每写入一条新闻，计数器加1
                 # 同时也需要检查并可能添加到今日新闻文件
                 with open(today_news_filename, 'a') as df:
