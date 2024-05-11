@@ -5,17 +5,11 @@ on:
     - cron: '0 */2 * * *'  # 每两小时的第0分钟执行
   workflow_dispatch:  # 允许手动触发
 
-
 jobs:
   setup-and-test:
     runs-on: macos-latest  # 使用 macOS 环境
-    
+
     steps:
-      - name: Set up Git
-        run: |
-          git config --global user.name "NowScott"
-          git config --global user.email "nowscott@qq.com"
-          git clone https://github.com/nowscott/EverydayTechNews.git
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -23,6 +17,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'  # 指定 Python 版本
+
+      - name: Set up Git configurations
+        run: |
+          git config --global user.name "NowScott"
+          git config --global user.email "nowscott@qq.com"
 
       - name: Install Chrome and ChromeDriver
         run: |
@@ -36,10 +35,12 @@ jobs:
 
       - name: Run Selenium script
         run: |
-          python src/script.py  # 确保脚本路径正确
-      - name: Commit changes
+          python src/script.py  # 执行 Selenium 脚本，确保脚本路径正确
+
+      - name: Commit and push changes
         run: |
           git add -A
           DATE=$(TZ="Asia/Shanghai" date "+%Y-%m-%d %H:%M:%S")
           git commit -m "Update news file at $DATE" || echo "No changes to commit"
           git push
+

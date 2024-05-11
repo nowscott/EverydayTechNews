@@ -1,15 +1,21 @@
+# 标准库导入
 import os
 import re
 import sys
 import time
-import smtplib
+from datetime import datetime, timedelta
+
+# 本地化和时区处理
+from zoneinfo import ZoneInfo  # Python 3.9+
+
+# 网络请求和配置文件处理
 import requests
 import configparser
-from zoneinfo import ZoneInfo  # Python 3.9+
+
+# 邮件处理库
+import smtplib
 from email.header import Header
 from email.mime.text import MIMEText
-from datetime import datetime , timedelta
-
 
 # # 以下部分是本地测试时使用的代码
 # from dotenv import load_dotenv
@@ -41,7 +47,6 @@ def fetch_notion_users(api_key, database_id):
             user_data["email"] = email
             users.append(user_data)
     return users
-
 
 def send_message(sender, password, server, receiver, text):
     msg = MIMEText(text, 'html', 'utf-8')
@@ -83,7 +88,6 @@ yesterday_news_filename = f"{yesterday_folder_path}/{yesterday_day}.md"
 with open(yesterday_news_filename, 'r') as f:
     yesterday_news = f.read()
 
-
 def format_news(news_string):
     # 使用正则表达式提取链接和标题
     pattern = r'\[(.*?)\]\((.*?)\)'
@@ -97,7 +101,6 @@ def format_news(news_string):
         formatted_link = '<p><a href="{}">{}</a></p>'.format(link, title)
         formatted_news += formatted_link
     return formatted_news
-
 
 def message(name):
     # 使用用户的名字来创建个性化问候
@@ -132,10 +135,10 @@ if __name__ == "__main__":
     except Exception as e:
         print("推送消息失败，发生了一个未处理的异常:", e)
         sys.exit(1)
-    # for user in users:
-    #     personalized_message = message(user['name'])  # 创建个性化消息
-    #     send_message(sending_account, sending_password, server, user['email'], personalized_message)
+    for user in users:
+        personalized_message = message(user['name'])  # 创建个性化消息
+        send_message(sending_account, sending_password, server, user['email'], personalized_message)
 
-    # 以下部分是我本地测试时使用的代码
-    send_message(sending_account, sending_password, server,'nowscott@qq.com',message('NowScott'))
-    # 以上部分是我本地测试时使用的代码
+    # # 以下部分是我本地测试时使用的代码
+    # send_message(sending_account, sending_password, server,'nowscott@qq.com',message('NowScott'))
+    # # 以上部分是我本地测试时使用的代码

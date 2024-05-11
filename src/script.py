@@ -1,14 +1,22 @@
+# 标准库导入
 import os
+from datetime import datetime, timedelta
+
+# 本地化和时区处理
 from zoneinfo import ZoneInfo  # Python 3.9+
+
+# Selenium 相关导入
 from selenium import webdriver
-from datetime import datetime , timedelta
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import TimeoutException
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+
+# WebDriver 管理
+from webdriver_manager.chrome import ChromeDriverManager
+
 
 def fetch_news(driver, selector):
     try:
@@ -28,7 +36,8 @@ def fetch_all_news():
     # 设置 Selenium WebDriver
     service = Service(ChromeDriverManager().install())
     options = Options()
-    options.headless = True  # type: ignore # 在无头模式下运行
+    options.add_argument('--headless')
+    options.add_argument('--disable-gpu')
     driver = webdriver.Chrome(service=service, options=options)
     all_news_data = []
     try:
@@ -74,19 +83,20 @@ def save_news_to_markdown(now,new_news):
     with open(month_news_filename, 'r+') as f:
         existing_month_news = f.read()
         # 创建一个集合来跟踪已存在的新闻条目
-        month_news_set = set(existing_month_news.splitlines())
+        news_set = set(existing_month_news.splitlines())
         for news in new_news:
             markdown_entry = f"- [{news['title']}]({news['link']})\n"
             # 检查新闻条目是否重复
-            is_new_entry = (markdown_entry not in yesterday_news_set and
-                            markdown_entry not in month_news_set)
+            is_new_entry = (markdown_entry not in news_set and
+                            markdown_entry not in yesterday_news and
+                            markdown_entry not in existing_month_news)
             if is_new_entry:
                 # 写入本月新闻文件
                 f.write(markdown_entry)
-                month_news_set.add(markdown_entry)
+                news_set.add(markdown_entry)
                 news_written_count += 1
                 # 同时写入今日新闻文件
-                with open(TODAY_NEWS_FILE, 'a') as df:
+                with open(today_news_filename, 'a') as df:
                     df.write(markdown_entry)
     if news_written_count > 0:
         print(f"保存成功，本次更新了 {news_written_count} 条新闻。")
