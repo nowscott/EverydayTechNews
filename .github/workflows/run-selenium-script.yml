@@ -39,8 +39,11 @@ jobs:
 
       - name: Commit and push changes
         run: |
-          git add -A
-          DATE=$(TZ="Asia/Shanghai" date "+%Y-%m-%d %H:%M:%S")
-          git commit -m "Update news file at $DATE" || echo "No changes to commit"
-          git push
+          git diff --quiet --exit-code news_archive/ || (
+            git add news_archive/
+            DATE=$(TZ="Asia/Shanghai" date "+%Y-%m-%d %H:%M:%S")
+            git commit -m "Update news file at $DATE"
+            git push origin main
+          )
+
 
