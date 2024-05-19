@@ -1,5 +1,6 @@
 # 标准库导入
 import re
+import time
 from datetime import datetime, timedelta
 
 # 本地化和时区处理
@@ -9,6 +10,7 @@ from zoneinfo import ZoneInfo  # Python 3.9+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
@@ -30,17 +32,23 @@ def fetch_news_values(news_list, driver):
     max_retries = 3  # 最大重试次数
     news_num = len(news_list)
     print(f'共有{news_num}条新闻')
-    for title, url in news_list:
+    for title, url in news_list[:]:
         retry_count = 0
         while retry_count < max_retries:
             try:
                 driver.get(url)
                 wait = WebDriverWait(driver, 10)
+                WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+                if "404" in driver.title or "Page Not Found" in driver.page_source:
+                    print(f"{title} 页面跳到404，删除该新闻")
+                    news_list.remove((title, url))
+                    news_num -= 1
+                    break  # 跳出重试循环，不再重试
                 value_element = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, ".sd .ss")))
                 value = value_element.text if value_element else "0"
                 values_dict[url] = value
                 break  # 如果成功获取到数据，跳出重试循环
-            except Exception as e:
+            except TimeoutException:
                 retry_count += 1
                 print(f"访问 {title} 时出错，尝试第 {retry_count} 次重试")
                 time.sleep(3)  # 出错后等待3秒再重试
