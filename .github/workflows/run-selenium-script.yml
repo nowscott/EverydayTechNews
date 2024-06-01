@@ -48,6 +48,8 @@ jobs:
       - name: Commit and push changes
         run: |
           git add news_archive/  # 添加所有未跟踪的文件
+          echo "Git status after adding files:"
+          git status
           git diff --quiet --exit-code news_archive/ || (
             DATE=$(TZ="Asia/Shanghai" date "+%Y-%m-%d %H:%M:%S")
             git commit -m "Update news file at $DATE"
