@@ -39,12 +39,6 @@ jobs:
         run: |
           python src/script.py  # 执行 Selenium 脚本，确保脚本路径正确
 
-      - name: Verify changes
-        run: |
-          echo "查看新创建的文件和文件夹："
-          ls -R news_archive/
-          git status
-
       - name: Commit and push changes
         run: |
           git add news_archive/  # 添加所有未跟踪的文件
