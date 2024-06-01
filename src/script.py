@@ -62,11 +62,18 @@ def save_news_to_markdown(now, new_news):
     folder_path = f"news_archive/{year_month}"  # 文件夹路径
     yesterday_folder_path = f"news_archive/{yesterday_year_month}"
     
+    # 打印路径信息
+    print(f"当前工作目录: {os.getcwd()}")
+    print(f"今日文件夹路径: {folder_path}")
+    print(f"昨日文件夹路径: {yesterday_folder_path}")
+    
     # 如果文件夹不存在，则创建
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
+        print(f"创建文件夹: {folder_path}")
     if not os.path.exists(yesterday_folder_path):
         os.makedirs(yesterday_folder_path)
+        print(f"创建文件夹: {yesterday_folder_path}")
         
     # 设置新闻文件路径
     month_news_filename = f"{folder_path}/00.md"
@@ -77,11 +84,13 @@ def save_news_to_markdown(now, new_news):
     if not os.path.exists(today_news_filename):
         with open(today_news_filename, 'w') as f:
             f.write(f"# 今日新闻 - {now.strftime('%Y年%m月%d日')}\n")
+        print(f"创建文件: {today_news_filename}")
             
     # 如果昨日新闻文件不存在，创建文件并写入标题
     if not os.path.exists(yesterday_news_filename):
         with open(yesterday_news_filename, 'w') as f:
             f.write(f"# 今日新闻 - {yesterday.strftime('%Y年%m月%d日')}\n")
+        print(f"创建文件: {yesterday_news_filename}")
             
     news_written_count = 0  # 设置计数器来跟踪写入的新闻条数
     
@@ -136,7 +145,4 @@ if __name__ == '__main__':
     # print(new_news)
     # 保存新闻到Markdown文件
     print("开始保存新闻到Markdown文件...")
-    save_news_to_markdown(now,new_news)
-
-
-
+    save_news_to_markdown(now, new_news)
