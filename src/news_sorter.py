@@ -81,7 +81,8 @@ def main():
     yesterday = now - timedelta(days=1)
     yesterday_day = yesterday.strftime("%d")
     year_month = now.strftime("%Y-%m")
-    yesterday_folder_path = f"news_archive/{year_month}"
+    yesterday_year_month = yesterday.strftime("%Y-%m")
+    yesterday_folder_path = f"news_archive/{yesterday_year_monthyear_month}"
     yesterday_news_filename = f"{yesterday_folder_path}/{yesterday_day}.md"
     with open(yesterday_news_filename, 'r') as f:
         yesterday_news = f.read()
