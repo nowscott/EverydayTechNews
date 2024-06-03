@@ -29,6 +29,10 @@ def setup_driver():
 def fetch_news_values(news_list, driver):
     """批量获取新闻链接的价值信息，返回字典"""
     values_dict = {}
+    if not news_list:
+        print("没有新闻要处理，返回空字典")
+        return values_dict
+
     max_retries = 3  # 最大重试次数
     news_num = len(news_list)
     print(f'共有{news_num}条新闻')

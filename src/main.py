@@ -76,31 +76,6 @@ def send_message(sender, password, server, receiver, text):
     print("达到最大尝试次数，无法发送邮件")
     return False
 
-# 创建一个ConfigParser对象
-config = configparser.ConfigParser()
-# 读取配置文件
-config.read('notifications.ini')
-# 获取开头通知、结尾通知和结尾注释内容，如果不存在则设置为空字符串
-start_notification = config.get('开头通知', 'content', fallback='')
-end_notification = config.get('结尾通知', 'content', fallback='')
-end_comment = config.get('结尾注释', 'content', fallback='')
-
-tz = ZoneInfo('Asia/Shanghai')
-now = datetime.now(tz)
-yesterday = now - timedelta(days=1)
-yesterday_day = yesterday.strftime("%d") 
-yesterday_year_month = yesterday.strftime("%Y-%m")
-yesterday_folder_path = f"news_archive/{yesterday_year_month}"
-yesterday_news_filename = f"{yesterday_folder_path}/{yesterday_day}.md"
-
-# 检查昨日新闻文件是否存在
-if not os.path.exists(yesterday_news_filename):
-    print(f"{yesterday_news_filename} 不存在，跳过发送邮件")
-    sys.exit(0)
-
-with open(yesterday_news_filename, 'r') as f:
-    yesterday_news = f.read()
-
 def format_news(news_string):
     # 使用正则表达式提取链接和标题
     pattern = r'\[(.*?)\]\((.*?)\)'
@@ -115,7 +90,7 @@ def format_news(news_string):
         formatted_news += formatted_link
     return formatted_news
 
-def message(name):
+def message(name, formatted_news):
     # 使用用户的名字来创建个性化问候
     greeting = f"早上好{name}，以下是今日的科技早报"
     # 检查配置变量是否为空，如果为空则设置为空字符串
@@ -125,13 +100,45 @@ def message(name):
     text = f"""
     <h2>{greeting}</h2>
     <p>{start_notification_text}</p>
-    <div>{format_news(yesterday_news)}</div>
+    <div>{formatted_news}</div>
     <p>{end_notification_text}</p>
     <p>{end_comment_text}</p>
     """
     return text
 
-if __name__ == "__main__":
+def main():
+    # 创建一个ConfigParser对象
+    config = configparser.ConfigParser()
+    # 读取配置文件
+    config.read('notifications.ini')
+    # 获取开头通知、结尾通知和结尾注释内容，如果不存在则设置为空字符串
+    global start_notification, end_notification, end_comment
+    start_notification = config.get('开头通知', 'content', fallback='')
+    end_notification = config.get('结尾通知', 'content', fallback='')
+    end_comment = config.get('结尾注释', 'content', fallback='')
+
+    tz = ZoneInfo('Asia/Shanghai')
+    now = datetime.now(tz)
+    yesterday = now - timedelta(days=1)
+    yesterday_day = yesterday.strftime("%d")
+    yesterday_year_month = yesterday.strftime("%Y-%m")
+    yesterday_folder_path = f"news_archive/{yesterday_year_month}"
+    yesterday_news_filename = f"{yesterday_folder_path}/{yesterday_day}.md"
+
+    # 检查昨日新闻文件是否存在
+    if not os.path.exists(yesterday_news_filename):
+        print(f"{yesterday_news_filename} 不存在，跳过发送邮件")
+        sys.exit(0)
+
+    with open(yesterday_news_filename, 'r') as f:
+        yesterday_news = f.read()
+
+    formatted_news = format_news(yesterday_news)
+
+    if not formatted_news:
+        print("没有新闻条目，结束程序运行")
+        sys.exit(0)
+
     try:
         API_KEY = get_env_variable("NOTION_API_KEY")
         DATABASE_ID = get_env_variable("NOTION_DATABASE_ID")
@@ -142,11 +149,14 @@ if __name__ == "__main__":
     except Exception as e:
         print("推送消息失败，发生了一个未处理的异常:", e)
         sys.exit(1)
-    
-    for user in users:
-        personalized_message = message(user['name'])  # 创建个性化消息
-        send_message(sending_account, sending_password, server, user['email'], personalized_message)
 
+    for user in users:
+        personalized_message = message(user['name'], formatted_news)  # 创建个性化消息
+        send_message(sending_account, sending_password, server, user['email'], personalized_message)
+    
     # # 以下部分是我本地测试时使用的代码
     # send_message(sending_account, sending_password, server,'nowscott@qq.com',message('NowScott'))
     # # 以上部分是我本地测试时使用的代码
+
+if __name__ == "__main__":
+    main()
