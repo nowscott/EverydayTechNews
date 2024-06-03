@@ -23,7 +23,14 @@ from email.mime.text import MIMEText
 # load_dotenv(dotenv_path)
 # # 以上部分是本地测试时使用的代码
 
-# #获取环境变量
+# 获取环境变量
+def get_env_variable(name):
+    try:
+        return os.environ[name]
+    except KeyError:
+        print(f"环境变量 {name} 未设置，请检查配置。")
+        sys.exit(1)
+
 def fetch_notion_users(api_key, database_id):
     url = f"https://api.notion.com/v1/databases/{database_id}/query"
     headers = {
@@ -69,7 +76,6 @@ def send_message(sender, password, server, receiver, text):
     print("达到最大尝试次数，无法发送邮件")
     return False
 
-
 # 创建一个ConfigParser对象
 config = configparser.ConfigParser()
 # 读取配置文件
@@ -78,6 +84,7 @@ config.read('notifications.ini')
 start_notification = config.get('开头通知', 'content', fallback='')
 end_notification = config.get('结尾通知', 'content', fallback='')
 end_comment = config.get('结尾注释', 'content', fallback='')
+
 tz = ZoneInfo('Asia/Shanghai')
 now = datetime.now(tz)
 yesterday = now - timedelta(days=1)
@@ -85,6 +92,12 @@ yesterday_day = yesterday.strftime("%d")
 yesterday_year_month = yesterday.strftime("%Y-%m")
 yesterday_folder_path = f"news_archive/{yesterday_year_month}"
 yesterday_news_filename = f"{yesterday_folder_path}/{yesterday_day}.md"
+
+# 检查昨日新闻文件是否存在
+if not os.path.exists(yesterday_news_filename):
+    print(f"{yesterday_news_filename} 不存在，跳过发送邮件")
+    sys.exit(0)
+
 with open(yesterday_news_filename, 'r') as f:
     yesterday_news = f.read()
 
@@ -117,12 +130,6 @@ def message(name):
     <p>{end_comment_text}</p>
     """
     return text
-def get_env_variable(name):
-    try:
-        return os.environ[name]
-    except KeyError:
-        print(f"环境变量 {name} 未设置，请检查配置。")
-        sys.exit(1)
 
 if __name__ == "__main__":
     try:
@@ -135,6 +142,7 @@ if __name__ == "__main__":
     except Exception as e:
         print("推送消息失败，发生了一个未处理的异常:", e)
         sys.exit(1)
+    
     for user in users:
         personalized_message = message(user['name'])  # 创建个性化消息
         send_message(sending_account, sending_password, server, user['email'], personalized_message)

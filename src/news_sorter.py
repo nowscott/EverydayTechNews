@@ -1,6 +1,7 @@
 # 标准库导入
 import re
 import time
+import os
 from datetime import datetime, timedelta
 
 # 本地化和时区处理
@@ -16,7 +17,6 @@ from selenium.webdriver.support import expected_conditions as EC
 
 # WebDriver 管理
 from webdriver_manager.chrome import ChromeDriverManager
-
 
 def setup_driver():
     """设置并返回Selenium WebDriver"""
@@ -84,17 +84,25 @@ def main():
     yesterday_year_month = yesterday.strftime("%Y-%m")
     yesterday_folder_path = f"news_archive/{yesterday_year_month}"
     yesterday_news_filename = f"{yesterday_folder_path}/{yesterday_day}.md"
+    
+    if not os.path.exists(yesterday_news_filename):
+        print(f"{yesterday_news_filename} 不存在，跳过处理")
+        return
+    
     with open(yesterday_news_filename, 'r') as f:
         yesterday_news = f.read()
+        
     news_list = parse_news(yesterday_news)
     driver = setup_driver()
     values_dict = fetch_news_values(news_list, driver)
     driver.quit()
     sorted_news = sort_news_by_value(news_list, values_dict)
     formatted_md = format_news_to_md(sorted_news)
+    
     with open(yesterday_news_filename, 'w') as f:
         f.write(f"# 今日新闻 - {yesterday.strftime('%Y年%m月%d日')}\n")
         f.write(formatted_md)
+    print(f"新闻已成功排序并保存到 {yesterday_news_filename}")
 
 if __name__ == "__main__":
     main()
