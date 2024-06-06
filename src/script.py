@@ -133,8 +133,22 @@ def save_news_to_markdown(now, new_news):
         print(f"保存成功，本次更新了 {news_written_count} 条新闻。")
     else:
         print("保存失败，暂时没有新闻更新。")
+        
+    
+def switch_to_parent_if_src():
+    """检查当前目录的最后一级是否是src，如果是，则切换到上一级目录"""
+    current_dir = os.getcwd()
+    base_name = os.path.basename(current_dir)
+
+    if base_name == 'src':
+        parent_dir = os.path.dirname(current_dir)
+        os.chdir(parent_dir)
+        print(f'当前目录是 {current_dir}，切换到上一级目录: {parent_dir}')
+    else:
+        print(f'当前目录是 {current_dir}，无需切换')
                 
 if __name__ == '__main__':
+    switch_to_parent_if_src()
     tz = ZoneInfo('Asia/Shanghai')
     now = datetime.now(tz)
     print("当前时间：", now.strftime("%Y-%m-%d %H:%M:%S %Z"))  # 打印当前的日期和时间以及时区信息

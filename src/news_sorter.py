@@ -32,7 +32,6 @@ def fetch_news_values(news_list, driver):
     if not news_list:
         print("没有新闻要处理，返回空字典")
         return values_dict
-
     max_retries = 3  # 最大重试次数
     news_num = len(news_list)
     print(f'共有{news_num}条新闻')
@@ -49,8 +48,19 @@ def fetch_news_values(news_list, driver):
                     news_num -= 1
                     break  # 跳出重试循环，不再重试
                 value_element = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, ".sd .ss")))
-                value = value_element.text if value_element else "0"
-                values_dict[url] = value
+                value = value_element.text if value_element else "-10"
+                # 检查标题是否包含“数字 元”
+                if " 元" in title:
+                    for word in title.split():
+                        if word.isdigit() and title.find(word + " 元") != -1:
+                            # 确保 value 是整数进行减法操作
+                            try:
+                                value = float(value) - 1
+                            except ValueError:
+                                print(f"无法将 '{value}' 转换为浮点数，跳过减值操作")
+                            break
+                        
+                values_dict[url] = str(value)
                 break  # 如果成功获取到数据，跳出重试循环
             except TimeoutException:
                 retry_count += 1
@@ -59,7 +69,7 @@ def fetch_news_values(news_list, driver):
                 if retry_count == max_retries:
                     print(f"访问 {title} 失败，已达到最大重试次数")
                     news_num -= 1
-                    values_dict[url] = "0"
+                    values_dict[url] = "-10"
     print(f'成功对{news_num}条新闻排序')
     return values_dict
 
@@ -79,7 +89,20 @@ def parse_news(md_content):
     pattern = r'- \[(.*?)\]\((.*?)\)'
     return re.findall(pattern, md_content)
 
+def switch_to_parent_if_src():
+    """检查当前目录的最后一级是否是src，如果是，则切换到上一级目录"""
+    current_dir = os.getcwd()
+    base_name = os.path.basename(current_dir)
+
+    if base_name == 'src':
+        parent_dir = os.path.dirname(current_dir)
+        os.chdir(parent_dir)
+        print(f'当前目录是 {current_dir}，切换到上一级目录: {parent_dir}')
+    else:
+        print(f'当前目录是 {current_dir}，无需切换')
+
 def main():
+    switch_to_parent_if_src()
     tz = ZoneInfo('Asia/Shanghai')
     now = datetime.now(tz)
     yesterday = now - timedelta(days=1)

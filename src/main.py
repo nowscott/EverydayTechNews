@@ -17,12 +17,6 @@ import smtplib
 from email.header import Header
 from email.mime.text import MIMEText
 
-# # 以下部分是本地测试时使用的代码
-# from dotenv import load_dotenv
-# dotenv_path = './.env'
-# load_dotenv(dotenv_path)
-# # 以上部分是本地测试时使用的代码
-
 # 获取环境变量
 def get_env_variable(name):
     try:
@@ -106,7 +100,27 @@ def message(name, formatted_news):
     """
     return text
 
+def switch_to_parent_if_src():
+    """检查当前目录的最后一级是否是src，如果是，则切换到上一级目录"""
+    current_dir = os.getcwd()
+    base_name = os.path.basename(current_dir)
+
+    if base_name == 'src':
+        parent_dir = os.path.dirname(current_dir)
+        os.chdir(parent_dir)
+        print(f'当前目录是 {current_dir}，切换到上一级目录: {parent_dir}')
+    else:
+        print(f'当前目录是 {current_dir}，无需切换')
+
 def main():
+    switch_to_parent_if_src()
+    
+    # # 以下部分是本地测试时使用的代码
+    # from dotenv import load_dotenv
+    # dotenv_path = '.env'
+    # load_dotenv(dotenv_path)
+    # # 以上部分是本地测试时使用的代码
+    
     # 创建一个ConfigParser对象
     config = configparser.ConfigParser()
     # 读取配置文件
@@ -155,7 +169,7 @@ def main():
         send_message(sending_account, sending_password, server, user['email'], personalized_message)
     
     # # 以下部分是我本地测试时使用的代码
-    # send_message(sending_account, sending_password, server,'nowscott@qq.com',message('NowScott'))
+    # send_message(sending_account, sending_password, server,'nowscott@qq.com',message('NowScott', formatted_news))
     # # 以上部分是我本地测试时使用的代码
 
 if __name__ == "__main__":
