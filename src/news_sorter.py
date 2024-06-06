@@ -55,7 +55,7 @@ def fetch_news_values(news_list, driver):
                         if word.isdigit() and title.find(word + " 元") != -1:
                             # 确保 value 是整数进行减法操作
                             try:
-                                value = float(value) - 1
+                                value = float(value) - 2
                             except ValueError:
                                 print(f"无法将 '{value}' 转换为浮点数，跳过减值操作")
                             break
@@ -118,16 +118,18 @@ def main():
     
     with open(yesterday_news_filename, 'r') as f:
         yesterday_news = f.read()
-        
+    # 如果文件已经排序，跳过处理
+    if "(sorted)" in yesterday_news:
+        print(f"{yesterday_news_filename} 已排序，跳过处理")
+        return
     news_list = parse_news(yesterday_news)
     driver = setup_driver()
     values_dict = fetch_news_values(news_list, driver)
     driver.quit()
     sorted_news = sort_news_by_value(news_list, values_dict)
     formatted_md = format_news_to_md(sorted_news)
-    
     with open(yesterday_news_filename, 'w') as f:
-        f.write(f"# 今日新闻 - {yesterday.strftime('%Y年%m月%d日')}\n")
+        f.write(f"# 今日新闻 - {yesterday.strftime('%Y年%m月%d日')}(sorted)\n")
         f.write(formatted_md)
     print(f"新闻已成功排序并保存到 {yesterday_news_filename}")
 
