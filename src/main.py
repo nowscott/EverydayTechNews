@@ -164,13 +164,13 @@ def main():
         print("推送消息失败，发生了一个未处理的异常:", e)
         sys.exit(1)
 
-    # for user in users:
-    #     personalized_message = message(user['name'], formatted_news)  # 创建个性化消息
-    #     send_message(sending_account, sending_password, server, user['email'], personalized_message)
+    for user in users:
+        personalized_message = message(user['name'], formatted_news)  # 创建个性化消息
+        send_message(sending_account, sending_password, server, user['email'], personalized_message)
     
-    # 以下部分是我本地测试时使用的代码
-    send_message(sending_account, sending_password, server,'nowscott@qq.com',message('NowScott', formatted_news))
-    # 以上部分是我本地测试时使用的代码
+    # # 以下部分是我本地测试时使用的代码
+    # send_message(sending_account, sending_password, server,'nowscott@qq.com',message('NowScott', formatted_news))
+    # # 以上部分是我本地测试时使用的代码
 
 if __name__ == "__main__":
     main()
