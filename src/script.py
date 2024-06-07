@@ -5,6 +5,10 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 def fetch_news(url, selector):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+    response = requests.get(url, headers=headers)
     response = requests.get(url)
     response.encoding = 'utf-8'
     if response.status_code == 200:
