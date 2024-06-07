@@ -41,7 +41,7 @@ jobs:
 
       - name: 运行新闻抓取脚本
         run: |
-          python src/news_sorter.py  # 执行新闻抓取脚本，确保脚本路径正确
+          python src/script.py  # 执行新闻抓取脚本，确保脚本路径正确
 
       - name: 提交并推送更改
         run: |
