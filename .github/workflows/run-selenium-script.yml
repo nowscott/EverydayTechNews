@@ -7,7 +7,7 @@ on:
 
 jobs:
   setup-and-test:
-    runs-on: ubuntu-latest  # 使用 Ubuntu 环境
+    runs-on: macos-latest  # 使用 mac 环境
 
     steps:
       - name: 检出代码库
