@@ -1,4 +1,4 @@
-name: Run Selenium Script
+name: 运行新闻抓取脚本
 
 on:
   schedule:
@@ -7,47 +7,42 @@ on:
 
 jobs:
   setup-and-test:
-    runs-on: macos-latest  # 使用 macOS 环境
+    runs-on: ubuntu-latest  # 使用 Ubuntu 环境
 
     steps:
-      - name: Checkout repository
+      - name: 检出代码库
         uses: actions/checkout@v4
         with:
           persist-credentials: true  # 确保能够推送更改
 
-      - name: Set up Python
+      - name: 设置 Python 环境
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'  # 指定 Python 版本
 
-      - name: Set up Git configurations
+      - name: 设置 Git 配置
         run: |
           git config --global user.name "NowScott"
           git config --global user.email "nowscott@qq.com"
 
-      - name: Install Chrome and ChromeDriver
-        run: |
-          brew install --cask google-chrome
-          brew install chromedriver
-
-      - name: Install Python dependencies
+      - name: 安装 Python 依赖
         run: |
           python -m pip install --upgrade pip
-          pip install selenium webdriver-manager
-
-      - name: Run Selenium script
+          pip install requests beautifulsoup4 zoneinfo
+          
+      - name: 运行新闻抓取脚本
         run: |
-          python src/script.py  # 执行 Selenium 脚本，确保脚本路径正确
+          python src/script.py  # 执行新闻抓取脚本，确保脚本路径正确
 
-      - name: Commit and push changes
+      - name: 提交并推送更改
         run: |
           git add news_archive/  # 添加所有未跟踪的文件
-          echo "Git status after adding files:"
+          echo "添加文件后的 Git 状态:"
           git status
           git diff --cached --exit-code news_archive/ || (
             DATE=$(TZ="Asia/Shanghai" date "+%Y-%m-%d %H:%M:%S")
-            echo "Committing changes..."
-            git commit -m "Update news file at $DATE"
+            echo "正在提交更改..."
+            git commit -m "更新新闻文件于 $DATE"
             git push origin main
             echo '更新成功'
           )
