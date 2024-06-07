@@ -5,11 +5,13 @@ on:
     - cron: '30 22 * * *'
 jobs:
   setup-and-test:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest  # 使用 Ubuntu 环境
     
     steps:
       - name: 检出代码库
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true  # 确保能够推送更改
       
       - name: 设置 Git
         run: |
@@ -23,8 +25,12 @@ jobs:
 
       - name: 安装 Chrome 和 ChromeDriver
         run: |
-          brew install --cask google-chrome
-          brew install chromedriver
+          sudo apt-get update
+          sudo apt-get install -y wget unzip
+          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          sudo dpkg -i google-chrome-stable_current_amd64.deb || sudo apt-get -f install -y
+          wget -N https://chromedriver.storage.googleapis.com/`curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE`/chromedriver_linux64.zip
+          unzip chromedriver_linux64.zip -d /usr/local/bin/
 
       - name: 安装 Python 依赖
         run: |
@@ -47,9 +53,13 @@ jobs:
 
       - name: 提交更改
         run: |
-          git diff --quiet --exit-code news_archive/ || (
-            git add news_archive/
+          git add news_archive/  # 添加所有未跟踪的文件
+          echo "添加文件后的 Git 状态:"
+          git status
+          git diff --cached --exit-code news_archive/ || (
             DATE=$(TZ="Asia/Shanghai" date "+%Y-%m-%d %H:%M:%S")
+            echo "正在提交更改..."
             git commit -m "更新新闻文件于 $DATE"
             git push origin main
+            echo '更新成功'
           )
