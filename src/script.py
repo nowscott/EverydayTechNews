@@ -1,35 +1,42 @@
 import os
-import requests
-from bs4 import BeautifulSoup
+import time
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
 
-def fetch_news(url, selector):
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    }
-    response = requests.get(url, headers=headers)
-    response = requests.get(url)
-    response.encoding = 'utf-8'
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.text, 'html.parser')
-        news_items = soup.select(f'{selector} li')
-        news_data = []
-        for item in news_items:
-            category = item.select_one('a.c').text
-            title = item.select_one('a.t').text
-            link = item.select_one('a.t')['href']
-            time_str = item.select_one('i').text
-            time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
-            news_data.append({'category': category, 'title': title, 'link': link, 'time': time})
-        return news_data
-    else:
-        print(f"无法访问页面，状态码: {response.status_code}")
-        return []
+def setup_driver():
+    """设置并返回Selenium WebDriver"""
+    options = Options()
+    options.add_argument('--headless')
+    options.add_argument('--disable-gpu')
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    return driver
+
+def fetch_news(driver, url, selector):
+    driver.get(url)
+    WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+    news_items = driver.find_elements(By.CSS_SELECTOR, f'{selector} li')
+    news_data = []
+    for item in news_items:
+        category = item.find_element(By.CSS_SELECTOR, 'a.c').text
+        title = item.find_element(By.CSS_SELECTOR, 'a.t').text
+        link = item.find_element(By.CSS_SELECTOR, 'a.t').get_attribute('href')
+        time_str = item.find_element(By.CSS_SELECTOR, 'i').text
+        time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
+        news_data.append({'category': category, 'title': title, 'link': link, 'time': time})
+    return news_data
 
 def fetch_all_news():
+    driver = setup_driver()
     url = 'https://www.ithome.com/list/'
-    news_data = fetch_news(url, 'ul.datel')
+    news_data = fetch_news(driver, url, 'ul.datel')
+    driver.quit()
     return news_data
 
 def ensure_dir_exists(path):
@@ -95,7 +102,7 @@ def save_news_to_markdown(now, new_news):
         print(f"新闻保存成功，本次更新了 {news_written_count} 条新闻。")
     else:
         print("没有新的新闻需要更新。")
-        
+
 def switch_to_parent_if_src():
     """检查当前目录的最后一级是否是src，如果是，则切换到上一级目录"""
     current_dir = os.getcwd()
