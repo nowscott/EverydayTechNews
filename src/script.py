@@ -49,11 +49,13 @@ def write_news_file(filename, date_str):
         with open(filename, 'w', encoding='utf-8') as f:
             f.write(f"# 今日新闻 - {date_str}\n")
             
-def is_similar(entry1, entry2, threshold=0.85):
+def is_similar(entry1, entry2, threshold=0.9):
     ratio = difflib.SequenceMatcher(None, entry1, entry2).ratio()
-    if ratio > threshold:
-        print(f"相似度: {ratio}，超过阈值，判断为旧新闻")  # 打印相似度
-    return ratio > threshold
+    ratio_rounded = round(ratio, 4)  # 保留两位小数
+    if 0.99 > ratio_rounded >= threshold:
+        print(f"正在检测：{entry1}")
+        print(f"相似度: {ratio_rounded}，检测到相似新闻")
+    return ratio_rounded > threshold
 
 def save_news_to_markdown(now, new_news):
     year_month = now.strftime("%Y-%m")
