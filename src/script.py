@@ -1,5 +1,6 @@
 import os
 import time
+import difflib
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from selenium import webdriver
@@ -47,18 +48,18 @@ def write_news_file(filename, date_str):
     if not os.path.exists(filename):
         with open(filename, 'w', encoding='utf-8') as f:
             f.write(f"# 今日新闻 - {date_str}\n")
+            
+def is_similar(entry1, entry2, threshold=0.8):
+    ratio = difflib.SequenceMatcher(None, entry1, entry2).ratio()
+    return ratio > threshold
 
 def save_news_to_markdown(now, new_news):
     year_month = now.strftime("%Y-%m")
-    
     folder_path = f"news_archive/{year_month}"  # 文件夹路径
     ensure_dir_exists(folder_path)
-    
     month_news_filename = f"{folder_path}/00.md"
     today_news_filename = f"{folder_path}/{now.strftime('%d')}.md"
-    
     write_news_file(today_news_filename, now.strftime('%Y年%m月%d日'))
-
     # 读取或初始化本月新闻文件
     if os.path.exists(month_news_filename):
         with open(month_news_filename, 'r', encoding='utf-8') as f:
@@ -67,27 +68,20 @@ def save_news_to_markdown(now, new_news):
         existing_month_news = "# 本月新闻\n"
         with open(month_news_filename, 'w', encoding='utf-8') as f:
             f.write(existing_month_news)
-    
     news_set = set(existing_month_news.splitlines())
-    
     news_written_count = 0
     
     for news in new_news:
         markdown_entry = f"- [{news['title']}]({news['link']})\n"
         news_time = news['time']
-        news_day = news_time.strftime("%d")
         news_folder_path = f"news_archive/{news_time.strftime('%Y-%m')}"
-        news_filename = f"{news_folder_path}/{news_day}.md"
-        
+        news_filename = f"{news_folder_path}/{news_time.strftime("%d")}.md"
         # 如果新闻文件夹不存在，则创建
         ensure_dir_exists(news_folder_path)
-        
         # 如果新闻文件不存在，创建文件并写入标题
         write_news_file(news_filename, news_time.strftime('%Y年%m月%d日'))
-
         # 检查新闻条目是否重复
-        is_new_entry = (markdown_entry not in news_set and
-                        markdown_entry not in existing_month_news)
+        is_new_entry = all(not is_similar(markdown_entry, existing_entry) for existing_entry in news_set)
         if is_new_entry:
             news_set.add(markdown_entry)
             news_written_count += 1
@@ -97,7 +91,6 @@ def save_news_to_markdown(now, new_news):
             # 写入对应日期的新闻文件
             with open(news_filename, 'a', encoding='utf-8') as day_file:
                 day_file.write(markdown_entry)
-                    
     if news_written_count > 0:
         print(f"新闻保存成功，本次更新了 {news_written_count} 条新闻。")
     else:
@@ -114,6 +107,7 @@ def switch_to_parent_if_src():
         print(f'切换到上一级目录: {parent_dir}')
 
 def main():
+    start_time = time.time()
     switch_to_parent_if_src()
     tz = ZoneInfo('Asia/Shanghai')
     now = datetime.now(tz)
@@ -124,6 +118,9 @@ def main():
     print("新闻爬取完成，共爬取到 {} 条新闻。".format(len(new_news)))
     # 保存新闻到Markdown文件
     save_news_to_markdown(now, new_news)
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"写入新闻完成，总耗时: {elapsed_time:.2f} 秒")
 
 if __name__ == '__main__':
     main()
