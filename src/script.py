@@ -49,8 +49,10 @@ def write_news_file(filename, date_str):
         with open(filename, 'w', encoding='utf-8') as f:
             f.write(f"# 今日新闻 - {date_str}\n")
             
-def is_similar(entry1, entry2, threshold=0.8):
+def is_similar(entry1, entry2, threshold=0.85):
     ratio = difflib.SequenceMatcher(None, entry1, entry2).ratio()
+    if ratio > threshold:
+        print(f"相似度: {ratio}，超过阈值，判断为旧新闻")  # 打印相似度
     return ratio > threshold
 
 def save_news_to_markdown(now, new_news):
@@ -75,7 +77,7 @@ def save_news_to_markdown(now, new_news):
         markdown_entry = f"- [{news['title']}]({news['link']})\n"
         news_time = news['time']
         news_folder_path = f"news_archive/{news_time.strftime('%Y-%m')}"
-        news_filename = f"{news_folder_path}/{news_time.strftime("%d")}.md"
+        news_filename = f"{news_folder_path}/{news_time.strftime('%d')}.md"
         # 如果新闻文件夹不存在，则创建
         ensure_dir_exists(news_folder_path)
         # 如果新闻文件不存在，创建文件并写入标题
