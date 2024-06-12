@@ -1,6 +1,6 @@
+import os
 import re
 import time
-import os
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from selenium import webdriver
@@ -47,14 +47,20 @@ def adjust_value_based_on_title(title):
 def fetch_news_values(news_list, driver):
     """批量获取新闻链接的价值信息，返回字典"""
     values_dict = {}
+    processed_urls = set()  # 用于存储已经处理过的 URL
     if not news_list:
         print("没有新闻要处理，返回空字典")
         return values_dict
-    print(f'共有{len(news_list)}条新闻')
-    for title, url in news_list[:]:
+    print(f'开始获取{len(news_list)}条新闻的评分')
+    for title, url in news_list:
+        if url in processed_urls:
+            print(f"{title} 已处理过，跳过")
+            news_list.remove((title, url))
+            continue
         adjusted_value = adjust_value_based_on_title(title)
         if adjusted_value is not None:
             values_dict[url] = str(adjusted_value)
+            processed_urls.add(url)
             print(f"{title} 包含金额，跳过评分")
             continue  # 跳过爬取
         for attempt in range(MAX_RETRIES):
@@ -76,14 +82,16 @@ def fetch_news_values(news_list, driver):
                 # 计算综合评分
                 value = calculate_score(valuable, unvaluable)
                 values_dict[url] = str(value)
+                processed_urls.add(url)
                 break
             except TimeoutException:
                 print(f"访问 {title} 时出错，尝试第 {attempt + 1} 次重试")
                 time.sleep(WAIT_TIME)
                 if attempt == MAX_RETRIES - 1:
                     print(f"访问 {title} 失败，已达到最大重试次数")
-                    values_dict[url] = "-10"
-    print(f'成功对{len(news_list)}条新闻排序')
+                    values_dict[url] = "-100"
+                    processed_urls.add(url)
+    print(f'成功对{len(values_dict)}条新闻排序')
     return values_dict
 
 def sort_news_by_value(news_list, values_dict):
