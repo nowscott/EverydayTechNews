@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
@@ -55,7 +55,6 @@ def fetch_news_values(news_list, driver):
     for title, url in news_list:
         if url in processed_urls:
             print(f"{title} 已处理过，跳过")
-            news_list.remove((title, url))
             continue
         adjusted_value = adjust_value_based_on_title(title)
         if adjusted_value is not None:
@@ -69,13 +68,12 @@ def fetch_news_values(news_list, driver):
                 WebDriverWait(driver, TIMEOUT).until(lambda d: d.execute_script('return document.readyState') == 'complete')
                 if "404" in driver.title or "Page Not Found" in driver.page_source:
                     print(f"{title} 页面跳到404，删除该新闻")
-                    news_list.remove((title, url))
                     break
                 try:
                     scores_element = WebDriverWait(driver, TIMEOUT).until(EC.visibility_of_element_located((By.CSS_SELECTOR, ".bt")))
                     valuable = int(scores_element.find_element(By.CSS_SELECTOR, "#sgrade2 div").text)
                     unvaluable = int(scores_element.find_element(By.CSS_SELECTOR, "#sgrade0 div").text)
-                except (TimeoutException, ValueError):
+                except (TimeoutException, NoSuchElementException, ValueError):
                     print(f"{title} 页面评分获取失败，设置为-100分")
                     valuable = 0
                     unvaluable = 1
