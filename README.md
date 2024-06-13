@@ -55,66 +55,6 @@ RECEIVER_LIST: receiver1_email@example.com,receiver2_email@example.com
 
 由于其他版块的排版和科技的不尽相同，所以更换版块意味着要重新写页面解析部分的代码，去找到符合你口味的新闻，我这里就不过多赘述了。
 
-## 常见邮箱服务器地址
-
-以下内容引用自[YangCheney的博客](https://blog.csdn.net/YangCheney/article/details/126546220):
-
-谷歌邮箱(mail.google.com) :
-
-    POP3服务器地址: pop.gmail.com(SSL启用端口:995)
-    SMTP服务器地址: smtp.gmail.com(SSL启用端口:587)
-
-阿里云企业邮箱(qiye.aliyun.com) :
-
-    POP3服务器地址: pop.qiye.aliyun.com(常规:110/SSL启用端口:995)
-    SMTP服务器地址: smtp.qiye.aliyun.com(常规:25/SSL启用端口:465)
-    IMAP 服务器地址: imap.qiye.aliyun.com(常规:143/SSL启用端口:993)
-QQ邮箱(mail.qq.com):❗❗❗SMTP服务器需要身份验证。
-
-    POP3服务器地址: pop.qq.com(端口:110)
-    SMTP服务器地址: smtp.qq.com(端口:25)
-Foxmail邮箱(mail.foxmail.com) :
-
-    POP3服务器地址: POP.foxmail.com(端口:110)
-    SMTP服务器地址: SMTP.foxmail.com(端口:25)
-网易163邮箱(163.com) :
-
-    POP3服务器地址: pop.163.com(端口:110)
-    SMTP服务器地址: smtp.163.com(端口:25)
-
-126邮箱(126.com) :
-
-    POP3服务器地址: pop.live.com(端口:995)
-    SMTP服务器地址: smtp. 126.com(端口:25)
-HotMail邮箱(hotmail.com) :
-
-    POP3服务器地址: pop.live.com(端口:995)
-    SMTP服务器地址: smtp.live.com(端口:587）
-Tom邮箱(mail.tom.com) :
-
-    POP3服务器地址: pop.tom.com(端口:110)
-    SMTP服务器地址: smtp.tom.com(端口:25)
-阿里云邮箱(mail.aliyun.com):
-
-    POP3服务器地址: pop3.aliyun.com(SSL加密端口:995；非加密端口:110)
-    SMTP服务器地址: smtp.aliyun.com(SSL加密端口:465；非加密端口:25)
-    IMAP服务器地址: imap.aliyun.com(SSL加密端口:993；非加密端口:143)
-新浪邮箱(sina.com) :
-
-    POP3服务器地址: pop3.sina.com.cn(端口:110)
-    SMTP服务器地址: smtp.sina.com.cn(端口:25)
-搜狐邮箱(mail.sohu.com ) :
-
-    POP3服务器地址: pop3.sohu.com(端口:110)
-    SMTP服务器地址: smtp.sohu.com(端口:25)
-移动139邮箱(mail.10086.cn):
-
-    POP3服务器地址: pop.139.com(端口:110)
-    SMTP服务器地址: smtp.139.com(端口:25)
-中华网邮箱(mail.china.com):
-
-    POP3服务器地址: pop.china.com(端口:110)
-    SMTP服务器地址: smtp.china.com(端口:25)
 
 [action-url]:https://github.com/NowScott/EverydayTechNews/actions/workflows/technews.yml "Action State"
 [action-image]:https://img.shields.io/github/actions/workflow/status/NowScott/EverydayTechNews/technews.yml?label=Action
