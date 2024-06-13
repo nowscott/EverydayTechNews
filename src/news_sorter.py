@@ -74,7 +74,7 @@ def fetch_news_values(news_list, driver):
                     valuable = int(scores_element.find_element(By.CSS_SELECTOR, "#sgrade2 div").text)
                     unvaluable = int(scores_element.find_element(By.CSS_SELECTOR, "#sgrade0 div").text)
                 except (TimeoutException, NoSuchElementException, ValueError):
-                    print(f"{title} 页面评分获取失败，设置为-100分")
+                    print(f"{title} 页面评分获取失败，设置为-10分")
                     valuable = 0
                     unvaluable = 1
                 # 计算综合评分
