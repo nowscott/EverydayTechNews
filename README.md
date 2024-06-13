@@ -4,8 +4,14 @@
 
 点击[这里](https://mailist.nowscott.top/)订阅每日科技早报
 
-[![technews][action-image]][action-url]
+
+[![新闻抓取][action-image]][action-url]
 [![forks][forks-image]][forks-url]
+
+[action-url]:[https://github.com/NowScott/EverydayTechNews/actions/workflows/technews.yml "Action State"
+[action-image]:https://img.shields.io/github/actions/workflow/status/nowscott/EverydayTechNews/run-selenium-script.yml?label=新闻抓取
+[forks-url]:https://github.com/NowScott/EverydayTechNews/forks
+[forks-image]:https://img.shields.io/github/forks/NowScott/EverydayTechNews?label=Forks
 
 ## 创建初衷
 
@@ -56,7 +62,3 @@ RECEIVER_LIST: receiver1_email@example.com,receiver2_email@example.com
 由于其他版块的排版和科技的不尽相同，所以更换版块意味着要重新写页面解析部分的代码，去找到符合你口味的新闻，我这里就不过多赘述了。
 
 
-[action-url]:https://github.com/NowScott/EverydayTechNews/actions/workflows/technews.yml "Action State"
-[action-image]:https://img.shields.io/github/actions/workflow/status/NowScott/EverydayTechNews/technews.yml?label=Action
-[forks-url]:https://github.com/NowScott/EverydayTechNews/forks
-[forks-image]:https://img.shields.io/github/forks/NowScott/EverydayTechNews?label=Forks
