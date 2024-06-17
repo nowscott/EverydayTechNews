@@ -38,7 +38,7 @@ def calculate_score(valuable, unvaluable):
 
 def adjust_value_based_on_title(title):
     """根据标题调整价值"""
-    currency_units = [' 元', ' 万元', ' 美元', ' 日元']
+    currency_units = [' 元', ' 万元', ' 美元', ' 日元', ' 万日元']
     for unit in currency_units:
         if unit in title:
             return -5
