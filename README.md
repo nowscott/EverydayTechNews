@@ -31,34 +31,38 @@
 
 ## 工具部署
 
-在2023年7月19日的更新后，部署将变的更加简单！
+在2024年6月21日的更新后，功能变得更加丰富，目前我们有新闻的归档，同时做了排序筛选等等功能，以及搭配[EmaiListInbox](https://github.com/nowscott/EmaiListInbox)仓库实现订阅表单的功能。
+
+如果你不需要表单功能，目前我将邮箱列表放在了notion上，你只需要拷贝这个页面：[notion页面](https://nowscott.notion.site/029f3f6fc18f40278acfa69739f4eacb?v=2bd422a503204d3aa220fdadc3e89de0)，接下来获取到一个notion的密钥和仓库的id，填写到下面的secret中就可以了。
 
 由于我将私密性的信息全部放到了仓库的秘密变量中，所以现在可以通过Fork的形式来进行部署。
 
 首先Fork本仓库：https://github.com/NowScott/EverydayTechNews
 
-接下来在设置（Settings）中找到Secrets and variables，点击下方的Actions，在右侧你可以看到一个蓝色的按钮写着New repositorys secret，点击这个按钮，新建4个secret，分别是：
+接下来在设置（Settings）中找到Secrets and variables，点击下方的Actions，在右侧你可以看到一个蓝色的按钮写着New repositorys secret，点击这个按钮，新建5个secret，分别是：
 ```
 SENDING_ACCOUNT: send_email@example.com
 SENDING_PASSWORD: smtp_password
 SERVER: smtp.163.com
-RECEIVER_LIST: receiver1_email@example.com,receiver2_email@example.com
+NOTION_API_KEY=your_notion_api
+NOTION_DATABASE_ID=your_database_id
 ```
 
 1. 前两个分别是要使用的邮箱和SMTP的密钥
 
 2. 关于服务器（server），它取决于您使用的电子邮件地址。这里我提供了使用网易163邮箱地址的示例。其他常用电子邮件提供商的服务器地址列在最后。
 
-3. 接收者（receivers）用“,”间隔开，不仅可以添加自己的邮箱地址，也可以添加朋友的邮箱地址。这样可以共享和讨论相互感兴趣的内容。
+3. 后两个分别是notion的api还有数据库的id，这些分别是从[我的集成](https://www.notion.so/my-integrations)网站获得的密钥，以及您的Notion数据库的ID，当然也不要忘记给你的数据库连接集成。
 
-更改完配置信息之后找到.github/workflows/technews.yml这个文件
+到这里部署就已经结束了，好像是比之前直接把发送的地址填写到secert的方式麻烦了一些，但是提供了更多的功能。
 
-这部分代码的含义是在格林尼治时间（UTC）的每天22:30执行，换算成北京时间需要加8个小时，即早上6:30左右开始执行，然而并非完全准确。你可以根据自己的需求对这部分时间进行更改，有关 cron 的详细规则，请参考这个网站：https://tool.lu/crontab/
+最近也有一些朋友订阅了我的每日科技早报，目前的新闻源来自IT之家，滤除了营销信息的新闻，并且也写了一个排序算法，每天只发送排名前25的新闻。
 
-接着在上方找到Action，左侧点击technews，右侧找到run workflow尝试运行，如果在下方的运行中没有报错而且邮件能正常发送，那么就成功了。
+## 未来想法
 
-但是如果你需要其他版块的新闻，可能要麻烦一些。
-
-由于其他版块的排版和科技的不尽相同，所以更换版块意味着要重新写页面解析部分的代码，去找到符合你口味的新闻，我这里就不过多赘述了。
-
-
+ * [ ] 优化排序算法
+ * [ ] 优化新闻源（目前还没找到很好的）
+ * [ ] 在爬取新闻时就筛选掉无用新闻
+ * [ ] 集成更多新闻源（一个想法而已，去掉繁杂的信息比较困难）
+ * [ ] 合并当前库和订阅表单的仓库
+ * [ ] 接入模型直接生成简报（很未来再实现吧）
