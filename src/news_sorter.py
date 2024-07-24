@@ -7,9 +7,9 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
+import chromedriver_autoinstaller  # 确保导入 chromedriver_autoinstaller
 
 # 常量定义
 MAX_RETRIES = 3
@@ -18,11 +18,13 @@ TIMEOUT = 10
 
 def setup_driver():
     """设置并返回Selenium WebDriver"""
-    service = Service(ChromeDriverManager().install())
+    chromedriver_autoinstaller.install()  # 自动安装匹配的 ChromeDriver
     options = webdriver.ChromeOptions()
     options.add_argument('--headless')
     options.add_argument('--disable-gpu')
-    return webdriver.Chrome(service=service, options=options)
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    return webdriver.Chrome(options=options)
 
 # 评分函数
 def calculate_score(valuable, unvaluable):
