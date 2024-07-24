@@ -10,6 +10,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
+import chromedriver_autoinstaller  # 确保导入 chromedriver_autoinstaller
 
 def setup_driver():
     """设置并返回Selenium WebDriver"""
