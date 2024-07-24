@@ -31,7 +31,9 @@ jobs:
           sudo apt-get install -y wget unzip
           wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
           sudo dpkg -i google-chrome-stable_current_amd64.deb || sudo apt-get -f install -y
-          wget -N https://chromedriver.storage.googleapis.com/`curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE`/chromedriver_linux64.zip
+          CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+\.\d+')
+          CHROMEDRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION)
+          wget -N https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip
           unzip chromedriver_linux64.zip -d /usr/local/bin/
 
       - name: 安装 Python 依赖
@@ -45,9 +47,7 @@ jobs:
 
       - name: 提交并推送更改
         run: |
-          git add news_archive/  # 添加所有未跟踪的文件
-          echo "添加文件后的 Git 状态:"
-          git status
+          git add news_archive/
           git diff --cached --exit-code news_archive/ || (
             DATE=$(TZ="Asia/Shanghai" date "+%Y-%m-%d %H:%M:%S")
             echo "正在提交更改..."
