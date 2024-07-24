@@ -13,6 +13,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 def setup_driver():
     """设置并返回Selenium WebDriver"""
+    chromedriver_autoinstaller.install()  # 自动安装匹配的 ChromeDriver
     options = Options()
     options.add_argument('--headless')
     options.add_argument('--disable-gpu')
@@ -20,10 +21,7 @@ def setup_driver():
     options.add_argument('--disable-dev-shm-usage')
     
     try:
-        driver_path = ChromeDriverManager().install()
-        if not os.access(driver_path, os.X_OK):
-            os.chmod(driver_path, 0o755)  # 确保 chromedriver 具有可执行权限
-        driver = webdriver.Chrome(service=Service(driver_path), options=options)
+        driver = webdriver.Chrome(options=options)
         return driver
     except Exception as e:
         print(f"Error setting up driver: {e}")
