@@ -16,8 +16,17 @@ def setup_driver():
     options = Options()
     options.add_argument('--headless')
     options.add_argument('--disable-gpu')
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    return driver
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    
+    try:
+        driver_path = ChromeDriverManager().install()
+        os.chmod(driver_path, 0o755)  # 确保 chromedriver 具有可执行权限
+        driver = webdriver.Chrome(service=Service(driver_path), options=options)
+        return driver
+    except Exception as e:
+        print(f"Error setting up driver: {e}")
+        raise
 
 def fetch_news(driver, url, selector):
     driver.get(url)
@@ -118,10 +127,13 @@ def main():
     print("当前时间：", now.strftime("%Y-%m-%d %H:%M:%S %Z"))  # 打印当前的日期和时间以及时区信息
     # 调用函数爬取所有新闻榜单
     print("开始爬取所有新闻...")
-    new_news = fetch_all_news()
-    print("新闻爬取完成，共爬取到 {} 条新闻。".format(len(new_news)))
-    # 保存新闻到Markdown文件
-    save_news_to_markdown(now, new_news)
+    try:
+        new_news = fetch_all_news()
+        print("新闻爬取完成，共爬取到 {} 条新闻。".format(len(new_news)))
+        # 保存新闻到Markdown文件
+        save_news_to_markdown(now, new_news)
+    except Exception as e:
+        print(f"An error occurred: {e}")
     end_time = time.time()
     elapsed_time = end_time - start_time
     print(f"写入新闻完成，总耗时: {elapsed_time:.2f} 秒")
