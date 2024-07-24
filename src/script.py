@@ -21,7 +21,8 @@ def setup_driver():
     
     try:
         driver_path = ChromeDriverManager().install()
-        os.chmod(driver_path, 0o755)  # 确保 chromedriver 具有可执行权限
+        if not os.access(driver_path, os.X_OK):
+            os.chmod(driver_path, 0o755)  # 确保 chromedriver 具有可执行权限
         driver = webdriver.Chrome(service=Service(driver_path), options=options)
         return driver
     except Exception as e:
