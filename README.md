@@ -4,6 +4,7 @@
 
 点击[这里](https://mailist.nowscott.top/)订阅每日科技早报
 
+[![Star History Chart](https://api.star-history.com/svg?repos=nowscott/EverydayTechNews&type=Date)](https://star-history.com/#nowscott/EverydayTechNews&Date)
 
 [![新闻抓取][action-image]][action-url]
 [![forks][forks-image]][forks-url]
