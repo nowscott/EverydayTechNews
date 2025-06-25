@@ -29,3 +29,4 @@ DerivedData/
 
 # Swift Package Manager
 /.build/
+__pycache__/

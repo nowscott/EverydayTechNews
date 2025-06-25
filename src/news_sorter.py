@@ -1,6 +1,8 @@
 import os
 import re
 import time
+import ssl
+import urllib.request
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from selenium import webdriver
@@ -10,6 +12,9 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import chromedriver_autoinstaller  # 确保导入 chromedriver_autoinstaller
+
+# 禁用SSL证书验证
+ssl._create_default_https_context = ssl._create_unverified_context
 
 # 常量定义
 MAX_RETRIES = 3
@@ -40,10 +45,11 @@ def calculate_score(valuable, unvaluable):
 
 def adjust_value_based_on_title(title):
     """根据标题调整价值"""
-    currency_units = [' 元', ' 万元', ' 美元', ' 日元', ' 万日元']
-    for unit in currency_units:
-        if unit in title:
-            return -5
+    from news_filter import should_filter_news
+    
+    # 使用通用过滤函数判断是否需要过滤
+    if should_filter_news(title):
+        return -5
     return None
 
 def fetch_news_values(news_list, driver):
@@ -62,7 +68,7 @@ def fetch_news_values(news_list, driver):
         if adjusted_value is not None:
             values_dict[url] = str(adjusted_value)
             processed_urls.add(url)
-            print(f"{title} 包含金额，跳过评分")
+            print(f"{title} 被过滤，跳过评分")
             continue  # 跳过爬取
         for attempt in range(MAX_RETRIES):
             try:

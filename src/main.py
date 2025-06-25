@@ -6,7 +6,7 @@ import time
 from datetime import datetime, timedelta
 
 # 本地化和时区处理
-from zoneinfo import ZoneInfo  # Python 3.9+
+from zoneinfo import ZoneInfo 
 
 # 网络请求和配置文件处理
 import requests
@@ -70,12 +70,49 @@ def send_message(sender, password, server, receiver, text):
     print("达到最大尝试次数，无法发送邮件")
     return False
 
+def is_news_sorted(news_string):
+    """检查新闻是否已经排序（通过检查是否包含(sorted)标记）"""
+    # 检查是否包含排序后的标记(sorted)
+    return "(sorted)" in news_string
+
+def simple_filter_news(matches):
+    """简单过滤新闻，返回前25条高质量新闻"""
+    from news_filter import filter_news_list, should_filter_news
+    
+    # 将matches转换为(title, url)格式
+    news_list = [(match[0], match[1]) for match in matches]
+    
+    # 使用通用过滤函数过滤新闻
+    filtered_news = filter_news_list(news_list)
+    
+    # 进一步过滤掉标题过短的新闻
+    quality_filtered = [(title, url) for title, url in filtered_news if len(title) >= 10]
+    
+    # 如果过滤后的新闻不足25条，从原始新闻中补充（但仍要排除广告和金额相关新闻）
+    if len(quality_filtered) < 25:
+        # 从原始新闻中找到未被包含且通过基本过滤的新闻
+        for title, url in news_list:
+            if (title, url) not in quality_filtered and len(quality_filtered) < 25:
+                # 确保补充的新闻也通过基本过滤
+                if not should_filter_news(title):
+                    quality_filtered.append((title, url))
+    
+    # 转换回原始格式
+    return [(title, url) for title, url in quality_filtered[:25]]
+
 def format_news(news_string):
     # 使用正则表达式提取链接和标题
     pattern = r'\[(.*?)\]\((.*?)\)'
     matches = re.findall(pattern, news_string)
-    # 限制结果到前25条
-    matches = matches[:25]
+    
+    # 检查新闻是否已排序
+    if is_news_sorted(news_string):
+        # 如果已排序，直接取前25条
+        matches = matches[:25]
+    else:
+        # 如果未排序，进行简单筛选
+        matches = simple_filter_news(matches)
+    
     formatted_news = ''
     for match in matches:
         title = match[0]
@@ -166,7 +203,11 @@ def main():
 
     for user in users:
         personalized_message = message(user['name'], formatted_news)  # 创建个性化消息
-        send_message(sending_account, sending_password, server, user['email'], personalized_message)
+        success = send_message(sending_account, sending_password, server, user['email'], personalized_message)
+        if not success:
+            print(f"邮件发送失败：用户 {user['name']} ({user['email']})")
+        else:
+            print(f"邮件发送成功")
     
     # # 以下部分是我本地测试时使用的代码
     # send_message(sending_account, sending_password, server,'nowscott@qq.com',message('NowScott', formatted_news))
