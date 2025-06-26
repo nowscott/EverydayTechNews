@@ -2,7 +2,7 @@ name: 发送邮件
 on:
   workflow_dispatch:
   schedule:
-    - cron: '30 0 * * *'  # 每天上海时间08:30执行（UTC+8转换为UTC时间00:30）
+    - cron: '30 23 * * *'  # 每天上海时间08:30执行（UTC+8转换为UTC时间00:30）
 jobs:
   setup-and-test:
     runs-on: ubuntu-latest  # 使用 Ubuntu 环境
