@@ -243,6 +243,30 @@ class NewsletterDeliveryTests(unittest.TestCase):
         self.assertEqual(failed, ["alice@example.com"])
         update_status.assert_called_once_with("api-key", user, "异常")
 
+    @patch("main.update_notion_user_status")
+    @patch("main.send_message", return_value=main.SEND_PERMANENT_FAILURE)
+    def test_test_recipient_without_page_id_does_not_update_notion(
+        self,
+        send_message,
+        update_status,
+    ):
+        failed = main.send_newsletter_to_users(
+            [{"name": "NowScott", "email": "test@example.com"}],
+            "<p>news</p>",
+            "",
+            "sender@example.com",
+            "password",
+            "smtp.example.com",
+            {
+                "start_notification": "",
+                "end_notification": "",
+                "end_comment": "",
+            },
+        )
+
+        self.assertEqual(failed, ["test@example.com"])
+        update_status.assert_not_called()
+
 
 class FormattingTests(unittest.TestCase):
     def test_escapes_news_html(self):

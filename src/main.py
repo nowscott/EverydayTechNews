@@ -84,7 +84,7 @@ def send_newsletter_to_users(
             continue
 
         failed_users.append(user["email"])
-        if result == SEND_PERMANENT_FAILURE:
+        if result == SEND_PERMANENT_FAILURE and user.get("notion_page_id"):
             try:
                 update_notion_user_status(api_key, user, "异常")
                 print(f"已将 {user['email']} 的 Notion 状态更新为异常")
@@ -96,6 +96,7 @@ def send_newsletter_to_users(
 def main():
     switch_to_parent_if_src()
     load_dotenv()
+    test_recipient = os.environ.get("TEST_RECIPIENT", "").strip()
 
     now = datetime.now(ZoneInfo("Asia/Shanghai"))
     news_filename = get_yesterday_news_filename(now)
@@ -110,12 +111,17 @@ def main():
         return
 
     try:
-        api_key = get_env_variable("NOTION_API_KEY")
-        database_id = get_env_variable("NOTION_DATABASE_ID")
         sender = get_env_variable("SENDING_ACCOUNT")
         password = get_env_variable("SENDING_PASSWORD")
         server = get_env_variable("SERVER")
-        users = fetch_notion_users(api_key, database_id)
+        if test_recipient:
+            api_key = ""
+            users = [{"name": "NowScott", "email": test_recipient}]
+            print(f"测试模式：仅发送到 {test_recipient}")
+        else:
+            api_key = get_env_variable("NOTION_API_KEY")
+            database_id = get_env_variable("NOTION_DATABASE_ID")
+            users = fetch_notion_users(api_key, database_id)
     except Exception as error:
         print(f"推送消息失败: {error}")
         sys.exit(1)

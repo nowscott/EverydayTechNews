@@ -1,6 +1,11 @@
 name: 发送邮件
 on:
   workflow_dispatch:
+    inputs:
+      test_recipient:
+        description: '测试收件邮箱；留空则按 Notion 订阅列表发送'
+        required: false
+        type: string
   schedule:
     - cron: '30 23 * * *'  # 每天上海时间07:30执行（前一天UTC 23:30）
 
@@ -39,5 +44,6 @@ jobs:
           SERVER: ${{ secrets.SERVER }}
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          TEST_RECIPIENT: ${{ inputs.test_recipient }}
         run: |
           python src/main.py
