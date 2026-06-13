@@ -2,26 +2,30 @@ name: 发送邮件
 on:
   workflow_dispatch:
   schedule:
-    - cron: '30 23 * * *'  # 每天上海时间08:30执行（UTC+8转换为UTC时间00:30）
+    - cron: '30 23 * * *'  # 每天上海时间07:30执行（前一天UTC 23:30）
+
+permissions:
+  contents: read
+
 jobs:
   setup-and-test:
     runs-on: ubuntu-latest  # 使用 Ubuntu 环境
-    
+
     steps:
       - name: 检出代码库
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           persist-credentials: true  # 确保能够推送更改
-      
+
       - name: 设置 Git
         run: |
           git config user.name "NowScott"
           git config user.email "nowscott@qq.com"
 
       - name: 设置 Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: '3.x'
+          python-version: '3.14'
 
       - name: 安装 Python 依赖
         run: |

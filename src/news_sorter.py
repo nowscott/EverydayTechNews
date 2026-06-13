@@ -1,35 +1,35 @@
 import os
 import re
 import time
-import ssl
-import urllib.request
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.common.exceptions import (
+    NoSuchElementException,
+    TimeoutException,
+    WebDriverException,
+)
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import chromedriver_autoinstaller  # 确保导入 chromedriver_autoinstaller
-
-# 禁用SSL证书验证
-ssl._create_default_https_context = ssl._create_unverified_context
+from urllib3.exceptions import ReadTimeoutError
 
 # 常量定义
 MAX_RETRIES = 3
 WAIT_TIME = 3
 TIMEOUT = 10
+PAGE_LOAD_TIMEOUT = 30
 
 def setup_driver():
     """设置并返回Selenium WebDriver"""
-    chromedriver_autoinstaller.install()  # 自动安装匹配的 ChromeDriver
     options = webdriver.ChromeOptions()
-    options.add_argument('--headless')
+    options.add_argument('--headless=new')
     options.add_argument('--disable-gpu')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-    return webdriver.Chrome(options=options)
+    driver = webdriver.Chrome(options=options)
+    driver.set_page_load_timeout(PAGE_LOAD_TIMEOUT)
+    return driver
 
 # 评分函数
 def calculate_score(valuable, unvaluable):
@@ -46,10 +46,10 @@ def calculate_score(valuable, unvaluable):
 def adjust_value_based_on_title(title):
     """根据标题调整价值"""
     from news_filter import should_filter_news
-    
+
     # 使用通用过滤函数判断是否需要过滤
     if should_filter_news(title):
-        return -5
+        return -1000
     return None
 
 def fetch_news_values(news_list, driver):
@@ -76,6 +76,8 @@ def fetch_news_values(news_list, driver):
                 WebDriverWait(driver, TIMEOUT).until(lambda d: d.execute_script('return document.readyState') == 'complete')
                 if "404" in driver.title or "Page Not Found" in driver.page_source:
                     print(f"{title} 页面跳到404，删除该新闻")
+                    values_dict[url] = "-1000"
+                    processed_urls.add(url)
                     break
                 try:
                     scores_element = WebDriverWait(driver, TIMEOUT).until(EC.visibility_of_element_located((By.CSS_SELECTOR, ".bt")))
@@ -90,8 +92,9 @@ def fetch_news_values(news_list, driver):
                 values_dict[url] = str(value)
                 processed_urls.add(url)
                 break
-            except TimeoutException:
+            except (TimeoutException, WebDriverException, ReadTimeoutError) as exc:
                 print(f"访问 {title} 时出错，尝试第 {attempt + 1} 次重试")
+                print(f"错误类型: {type(exc).__name__}")
                 time.sleep(WAIT_TIME)
                 if attempt == MAX_RETRIES - 1:
                     print(f"访问 {title} 失败，已达到最大重试次数")
@@ -124,7 +127,7 @@ def switch_to_parent_if_src():
 
 def process_yesterday_news(yesterday,yesterday_news_filename):
     """处理昨天的新闻"""
-    with open(yesterday_news_filename, 'r') as f:
+    with open(yesterday_news_filename, 'r', encoding='utf-8') as f:
         yesterday_news = f.read()
     if "(sorted)" in yesterday_news:
         print(f"{yesterday_news_filename} 已排序，跳过处理")
@@ -134,7 +137,7 @@ def process_yesterday_news(yesterday,yesterday_news_filename):
         values_dict = fetch_news_values(news_list, driver)
     sorted_news = sort_news_by_value(news_list, values_dict)
     formatted_md = format_news_to_md(sorted_news)
-    with open(yesterday_news_filename, 'w') as f:
+    with open(yesterday_news_filename, 'w', encoding='utf-8') as f:
         f.write(f"# 今日新闻 - {yesterday.strftime('%Y年%m月%d日')}(sorted)\n")
         f.write(formatted_md)
     print(f"新闻已成功排序并保存到 {yesterday_news_filename}")

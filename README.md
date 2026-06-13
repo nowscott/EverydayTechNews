@@ -9,7 +9,7 @@
 [![新闻抓取][action-image]][action-url]
 [![forks][forks-image]][forks-url]
 
-[action-url]:[https://github.com/NowScott/EverydayTechNews/actions/workflows/technews.yml "Action State"
+[action-url]: https://github.com/NowScott/EverydayTechNews/actions/workflows/run-selenium-script.yml "Action State"
 [action-image]:https://img.shields.io/github/actions/workflow/status/nowscott/EverydayTechNews/run-selenium-script.yml?label=新闻抓取
 [forks-url]:https://github.com/NowScott/EverydayTechNews/forks
 [forks-image]:https://img.shields.io/github/forks/NowScott/EverydayTechNews?label=Forks
@@ -28,7 +28,17 @@
 
 因为不想暴露我的个人邮箱，所以真正每天在运行的工具在另外一个私有库中，本项目的目的在于帮助同样有这个需求的朋友们搭建这样一个小工具。
 
-这个自动发送新闻到邮箱的小工具是基于python开发的，主函数是根目录下的main.py文件，然后配置文件是根目录下的config.json。
+这个自动发送新闻到邮箱的小工具基于 Python 开发，邮件入口是 `src/main.py`，通知文案配置位于根目录的 `notifications.ini`。
+
+### 代码结构
+
+- `src/script.py`：使用 Requests + BeautifulSoup 抓取新闻并写入归档
+- `src/news_sorter.py`：使用 Selenium 读取动态新闻评分并排序
+- `src/news_filter.py`：统一的广告与价格新闻过滤规则
+- `src/newsletter.py`：选择新闻并生成邮件 HTML
+- `src/notion_client.py`：读取订阅者并更新订阅状态
+- `src/mailer.py`：SMTP 发送、重试与失败分类
+- `src/main.py`：加载配置并编排每日邮件任务
 
 ## 工具部署
 
@@ -55,6 +65,8 @@ NOTION_DATABASE_ID=your_database_id
 
 3. 后两个分别是notion的api还有数据库的id，这些分别是从[我的集成](https://www.notion.so/my-integrations)网站获得的密钥，以及您的Notion数据库的ID，当然也不要忘记给你的数据库连接集成。
 
+Notion 数据库需要包含 `Name`、`Email` 和 `状态` 三列。只有状态为 `正常` 的订阅者会收到邮件；`异常`、空状态或其他状态都会跳过。如果同一地址连续三次被 SMTP 以 5xx 永久拒绝，程序会自动将该记录改为 `异常`。SMTP 登录失败、网络超时等系统故障不会修改订阅者状态。
+
 到这里部署就已经结束了，好像是比之前直接把发送的地址填写到secert的方式麻烦了一些，但是提供了更多的功能。
 
 最近也有一些朋友订阅了我的每日科技早报，目前的新闻源来自IT之家，滤除了营销信息的新闻，并且也写了一个排序算法，每天只发送排名前25的新闻。
@@ -79,7 +91,7 @@ NOTION_DATABASE_ID=your_database_id
 #### 🚀 工作流时间优化
 - **调整执行时间**：
   - 新闻排序：每日上海时间 00:30 执行
-  - 邮件发送：每日上海时间 08:30 执行
+  - 邮件发送：每日上海时间 07:30 执行
 - **时区适配**：确保在中国时区的最佳执行时间
 
 #### 📈 智能备用机制

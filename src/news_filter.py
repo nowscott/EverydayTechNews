@@ -4,19 +4,22 @@ import re
 
 def should_filter_news(title):
     """判断新闻是否应该被过滤掉
-    
+
     Args:
         title (str): 新闻标题
-        
+
     Returns:
         bool: True表示应该过滤掉，False表示保留
     """
     # 过滤掉包含广告、推广等关键词的新闻
-    filter_keywords = ['广告', '推广', '赞助', '合作', '活动', '福利', '优惠']
-    
+    filter_keywords = [
+        '广告', '赞助', '福利', '优惠', '好价', '促销', '大促',
+        '发车', '闭眼囤', '手慢无', '探新低', '神价', '秒杀',
+    ]
+
     # 检查是否包含过滤关键词
     has_filter_keyword = any(keyword in title for keyword in filter_keywords)
-    
+
     # 使用正则表达式更精确地匹配金额表达
     # 匹配数字+货币单位的模式，但排除大额数字（亿及以上）和文件大小单位
     currency_patterns = [
@@ -89,46 +92,29 @@ def should_filter_news(title):
         r'\d+\s*万越南盾',     # 数字+万越南盾
         r'₫\s*\d+',           # ₫+数字
     ]
-    
+
     # 检查是否包含真正的金额表达
     has_currency = any(re.search(pattern, title) for pattern in currency_patterns)
-    
-    # 排除文件大小单位（KB, MB, GB, TB等）
-    if has_currency:
-        file_size_patterns = [
-            r'\d+\s*KB',   # KB
-            r'\d+\s*MB',   # MB  
-            r'\d+\s*GB',   # GB
-            r'\d+\s*TB',   # TB
-            r'\d+\s*PB',   # PB
-            r'\d+\s*k',    # k (小写)
-            r'\d+\s*m',    # m (小写)
-            r'\d+\s*g',    # g (小写)
-            r'\d+\s*t',    # t (小写)
-        ]
-        # 如果匹配到文件大小单位，则不认为是金额
-        if any(re.search(pattern, title, re.IGNORECASE) for pattern in file_size_patterns):
-            has_currency = False
-    
+
     return has_filter_keyword or has_currency
 
 def filter_news_list(news_list, max_count=None):
     """过滤新闻列表
-    
+
     Args:
         news_list (list): 新闻列表，每个元素为(title, url)元组
         max_count (int, optional): 最大返回数量
-        
+
     Returns:
         list: 过滤后的新闻列表
     """
     filtered_news = []
-    
+
     for title, url in news_list:
         if not should_filter_news(title):
             filtered_news.append((title, url))
-    
+
     if max_count is not None:
         return filtered_news[:max_count]
-    
+
     return filtered_news
