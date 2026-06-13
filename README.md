@@ -33,7 +33,7 @@
 ### 代码结构
 
 - `src/script.py`：使用 Requests + BeautifulSoup 抓取新闻并写入归档
-- `src/news_sorter.py`：使用 Selenium 读取动态新闻评分并排序
+- `src/news_sorter.py`：并发请求 IT之家评分接口并排序
 - `src/news_filter.py`：统一的广告与价格新闻过滤规则
 - `src/newsletter.py`：选择新闻并生成邮件 HTML
 - `src/notion_client.py`：读取订阅者并更新订阅状态

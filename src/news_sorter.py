@@ -1,164 +1,178 @@
 import os
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.common.exceptions import (
-    NoSuchElementException,
-    TimeoutException,
-    WebDriverException,
-)
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from urllib3.exceptions import ReadTimeoutError
 
-# 常量定义
+import requests
+
+from news_filter import should_filter_news
+
+
 MAX_RETRIES = 3
-WAIT_TIME = 3
-TIMEOUT = 10
-PAGE_LOAD_TIMEOUT = 30
+REQUEST_TIMEOUT = 15
+MAX_WORKERS = 8
+FILTERED_SCORE = -1000
+FAILED_SCORE = -100
+GRADE_URL = "https://dyn.ithome.com/grade/{news_id}"
+REQUEST_HEADERS = {"User-Agent": "Mozilla/5.0"}
 
-def setup_driver():
-    """设置并返回Selenium WebDriver"""
-    options = webdriver.ChromeOptions()
-    options.add_argument('--headless=new')
-    options.add_argument('--disable-gpu')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    driver = webdriver.Chrome(options=options)
-    driver.set_page_load_timeout(PAGE_LOAD_TIMEOUT)
-    return driver
 
-# 评分函数
 def calculate_score(valuable, unvaluable):
     total = valuable + unvaluable
     if total == 0:
         return 0
-    elif valuable == 0 and unvaluable != 0:
+    if valuable == 0:
         return -10
-    elif unvaluable == 0 and valuable != 0:
+    if unvaluable == 0:
         return 10 + valuable
-    else:
-        return (valuable / total) * 10
+    return (valuable / total) * 10
+
 
 def adjust_value_based_on_title(title):
-    """根据标题调整价值"""
-    from news_filter import should_filter_news
-
-    # 使用通用过滤函数判断是否需要过滤
     if should_filter_news(title):
-        return -1000
+        return FILTERED_SCORE
     return None
 
-def fetch_news_values(news_list, driver):
-    """批量获取新闻链接的价值信息，返回字典"""
+
+def extract_news_id(url):
+    match = re.search(r"/(\d+)/(\d+)\.htm(?:[?#].*)?$", url)
+    if not match:
+        return None
+    return "".join(match.groups())
+
+
+def parse_grade_response(content):
+    valuable_match = re.search(
+        r'id=["\']sgrade2["\'].*?<div>(\d+)</div>',
+        content,
+        re.DOTALL,
+    )
+    unvaluable_match = re.search(
+        r'id=["\']sgrade0["\'].*?<div>(\d+)</div>',
+        content,
+        re.DOTALL,
+    )
+    if not valuable_match or not unvaluable_match:
+        raise ValueError("评分接口响应中缺少评分数字")
+    return int(valuable_match.group(1)), int(unvaluable_match.group(1))
+
+
+def fetch_news_value(title, url):
+    news_id = extract_news_id(url)
+    if not news_id:
+        print(f"{title} 无法提取新闻 ID，设置为低分")
+        return FAILED_SCORE
+
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            response = requests.get(
+                GRADE_URL.format(news_id=news_id),
+                headers=REQUEST_HEADERS,
+                timeout=REQUEST_TIMEOUT,
+            )
+            response.raise_for_status()
+            valuable, unvaluable = parse_grade_response(response.text)
+            return calculate_score(valuable, unvaluable)
+        except (requests.RequestException, ValueError) as error:
+            print(f"{title} 第 {attempt} 次评分失败: {type(error).__name__}")
+            if attempt < MAX_RETRIES:
+                time.sleep(1)
+
+    return FAILED_SCORE
+
+
+def fetch_news_values(news_list, max_workers=MAX_WORKERS):
     values_dict = {}
-    processed_urls = set()  # 用于存储已经处理过的 URL
-    if not news_list:
-        print("没有新闻要处理，返回空字典")
-        return values_dict
-    print(f'开始获取{len(news_list)}条新闻的评分')
+    pending_news = {}
+
     for title, url in news_list:
-        if url in processed_urls:
-            print(f"{title} 已处理过，跳过")
+        if url in values_dict or url in pending_news:
             continue
         adjusted_value = adjust_value_based_on_title(title)
         if adjusted_value is not None:
             values_dict[url] = str(adjusted_value)
-            processed_urls.add(url)
-            print(f"{title} 被过滤，跳过评分")
-            continue  # 跳过爬取
-        for attempt in range(MAX_RETRIES):
+        else:
+            pending_news[url] = title
+
+    print(
+        f"开始评分：共 {len(news_list)} 条，"
+        f"过滤 {len(values_dict)} 条，请求 {len(pending_news)} 条"
+    )
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_url = {
+            executor.submit(fetch_news_value, title, url): url
+            for url, title in pending_news.items()
+        }
+        for future in as_completed(future_to_url):
+            url = future_to_url[future]
             try:
-                driver.get(url)
-                WebDriverWait(driver, TIMEOUT).until(lambda d: d.execute_script('return document.readyState') == 'complete')
-                if "404" in driver.title or "Page Not Found" in driver.page_source:
-                    print(f"{title} 页面跳到404，删除该新闻")
-                    values_dict[url] = "-1000"
-                    processed_urls.add(url)
-                    break
-                try:
-                    scores_element = WebDriverWait(driver, TIMEOUT).until(EC.visibility_of_element_located((By.CSS_SELECTOR, ".bt")))
-                    valuable = int(scores_element.find_element(By.CSS_SELECTOR, "#sgrade2 div").text)
-                    unvaluable = int(scores_element.find_element(By.CSS_SELECTOR, "#sgrade0 div").text)
-                except (TimeoutException, NoSuchElementException, ValueError):
-                    print(f"{title} 页面评分获取失败，设置为-10分")
-                    valuable = 0
-                    unvaluable = 1
-                # 计算综合评分
-                value = calculate_score(valuable, unvaluable)
-                values_dict[url] = str(value)
-                processed_urls.add(url)
-                break
-            except (TimeoutException, WebDriverException, ReadTimeoutError) as exc:
-                print(f"访问 {title} 时出错，尝试第 {attempt + 1} 次重试")
-                print(f"错误类型: {type(exc).__name__}")
-                time.sleep(WAIT_TIME)
-                if attempt == MAX_RETRIES - 1:
-                    print(f"访问 {title} 失败，已达到最大重试次数")
-                    values_dict[url] = "-100"
-                    processed_urls.add(url)
-    print(f'成功对{len(values_dict)}条新闻排序')
+                values_dict[url] = str(future.result())
+            except Exception as error:
+                print(f"{pending_news[url]} 评分任务异常: {type(error).__name__}")
+                values_dict[url] = str(FAILED_SCORE)
+
+    print(f"成功处理 {len(values_dict)} 条新闻评分")
     return values_dict
 
+
 def sort_news_by_value(news_list, values_dict):
-    """根据价值排序新闻链接"""
-    return sorted(news_list, key=lambda x: float(values_dict.get(x[1], "0")), reverse=True)
+    return sorted(
+        news_list,
+        key=lambda news: float(values_dict.get(news[1], FAILED_SCORE)),
+        reverse=True,
+    )
+
 
 def format_news_to_md(sorted_news):
-    """格式化排序后的新闻列表为Markdown字符串"""
-    return "\n".join(f'- [{title}]({link})' for title, link in sorted_news) + "\n"
+    return "\n".join(f"- [{title}]({link})" for title, link in sorted_news) + "\n"
+
 
 def parse_news(md_content):
-    """解析Markdown内容中的新闻链接和标题，返回元组列表"""
-    pattern = r'- \[(.*?)\]\((.*?)\)'
-    return re.findall(pattern, md_content)
+    return re.findall(r"- \[(.*?)\]\((.*?)\)", md_content)
+
 
 def switch_to_parent_if_src():
-    """检查当前目录的最后一级是否是src，如果是，则切换到上一级目录"""
     current_dir = os.getcwd()
-    base_name = os.path.basename(current_dir)
-    if base_name == 'src':
-        parent_dir = os.path.dirname(current_dir)
-        os.chdir(parent_dir)
-        print(f'切换到上一级目录: {parent_dir}')
+    if os.path.basename(current_dir) == "src":
+        os.chdir(os.path.dirname(current_dir))
 
-def process_yesterday_news(yesterday,yesterday_news_filename):
-    """处理昨天的新闻"""
-    with open(yesterday_news_filename, 'r', encoding='utf-8') as f:
-        yesterday_news = f.read()
+
+def process_yesterday_news(yesterday, yesterday_news_filename):
+    with open(yesterday_news_filename, "r", encoding="utf-8") as news_file:
+        yesterday_news = news_file.read()
     if "(sorted)" in yesterday_news:
         print(f"{yesterday_news_filename} 已排序，跳过处理")
         return
+
     news_list = parse_news(yesterday_news)
-    with setup_driver() as driver:
-        values_dict = fetch_news_values(news_list, driver)
+    values_dict = fetch_news_values(news_list)
     sorted_news = sort_news_by_value(news_list, values_dict)
     formatted_md = format_news_to_md(sorted_news)
-    with open(yesterday_news_filename, 'w', encoding='utf-8') as f:
-        f.write(f"# 今日新闻 - {yesterday.strftime('%Y年%m月%d日')}(sorted)\n")
-        f.write(formatted_md)
+    with open(yesterday_news_filename, "w", encoding="utf-8") as news_file:
+        news_file.write(
+            f"# 今日新闻 - {yesterday.strftime('%Y年%m月%d日')}(sorted)\n"
+        )
+        news_file.write(formatted_md)
     print(f"新闻已成功排序并保存到 {yesterday_news_filename}")
+
 
 def main():
     start_time = time.time()
     switch_to_parent_if_src()
-    tz = ZoneInfo('Asia/Shanghai')
-    now = datetime.now(tz)
+    now = datetime.now(ZoneInfo("Asia/Shanghai"))
     yesterday = now - timedelta(days=1)
-    year_month = yesterday.strftime("%Y-%m")
-    yesterday_day = yesterday.strftime("%d")
-    yesterday_folder_path = f"news_archive/{year_month}"
-    yesterday_news_filename = f"{yesterday_folder_path}/{yesterday_day}.md"
-    if not os.path.exists(yesterday_news_filename):
-        print(f"{yesterday_news_filename} 不存在，跳过处理")
+    filename = (
+        f"news_archive/{yesterday.strftime('%Y-%m')}/"
+        f"{yesterday.strftime('%d')}.md"
+    )
+    if not os.path.exists(filename):
+        print(f"{filename} 不存在，跳过处理")
     else:
-        process_yesterday_news(yesterday,yesterday_news_filename)
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-    print(f"排序完成，总耗时: {elapsed_time:.2f} 秒")
+        process_yesterday_news(yesterday, filename)
+    print(f"排序完成，总耗时: {time.time() - start_time:.2f} 秒")
+
 
 if __name__ == "__main__":
     main()
