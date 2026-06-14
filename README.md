@@ -39,10 +39,11 @@
 - `src/notion_client.py`：读取订阅者并更新订阅状态
 - `src/mailer.py`：SMTP 发送、重试与失败分类
 - `src/main.py`：加载配置并编排每日邮件任务
+- `apps/subscription-web`：React + Tailwind CSS 订阅网页与 Vercel API
 
 ## 工具部署
 
-在2024年6月21日的更新后，功能变得更加丰富，目前我们有新闻的归档，同时做了排序筛选等等功能，以及搭配[EmaiListInbox](https://github.com/nowscott/EmaiListInbox)仓库实现订阅表单的功能。
+在2024年6月21日的更新后，功能变得更加丰富，目前我们有新闻的归档，同时做了排序筛选等等功能。原 [EmaiListInbox](https://github.com/nowscott/EmaiListInbox) 订阅服务现已合并到本仓库的 `apps/subscription-web`，形成从订阅登记到每日发送的完整流程。
 
 如果你不需要表单功能，目前我将邮箱列表放在了notion上，你只需要拷贝这个页面：[notion页面](https://nowscott.notion.site/029f3f6fc18f40278acfa69739f4eacb?v=2bd422a503204d3aa220fdadc3e89de0)，接下来获取到一个notion的密钥和仓库的id，填写到下面的secret中就可以了。
 
@@ -68,6 +69,19 @@ NOTION_DATABASE_ID=your_database_id
 Notion 数据库需要包含 `Name`、`Email` 和 `状态` 三列。只有状态为 `正常` 的订阅者会收到邮件；`异常`、空状态或其他状态都会跳过。如果同一地址连续三次被 SMTP 以 5xx 永久拒绝，程序会自动将该记录改为 `异常`。SMTP 登录失败、网络超时等系统故障不会修改订阅者状态。
 
 到这里部署就已经结束了，好像是比之前直接把发送的地址填写到secert的方式麻烦了一些，但是提供了更多的功能。
+
+### 部署订阅网页
+
+订阅网页位于 `apps/subscription-web`，技术栈为 React、TypeScript、Tailwind CSS 和 Vite，支持跟随系统浅色/深色模式。
+
+在 Vercel 导入本仓库后：
+
+1. 将 Root Directory 设置为 `apps/subscription-web`
+2. 配置 `NOTION_API_KEY` 和 `NOTION_DATABASE_ID`
+3. 如需接收新订阅通知，再配置 `SENDING_ACCOUNT`、`SENDING_PASSWORD`、`SERVER` 和 `NOTIFICATION_EMAIL`
+4. 将 `mailist.nowscott.top` 绑定到该 Vercel 项目
+
+订阅 API 会自动写入 `状态=正常`，并在创建前检查重复邮箱。详细说明见 [`apps/subscription-web/README.md`](apps/subscription-web/README.md)。
 
 最近也有一些朋友订阅了我的每日科技早报，目前的新闻源来自IT之家，滤除了营销信息的新闻，并且也写了一个排序算法，每天只发送排名前25的新闻。
 
@@ -153,5 +167,5 @@ Notion 数据库需要包含 `Name`、`Email` 和 `状态` 三列。只有状态
  * [x] ~~在爬取新闻时就筛选掉无用新闻~~ ✅ 已实现通用过滤模块
  * [ ] 优化新闻源（目前还没找到很好的）
  * [ ] 集成更多新闻源（一个想法而已，去掉繁杂的信息比较困难）
- * [ ] 合并当前库和订阅表单的仓库
+ * [x] ~~合并当前库和订阅表单的仓库~~ ✅ 已完成 React + Tailwind CSS 重构
  * [ ] 接入模型直接生成简报（很未来再实现吧）

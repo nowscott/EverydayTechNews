@@ -1,0 +1,38 @@
+name: 订阅网页测试
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/subscription-web/**'
+      - '.github/workflows/subscription-web.yml'
+  pull_request:
+    paths:
+      - 'apps/subscription-web/**'
+      - '.github/workflows/subscription-web.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/subscription-web
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/subscription-web/package-lock.json
+
+      - run: npm ci
+      - run: npm audit --audit-level=moderate
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build

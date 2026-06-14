@@ -1,5 +1,7 @@
 # env
 .env
+**/.env.local
+**/.env.*.local
 
 # macOS
 .DS_Store
@@ -30,3 +32,9 @@ DerivedData/
 # Swift Package Manager
 /.build/
 __pycache__/
+
+# Node.js / Vite
+node_modules/
+dist/
+.vercel/
+*.tsbuildinfo

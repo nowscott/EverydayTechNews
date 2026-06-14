@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", serif;
+  --font-sans: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+:root {
+  color-scheme: light dark;
+  font-family: var(--font-serif);
+  background: #f4f0e7;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+::selection {
+  color: #fffaf1;
+  background: #bd4f32;
+}
+
+.page-grid {
+  background-color: #f4f0e7;
+  background-image:
+    radial-gradient(circle at 15% 8%, rgba(189, 79, 50, 0.1), transparent 29rem),
+    linear-gradient(rgba(34, 62, 64, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 62, 64, 0.055) 1px, transparent 1px);
+  background-size: auto, 28px 28px, 28px 28px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    background: #101719;
+  }
+
+  .page-grid {
+    background-color: #101719;
+    background-image:
+      radial-gradient(circle at 15% 8%, rgba(221, 118, 89, 0.12), transparent 29rem),
+      linear-gradient(rgba(173, 199, 193, 0.055) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(173, 199, 193, 0.055) 1px, transparent 1px);
+  }
+}
