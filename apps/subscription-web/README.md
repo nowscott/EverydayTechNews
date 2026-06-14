@@ -2,6 +2,8 @@
 
 每日科技早报的订阅页面和订阅 API，使用 React、TypeScript、Tailwind CSS 和 Vite 构建。
 
+生产地址：https://mailist.nowscott.top/
+
 ## 本地运行
 
 ```bash

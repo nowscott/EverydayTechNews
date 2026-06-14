@@ -74,6 +74,8 @@ Notion 数据库需要包含 `Name`、`Email` 和 `状态` 三列。只有状态
 
 订阅网页位于 `apps/subscription-web`，技术栈为 React、TypeScript、Tailwind CSS 和 Vite，支持跟随系统浅色/深色模式。
 
+生产地址：https://mailist.nowscott.top/
+
 在 Vercel 导入本仓库后：
 
 1. 将 Root Directory 设置为 `apps/subscription-web`
