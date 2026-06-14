@@ -37,6 +37,7 @@
 - `src/news_filter.py`：统一的广告与价格新闻过滤规则
 - `src/newsletter.py`：选择新闻并生成邮件 HTML
 - `src/notion_client.py`：读取订阅者并更新订阅状态
+- `src/subscription_links.py`：生成每日邮件中的签名退订链接
 - `src/mailer.py`：SMTP 发送、重试与失败分类
 - `src/main.py`：加载配置并编排每日邮件任务
 - `apps/subscription-web`：React + Tailwind CSS 订阅网页与 Vercel API
@@ -51,22 +52,25 @@
 
 首先Fork本仓库：https://github.com/NowScott/EverydayTechNews
 
-接下来在设置（Settings）中找到Secrets and variables，点击下方的Actions，在右侧你可以看到一个蓝色的按钮写着New repositorys secret，点击这个按钮，新建5个secret，分别是：
+接下来在设置（Settings）中找到 Secrets and variables，点击 Actions，新建 6 个 repository secret：
 ```
 SENDING_ACCOUNT: send_email@example.com
 SENDING_PASSWORD: smtp_password
 SERVER: smtp.163.com
 NOTION_API_KEY=your_notion_api
 NOTION_DATABASE_ID=your_database_id
+SUBSCRIPTION_CONFIRMATION_SECRET=your_long_random_secret
 ```
 
 1. 前两个分别是要使用的邮箱和SMTP的密钥
 
 2. 关于服务器（server），它取决于您使用的电子邮件地址。这里我提供了使用网易163邮箱地址的示例。其他常用电子邮件提供商的服务器地址列在最后。
 
-3. 后两个分别是notion的api还有数据库的id，这些分别是从[我的集成](https://www.notion.so/my-integrations)网站获得的密钥，以及您的Notion数据库的ID，当然也不要忘记给你的数据库连接集成。
+3. `NOTION_API_KEY` 和 `NOTION_DATABASE_ID` 分别是 Notion 集成密钥与数据库 ID，请记得将数据库连接到对应集成。
 
-Notion 数据库需要包含 `Name`、`Email` 和 `状态` 三列。只有状态为 `正常` 的订阅者会收到邮件；`异常`、空状态或其他状态都会跳过。如果同一地址连续三次被 SMTP 以 5xx 永久拒绝，程序会自动将该记录改为 `异常`。SMTP 登录失败、网络超时等系统故障不会修改订阅者状态。
+4. `SUBSCRIPTION_CONFIRMATION_SECRET` 用于签署确认和退订链接，必须与 Vercel 中的同名变量保持一致。
+
+Notion 数据库需要包含 `Name`、`Email` 和 `状态` 三列，状态选项包括 `待确认`、`正常`、`已退订` 和 `异常`。只有状态为 `正常` 的订阅者会收到邮件；其他状态都会跳过。如果同一地址连续三次被 SMTP 以 5xx 永久拒绝，程序会自动将该记录改为 `异常`。SMTP 登录失败、网络超时等系统故障不会修改订阅者状态。
 
 到这里部署就已经结束了，好像是比之前直接把发送的地址填写到secert的方式麻烦了一些，但是提供了更多的功能。
 
@@ -80,15 +84,26 @@ Notion 数据库需要包含 `Name`、`Email` 和 `状态` 三列。只有状态
 
 1. 将 Root Directory 设置为 `apps/subscription-web`
 2. 配置 `NOTION_API_KEY` 和 `NOTION_DATABASE_ID`
-3. 配置 `APP_BASE_URL` 和 `SUBSCRIPTION_CONFIRMATION_SECRET`，用于生成 24 小时有效的一次性确认链接
+3. 配置 `APP_BASE_URL` 和 `SUBSCRIPTION_CONFIRMATION_SECRET`，用于生成确认和退订链接；签名密钥必须与 GitHub Actions 中的同名 secret 一致
 4. 配置 `SENDING_ACCOUNT`、`SENDING_PASSWORD` 和 `SERVER`，用于向新订阅者发送确认邮件；如需在确认后接收站长通知，再配置 `NOTIFICATION_EMAIL`
 5. 将 `mailist.nowscott.top` 绑定到该 Vercel 项目
 
-订阅 API 会先写入 `状态=待确认`。订阅者通过邮件中的签名链接打开简洁确认页，并点击确认按钮后，才会更新为 `状态=正常` 并进入每日发送名单；随后系统会另发一封订阅成功邮件。链接有效期为 24 小时，确认后不可重复使用。`已退订` 邮箱重新填写表单时会恢复为 `待确认` 并重新确认，`异常` 邮箱不会自动恢复。详细说明见 [`apps/subscription-web/README.md`](apps/subscription-web/README.md)。
+订阅 API 会先写入 `状态=待确认`。订阅者通过邮件中的签名链接打开简洁确认页，并点击确认按钮后，才会更新为 `状态=正常` 并进入每日发送名单；随后系统会另发一封订阅成功邮件。确认邮件会明确展示 24 小时链接的失效时间，确认后不可重复使用。
+
+每日早报底部包含按收件邮箱签名的退订按钮。按钮先打开退订确认页，只有用户主动确认后才会更新为 `状态=已退订`，避免邮件安全扫描器误退订；链接有效期为 45 天。`已退订` 邮箱重新填写表单时会恢复为 `待确认` 并重新确认，`异常` 邮箱不会自动恢复。详细说明见 [`apps/subscription-web/README.md`](apps/subscription-web/README.md)。
 
 最近也有一些朋友订阅了我的每日科技早报，目前的新闻源来自IT之家，滤除了营销信息的新闻，并且也写了一个排序算法，每天只发送排名前25的新闻。
 
 ## 最新更新
+
+### 2026年6月 - 邮件样式与退订流程
+
+- 确认邮件展示签名链接的准确失效时间，默认有效期为 24 小时
+- 重写每日早报 HTML，使用更适合邮箱客户端的内联样式与表格布局
+- 每条新闻增加序号与更清晰的阅读层级，通知区和页脚统一视觉
+- 每封早报包含按收件邮箱签名的退订按钮，退订链接有效期为 45 天
+- 退订链接先进入确认页，用户主动确认后才将 Notion 状态更新为 `已退订`
+- 退订用户仍可重新填写订阅表单，完成邮箱确认后恢复订阅
 
 ### 2026年6月 - v2.3.0 订阅服务合并与重构
 

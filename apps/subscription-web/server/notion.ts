@@ -231,5 +231,15 @@ export function createNotionSubscriberRepository(
         }),
       });
     },
+
+    async unsubscribe(id) {
+      const config = await resolveDataSource();
+      await notionRequest(`/pages/${id}`, apiKey, {
+        method: "PATCH",
+        body: JSON.stringify({
+          properties: buildStatusProperty(config.statusProperty, "已退订"),
+        }),
+      });
+    },
   };
 }

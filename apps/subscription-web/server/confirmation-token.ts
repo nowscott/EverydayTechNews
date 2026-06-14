@@ -4,14 +4,17 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 
-const TOKEN_VERSION = 1;
-const DEFAULT_TTL_SECONDS = 24 * 60 * 60;
+const TOKEN_VERSION = 2;
+const CONFIRMATION_TTL_SECONDS = 24 * 60 * 60;
 
-interface ConfirmationTokenPayload {
+export type SubscriptionTokenPurpose = "confirm" | "unsubscribe";
+
+interface SubscriptionTokenPayload {
   v: number;
   email: string;
   exp: number;
   jti: string;
+  purpose: SubscriptionTokenPurpose;
 }
 
 interface ConfirmationEnvironment {
@@ -39,32 +42,38 @@ function signature(payload: string, secret: string) {
   return createHmac("sha256", secret).update(payload).digest("base64url");
 }
 
-export function createConfirmationToken(
+export function createSubscriptionToken(
   email: string,
+  purpose: SubscriptionTokenPurpose,
   secret: string,
   now = new Date(),
-  ttlSeconds = DEFAULT_TTL_SECONDS,
+  ttlSeconds = CONFIRMATION_TTL_SECONDS,
 ) {
-  const payload: ConfirmationTokenPayload = {
+  const payload: SubscriptionTokenPayload = {
     v: TOKEN_VERSION,
     email: email.trim().toLowerCase(),
     exp: Math.floor(now.getTime() / 1000) + ttlSeconds,
     jti: randomBytes(16).toString("base64url"),
+    purpose,
   };
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString(
     "base64url",
   );
-  return `${encodedPayload}.${signature(encodedPayload, secret)}`;
+  return {
+    token: `${encodedPayload}.${signature(encodedPayload, secret)}`,
+    expiresAt: new Date(payload.exp * 1000),
+  };
 }
 
-export function verifyConfirmationToken(
+export function verifySubscriptionToken(
   token: string,
+  purpose: SubscriptionTokenPurpose,
   secret: string,
   now = new Date(),
 ) {
   const [encodedPayload, encodedSignature, extra] = token.split(".");
   if (!encodedPayload || !encodedSignature || extra) {
-    throw new ConfirmationTokenError("invalid", "确认链接格式无效");
+    throw new ConfirmationTokenError("invalid", "链接格式无效");
   }
 
   const expected = Buffer.from(signature(encodedPayload, secret));
@@ -73,16 +82,16 @@ export function verifyConfirmationToken(
     expected.length !== actual.length ||
     !timingSafeEqual(expected, actual)
   ) {
-    throw new ConfirmationTokenError("invalid", "确认链接签名无效");
+    throw new ConfirmationTokenError("invalid", "链接签名无效");
   }
 
-  let payload: ConfirmationTokenPayload;
+  let payload: SubscriptionTokenPayload;
   try {
     payload = JSON.parse(
       Buffer.from(encodedPayload, "base64url").toString("utf8"),
-    ) as ConfirmationTokenPayload;
+    ) as SubscriptionTokenPayload;
   } catch {
-    throw new ConfirmationTokenError("invalid", "确认链接内容无效");
+    throw new ConfirmationTokenError("invalid", "链接内容无效");
   }
 
   if (
@@ -91,13 +100,14 @@ export function verifyConfirmationToken(
     !payload.email ||
     typeof payload.exp !== "number" ||
     typeof payload.jti !== "string" ||
-    !payload.jti
+    !payload.jti ||
+    payload.purpose !== purpose
   ) {
-    throw new ConfirmationTokenError("invalid", "确认链接内容无效");
+    throw new ConfirmationTokenError("invalid", "链接内容无效");
   }
 
   if (payload.exp <= Math.floor(now.getTime() / 1000)) {
-    throw new ConfirmationTokenError("expired", "确认链接已过期");
+    throw new ConfirmationTokenError("expired", "链接已过期");
   }
 
   return {
@@ -119,17 +129,26 @@ export function createConfirmationLinkFactory(
   );
 
   return (email: string) => {
-    const token = createConfirmationToken(email, secret);
-    return `${baseUrl}/?confirmation_token=${encodeURIComponent(token)}`;
+    const { token, expiresAt } = createSubscriptionToken(
+      email,
+      "confirm",
+      secret,
+    );
+    return {
+      url: `${baseUrl}/?confirmation_token=${encodeURIComponent(token)}`,
+      expiresAt,
+    };
   };
 }
 
-export function verifyEnvironmentConfirmationToken(
+export function verifyEnvironmentSubscriptionToken(
   token: string,
+  purpose: SubscriptionTokenPurpose,
   environment: ConfirmationEnvironment = process.env,
 ) {
-  return verifyConfirmationToken(
+  return verifySubscriptionToken(
     token,
+    purpose,
     required(
       environment.SUBSCRIPTION_CONFIRMATION_SECRET,
       "SUBSCRIPTION_CONFIRMATION_SECRET",

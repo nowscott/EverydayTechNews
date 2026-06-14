@@ -1,25 +1,27 @@
 import { describe, expect, it } from "vitest";
 import {
   ConfirmationTokenError,
-  createConfirmationToken,
-  verifyConfirmationToken,
+  createSubscriptionToken,
+  verifySubscriptionToken,
 } from "./confirmation-token.js";
 
 const SECRET = "test-secret-with-enough-entropy";
 const NOW = new Date("2026-06-14T00:00:00Z");
 
-describe("confirmation tokens", () => {
-  it("verifies a signed token before it expires", () => {
-    const token = createConfirmationToken(
+describe("subscription tokens", () => {
+  it("verifies a signed confirmation token before it expires", () => {
+    const { token } = createSubscriptionToken(
       "User@Example.com",
+      "confirm",
       SECRET,
       NOW,
       60,
     );
 
     expect(
-      verifyConfirmationToken(
+      verifySubscriptionToken(
         token,
+        "confirm",
         SECRET,
         new Date("2026-06-14T00:00:30Z"),
       ),
@@ -28,21 +30,48 @@ describe("confirmation tokens", () => {
     });
   });
 
+  it("does not allow a confirmation token to unsubscribe", () => {
+    const { token } = createSubscriptionToken(
+      "user@example.com",
+      "confirm",
+      SECRET,
+      NOW,
+      60,
+    );
+
+    expect(() =>
+      verifySubscriptionToken(token, "unsubscribe", SECRET, NOW),
+    ).toThrow(ConfirmationTokenError);
+  });
+
   it("rejects a modified token", () => {
-    const token = createConfirmationToken("user@example.com", SECRET, NOW, 60);
+    const { token } = createSubscriptionToken(
+      "user@example.com",
+      "confirm",
+      SECRET,
+      NOW,
+      60,
+    );
     const modified = `${token.slice(0, -1)}x`;
 
-    expect(() => verifyConfirmationToken(modified, SECRET, NOW)).toThrow(
-      ConfirmationTokenError,
-    );
+    expect(() =>
+      verifySubscriptionToken(modified, "confirm", SECRET, NOW),
+    ).toThrow(ConfirmationTokenError);
   });
 
   it("rejects an expired token", () => {
-    const token = createConfirmationToken("user@example.com", SECRET, NOW, 60);
+    const { token } = createSubscriptionToken(
+      "user@example.com",
+      "confirm",
+      SECRET,
+      NOW,
+      60,
+    );
 
     try {
-      verifyConfirmationToken(
+      verifySubscriptionToken(
         token,
+        "confirm",
         SECRET,
         new Date("2026-06-14T00:01:00Z"),
       );

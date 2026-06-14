@@ -55,6 +55,8 @@ jobs:
           SERVER: ${{ secrets.SERVER }}
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          APP_BASE_URL: https://mailist.nowscott.top
+          SUBSCRIPTION_CONFIRMATION_SECRET: ${{ secrets.SUBSCRIPTION_CONFIRMATION_SECRET }}
           TEST_RECIPIENT: ${{ inputs.test_recipient }}
         run: |
           python src/main.py

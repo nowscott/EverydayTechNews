@@ -1,5 +1,6 @@
 import type {
   ConfirmationMailer,
+  ConfirmationLink,
   Subscriber,
   SubscriberRepository,
 } from "./types.js";
@@ -7,7 +8,7 @@ import type {
 export interface SubscribeDependencies {
   repository: SubscriberRepository;
   confirmationMailer: ConfirmationMailer;
-  createConfirmationLink(email: string): string;
+  createConfirmationLink(email: string): ConfirmationLink;
 }
 
 export interface SubscribeResult {

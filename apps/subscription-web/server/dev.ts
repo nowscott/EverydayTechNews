@@ -4,6 +4,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import confirmHandler from "../api/confirm.js";
 import subscribeHandler from "../api/subscribe.js";
+import unsubscribeHandler from "../api/unsubscribe.js";
 
 const currentDirectory = dirname(fileURLToPath(import.meta.url));
 config({ path: resolve(currentDirectory, "../../../.env") });
@@ -19,6 +20,9 @@ app.all("/api/subscribe", (request, response) =>
 );
 app.all("/api/confirm", (request, response) =>
   confirmHandler(request, response),
+);
+app.all("/api/unsubscribe", (request, response) =>
+  unsubscribeHandler(request, response),
 );
 
 app.listen(port, "127.0.0.1", () => {

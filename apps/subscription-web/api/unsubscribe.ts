@@ -3,9 +3,8 @@ import {
   ConfirmationTokenError,
   verifyEnvironmentSubscriptionToken,
 } from "../server/confirmation-token.js";
-import { confirmSubscriber } from "../server/confirm.js";
-import { createSubscriptionMailers } from "../server/mailer.js";
 import { createNotionSubscriberRepository } from "../server/notion.js";
+import { unsubscribeSubscriber } from "../server/unsubscribe.js";
 
 interface ApiRequest {
   method?: string;
@@ -18,7 +17,7 @@ interface ApiResponse {
   json(body: unknown): unknown;
 }
 
-const confirmationSchema = z.object({
+const unsubscribeSchema = z.object({
   token: z.string().min(1).max(2_048),
 });
 
@@ -38,20 +37,18 @@ export default async function handler(
   }
 
   try {
-    const { token } = confirmationSchema.parse(request.body);
-    const { email } = verifyEnvironmentSubscriptionToken(token, "confirm");
-    const { ownerNotifier, successMailer } = createSubscriptionMailers();
-    const result = await confirmSubscriber(email, {
-      repository: createNotionSubscriberRepository(),
-      successMailer,
-      ownerNotifier,
-    });
+    const { token } = unsubscribeSchema.parse(request.body);
+    const { email } = verifyEnvironmentSubscriptionToken(token, "unsubscribe");
+    const result = await unsubscribeSubscriber(
+      email,
+      createNotionSubscriberRepository(),
+    );
 
     if (result.status === "invalid") {
       return response.status(400).json({
         ok: false,
         status: result.status,
-        message: "确认链接无效，请重新提交邮箱获取新链接。",
+        message: "退订链接无效或当前订阅状态不允许退订。",
       });
     }
 
@@ -59,33 +56,32 @@ export default async function handler(
       ok: true,
       status: result.status,
       message:
-        result.status === "confirmed"
-          ? `${result.subscriber.name}，邮箱确认完成。下一期科技早报将发送到你的邮箱。`
-          : `${result.subscriber.name}，这个确认链接已经使用过，你的订阅已生效。`,
+        result.status === "unsubscribed"
+          ? `${result.name}，你已成功退订每日科技早报。`
+          : `${result.name}，这个邮箱已经退订，无需重复操作。`,
     });
   } catch (error) {
     if (error instanceof ZodError) {
       return response.status(400).json({
         ok: false,
-        message: "确认链接无效，请重新提交邮箱获取新链接。",
+        message: "退订链接无效。",
       });
     }
-
     if (error instanceof ConfirmationTokenError) {
       return response.status(400).json({
         ok: false,
         status: error.code,
         message:
           error.code === "expired"
-            ? "确认链接已过期，请重新提交邮箱获取新链接。"
-            : "确认链接无效，请重新提交邮箱获取新链接。",
+            ? "退订链接已过期，请使用最近一期邮件中的链接。"
+            : "退订链接无效。",
       });
     }
 
-    console.error("确认订阅接口执行失败", error);
+    console.error("退订接口执行失败", error);
     return response.status(500).json({
       ok: false,
-      message: "暂时无法确认订阅，请稍后重试。",
+      message: "暂时无法退订，请稍后重试。",
     });
   }
 }

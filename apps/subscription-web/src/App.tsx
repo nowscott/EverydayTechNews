@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { confirmSubscription, subscribe } from "./api";
+import { confirmSubscription, subscribe, unsubscribe } from "./api";
 
 type SubmissionState =
   | { mode: "idle"; message: "" }
   | { mode: "confirmation"; message: string }
+  | { mode: "unsubscribe"; message: string }
   | { mode: "loading"; message: string }
   | { mode: "success"; message: string }
   | { mode: "error"; message: string };
@@ -17,6 +18,12 @@ function initialSubmissionState(): SubmissionState {
     return {
       mode: "confirmation",
       message: "请点击下方按钮完成邮箱确认。此链接只能成功使用一次。",
+    };
+  }
+  if (new URLSearchParams(window.location.search).has("unsubscribe_token")) {
+    return {
+      mode: "unsubscribe",
+      message: "确认后将停止接收每日科技早报。你之后仍可重新填写订阅表单恢复订阅。",
     };
   }
 
@@ -78,15 +85,21 @@ export default function App() {
   const [isConfirmationFlow] = useState(() =>
     new URLSearchParams(window.location.search).has("confirmation_token"),
   );
+  const [isUnsubscribeFlow] = useState(() =>
+    new URLSearchParams(window.location.search).has("unsubscribe_token"),
+  );
   const [confirmationToken, setConfirmationToken] = useState(() =>
     new URLSearchParams(window.location.search).get("confirmation_token"),
   );
+  const [unsubscribeToken, setUnsubscribeToken] = useState(() =>
+    new URLSearchParams(window.location.search).get("unsubscribe_token"),
+  );
 
   useEffect(() => {
-    if (confirmationToken) {
+    if (confirmationToken || unsubscribeToken) {
       window.history.replaceState(null, "", window.location.pathname);
     }
-  }, [confirmationToken]);
+  }, [confirmationToken, unsubscribeToken]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -131,9 +144,28 @@ export default function App() {
     }
   }
 
+  async function handleUnsubscribe() {
+    if (!unsubscribeToken || state.mode === "loading") return;
+    setState({ mode: "loading", message: "正在处理退订…" });
+
+    try {
+      const result = await unsubscribe(unsubscribeToken);
+      setState({ mode: "success", message: result.message });
+      setUnsubscribeToken(null);
+    } catch (error) {
+      setState({
+        mode: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "暂时无法退订，请稍后重试。",
+      });
+    }
+  }
+
   const isLoading = state.mode === "loading";
 
-  if (isConfirmationFlow) {
+  if (isConfirmationFlow || isUnsubscribeFlow) {
     return (
       <main className="page-grid min-h-screen text-[#172126] dark:text-[#e7e4d9]">
         <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-5 py-6 sm:px-8 sm:py-8">
@@ -159,10 +191,10 @@ export default function App() {
               />
               <div className="relative border border-[#cbd4d2] bg-[rgba(255,254,249,0.94)] p-7 shadow-[0_28px_90px_rgba(35,48,48,0.12)] sm:p-10 dark:border-[#3a4647] dark:bg-[rgba(24,33,36,0.96)] dark:shadow-[0_28px_90px_rgba(0,0,0,0.32)]">
                 <p className="font-mono text-[11px] font-bold tracking-[0.16em] text-[#bd4f32] dark:text-[#dd7659]">
-                  EMAIL CONFIRMATION
+                  {isUnsubscribeFlow ? "UNSUBSCRIBE" : "EMAIL CONFIRMATION"}
                 </p>
                 <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em]">
-                  确认邮件订阅
+                  {isUnsubscribeFlow ? "退订每日科技早报" : "确认邮件订阅"}
                 </h1>
 
                 <div
@@ -181,15 +213,30 @@ export default function App() {
                     <span className="flex-1">{state.message}</span>
                   </div>
 
-                  {state.mode === "confirmation" && confirmationToken && (
+                  {isConfirmationFlow &&
+                    state.mode !== "success" &&
+                    confirmationToken && (
                     <button
                       type="button"
                       onClick={handleConfirmation}
-                      className="mt-5 flex w-full cursor-pointer items-center justify-center border-0 bg-[#bd4f32] px-5 py-3.5 font-bold text-[#fffaf1] transition hover:bg-[#8c3521] dark:bg-[#dd7659] dark:text-[#101719] dark:hover:bg-[#c86448]"
+                      disabled={isLoading}
+                      className="mt-5 flex w-full cursor-pointer items-center justify-center border-0 bg-[#bd4f32] px-5 py-3.5 font-bold text-[#fffaf1] transition hover:bg-[#8c3521] disabled:cursor-wait disabled:opacity-65 dark:bg-[#dd7659] dark:text-[#101719] dark:hover:bg-[#c86448]"
                     >
-                      确认订阅
+                      {isLoading ? "正在确认…" : "确认订阅"}
                     </button>
-                  )}
+                    )}
+                  {isUnsubscribeFlow &&
+                    state.mode !== "success" &&
+                    unsubscribeToken && (
+                      <button
+                        type="button"
+                        onClick={handleUnsubscribe}
+                        disabled={isLoading}
+                        className="mt-5 flex w-full cursor-pointer items-center justify-center border-0 bg-[#bd4f32] px-5 py-3.5 font-bold text-[#fffaf1] transition hover:bg-[#8c3521] disabled:cursor-wait disabled:opacity-65 dark:bg-[#dd7659] dark:text-[#101719] dark:hover:bg-[#c86448]"
+                      >
+                        {isLoading ? "正在退订…" : "确认退订"}
+                      </button>
+                    )}
                 </div>
               </div>
             </div>

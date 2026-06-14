@@ -8,11 +8,15 @@ function dependencies(overrides: Record<string, unknown> = {}) {
       createPending: vi.fn().mockResolvedValue(undefined),
       restorePending: vi.fn().mockResolvedValue(undefined),
       activate: vi.fn().mockResolvedValue(undefined),
+      unsubscribe: vi.fn().mockResolvedValue(undefined),
     },
     confirmationMailer: {
       sendConfirmation: vi.fn().mockResolvedValue(undefined),
     },
-    createConfirmationLink: vi.fn().mockReturnValue("https://example.com/confirm"),
+    createConfirmationLink: vi.fn().mockReturnValue({
+      url: "https://example.com/confirm",
+      expiresAt: new Date("2026-06-15T00:00:00Z"),
+    }),
     ...overrides,
   };
 }
@@ -48,7 +52,10 @@ describe("registerSubscriber", () => {
     expect(deps.repository.createPending).toHaveBeenCalledOnce();
     expect(deps.confirmationMailer.sendConfirmation).toHaveBeenCalledWith(
       { name: "小林", email: "user@example.com" },
-      "https://example.com/confirm",
+      {
+        url: "https://example.com/confirm",
+        expiresAt: new Date("2026-06-15T00:00:00Z"),
+      },
     );
   });
 

@@ -13,10 +13,19 @@ export interface SubscriberRepository {
   createPending(subscriber: Subscriber): Promise<void>;
   restorePending(id: string, subscriber: Subscriber): Promise<void>;
   activate(id: string): Promise<void>;
+  unsubscribe(id: string): Promise<void>;
+}
+
+export interface ConfirmationLink {
+  url: string;
+  expiresAt: Date;
 }
 
 export interface ConfirmationMailer {
-  sendConfirmation(subscriber: Subscriber, confirmationUrl: string): Promise<void>;
+  sendConfirmation(
+    subscriber: Subscriber,
+    confirmationLink: ConfirmationLink,
+  ): Promise<void>;
 }
 
 export interface SuccessMailer {

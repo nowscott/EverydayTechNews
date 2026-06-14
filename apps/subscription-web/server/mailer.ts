@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import type {
   ConfirmationMailer,
+  ConfirmationLink,
   OwnerNotifier,
   Subscriber,
   SuccessMailer,
@@ -27,6 +28,21 @@ function escapeHtml(value: string) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function formatShanghaiTime(value: Date) {
+  const parts = new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(value);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value || "";
+  return `${part("year")}年${part("month")}月${part("day")}日 ${part("hour")}:${part("minute")}`;
 }
 
 export function createSubscriptionMailers(
@@ -58,8 +74,9 @@ export function createSubscriptionMailers(
     confirmationMailer: {
       async sendConfirmation(
         subscriber: Subscriber,
-        confirmationUrl: string,
+        confirmationLink: ConfirmationLink,
       ) {
+        const expiresAt = `${formatShanghaiTime(confirmationLink.expiresAt)}（北京时间）`;
         await transporter.sendMail({
           from: sender,
           to: subscriber.email,
@@ -68,9 +85,10 @@ export function createSubscriptionMailers(
             `${subscriber.name}，你好：`,
             "",
             "请点击下面的链接确认订阅每日科技早报：",
-            confirmationUrl,
+            confirmationLink.url,
             "",
-            "链接将在 24 小时后失效，并且只能确认一次。",
+            `链接失效时间：${expiresAt}`,
+            "链接只能确认一次。",
             "如果这不是你的操作，可以忽略这封邮件。",
           ].join("\n"),
           html: `
@@ -78,9 +96,9 @@ export function createSubscriptionMailers(
               <p>${escapeHtml(subscriber.name)}，你好：</p>
               <p>请确认订阅每日科技早报。确认后，后续早报将发送到这个邮箱。</p>
               <p style="margin:28px 0">
-                <a href="${escapeHtml(confirmationUrl)}" style="display:inline-block;background:#bd4f32;color:#fffaf1;text-decoration:none;padding:12px 20px;font-weight:700">确认订阅</a>
+                <a href="${escapeHtml(confirmationLink.url)}" style="display:inline-block;background:#bd4f32;color:#fffaf1;text-decoration:none;padding:12px 20px;font-weight:700">确认订阅</a>
               </p>
-              <p style="font-size:13px;color:#637078">链接将在 24 小时后失效，并且只能确认一次。如果这不是你的操作，可以忽略这封邮件。</p>
+              <p style="font-size:13px;color:#637078">链接失效时间：${escapeHtml(expiresAt)}。链接只能确认一次。如果这不是你的操作，可以忽略这封邮件。</p>
             </div>
           `.trim(),
         });

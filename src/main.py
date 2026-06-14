@@ -14,6 +14,7 @@ from mailer import (
 )
 from newsletter import build_message, format_news, is_news_sorted, simple_filter_news
 from notion_client import fetch_notion_users, update_notion_user_status
+from subscription_links import build_unsubscribe_link
 
 
 def get_env_variable(name):
@@ -65,13 +66,23 @@ def send_newsletter_to_users(
     password,
     server,
     notifications,
+    app_base_url="",
+    confirmation_secret="",
 ):
     failed_users = []
     for user in users:
+        unsubscribe_url = ""
+        if app_base_url and confirmation_secret:
+            unsubscribe_url = build_unsubscribe_link(
+                user["email"],
+                app_base_url,
+                confirmation_secret,
+            )
         personalized_message = build_message(
             user["name"],
             formatted_news,
             **notifications,
+            unsubscribe_url=unsubscribe_url,
         )
         result = send_message(
             sender,
@@ -113,6 +124,10 @@ def main():
         sender = get_env_variable("SENDING_ACCOUNT")
         password = get_env_variable("SENDING_PASSWORD")
         server = get_env_variable("SERVER")
+        app_base_url = get_env_variable("APP_BASE_URL")
+        confirmation_secret = get_env_variable(
+            "SUBSCRIPTION_CONFIRMATION_SECRET"
+        )
         if test_recipient:
             api_key = ""
             users = [{"name": "NowScott", "email": test_recipient}]
@@ -134,6 +149,8 @@ def main():
         password,
         server,
         load_notifications(),
+        app_base_url,
+        confirmation_secret,
     )
     success_count = len(users) - len(failed_users)
     print(

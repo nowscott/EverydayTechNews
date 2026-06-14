@@ -28,7 +28,10 @@ describe("createSubscriptionMailers", () => {
 
     await confirmationMailer.sendConfirmation(
       { name: "小林", email: "user@example.com" },
-      "https://example.com/?confirmation_token=signed-token",
+      {
+        url: "https://example.com/?confirmation_token=signed-token",
+        expiresAt: new Date("2026-06-14T16:30:00Z"),
+      },
     );
 
     expect(sendMail).toHaveBeenCalledOnce();
@@ -39,6 +42,9 @@ describe("createSubscriptionMailers", () => {
         subject: "每日科技早报：请确认你的订阅",
         text: expect.stringContaining("signed-token"),
       }),
+    );
+    expect(sendMail.mock.calls[0][0].text).toContain(
+      "2026年06月15日 00:30（北京时间）",
     );
   });
 

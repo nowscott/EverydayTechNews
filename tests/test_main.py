@@ -314,6 +314,44 @@ class NewsletterDeliveryTests(unittest.TestCase):
         self.assertEqual(failed, ["test@example.com"])
         update_status.assert_not_called()
 
+    @patch("main.build_unsubscribe_link", return_value="https://example.com/unsubscribe")
+    @patch("main.build_message", return_value="<p>message</p>")
+    @patch("main.send_message", return_value=main.SEND_SUCCESS)
+    def test_daily_message_contains_personalized_unsubscribe_link(
+        self,
+        send_message,
+        build_message,
+        build_unsubscribe_link,
+    ):
+        user = {"name": "Alice", "email": "alice@example.com"}
+
+        failed = main.send_newsletter_to_users(
+            [user],
+            "<p>news</p>",
+            "",
+            "sender@example.com",
+            "password",
+            "smtp.example.com",
+            {
+                "start_notification": "",
+                "end_notification": "",
+                "end_comment": "",
+            },
+            "https://mailist.example.com",
+            "signing-secret",
+        )
+
+        self.assertEqual(failed, [])
+        build_unsubscribe_link.assert_called_once_with(
+            "alice@example.com",
+            "https://mailist.example.com",
+            "signing-secret",
+        )
+        self.assertEqual(
+            build_message.call_args.kwargs["unsubscribe_url"],
+            "https://example.com/unsubscribe",
+        )
+
 
 class FormattingTests(unittest.TestCase):
     def test_escapes_news_html(self):
@@ -323,6 +361,19 @@ class FormattingTests(unittest.TestCase):
 
         self.assertIn("&lt;b&gt;unsafe&lt;/b&gt;", formatted)
         self.assertNotIn("<b>unsafe</b>", formatted)
+
+    def test_daily_message_escapes_content_and_contains_unsubscribe_button(self):
+        message = main.build_message(
+            "<Scott>",
+            "<p>news</p>",
+            start_notification="<notice>",
+            unsubscribe_url="https://example.com/?a=1&b=2",
+        )
+
+        self.assertIn("早上好，&lt;Scott&gt;", message)
+        self.assertIn("&lt;notice&gt;", message)
+        self.assertIn("退订每日科技早报", message)
+        self.assertIn("a=1&amp;b=2", message)
 
 
 if __name__ == "__main__":
