@@ -18,6 +18,10 @@ export interface ConfirmationMailer {
   sendConfirmation(subscriber: Subscriber, confirmationUrl: string): Promise<void>;
 }
 
+export interface SuccessMailer {
+  sendSuccess(subscriber: Subscriber): Promise<void>;
+}
+
 export interface OwnerNotifier {
   notifyOwner(subscriber: Subscriber): Promise<void>;
 }

@@ -40,27 +40,28 @@ export default async function handler(
   try {
     const { token } = confirmationSchema.parse(request.body);
     const { email } = verifyEnvironmentConfirmationToken(token);
-    const { ownerNotifier } = createSubscriptionMailers();
+    const { ownerNotifier, successMailer } = createSubscriptionMailers();
     const result = await confirmSubscriber(email, {
       repository: createNotionSubscriberRepository(),
+      successMailer,
       ownerNotifier,
     });
 
-    if (result === "invalid") {
+    if (result.status === "invalid") {
       return response.status(400).json({
         ok: false,
-        status: result,
+        status: result.status,
         message: "确认链接无效，请重新提交邮箱获取新链接。",
       });
     }
 
     return response.status(200).json({
       ok: true,
-      status: result,
+      status: result.status,
       message:
-        result === "confirmed"
-          ? "邮箱确认完成，下一期科技早报将发送到你的邮箱。"
-          : "这个确认链接已经使用过，你的订阅已生效。",
+        result.status === "confirmed"
+          ? `${result.subscriber.name}，邮箱确认完成。下一期科技早报将发送到你的邮箱。`
+          : `${result.subscriber.name}，这个确认链接已经使用过，你的订阅已生效。`,
     });
   } catch (error) {
     if (error instanceof ZodError) {

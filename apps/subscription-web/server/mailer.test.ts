@@ -63,6 +63,27 @@ describe("createSubscriptionMailers", () => {
     );
   });
 
+  it("sends a separate success email after confirmation", async () => {
+    const { successMailer } = createSubscriptionMailers({
+      SENDING_ACCOUNT: "sender@example.com",
+      SENDING_PASSWORD: "password",
+      SERVER: "smtp.example.com",
+    });
+
+    await successMailer.sendSuccess({
+      name: "小林",
+      email: "user@example.com",
+    });
+
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "user@example.com",
+        subject: "每日科技早报：订阅成功",
+        text: expect.stringContaining("小林"),
+      }),
+    );
+  });
+
   it("requires complete SMTP settings", () => {
     expect(() => createSubscriptionMailers({})).toThrow(
       "SMTP 环境变量不完整",

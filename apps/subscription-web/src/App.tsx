@@ -75,6 +75,9 @@ function CheckIcon() {
 
 export default function App() {
   const [state, setState] = useState<SubmissionState>(initialSubmissionState);
+  const [isConfirmationFlow] = useState(() =>
+    new URLSearchParams(window.location.search).has("confirmation_token"),
+  );
   const [confirmationToken, setConfirmationToken] = useState(() =>
     new URLSearchParams(window.location.search).get("confirmation_token"),
   );
@@ -129,6 +132,72 @@ export default function App() {
   }
 
   const isLoading = state.mode === "loading";
+
+  if (isConfirmationFlow) {
+    return (
+      <main className="page-grid min-h-screen text-[#172126] dark:text-[#e7e4d9]">
+        <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-5 py-6 sm:px-8 sm:py-8">
+          <header className="flex items-center border-b border-[#cfd7d5] pb-5 dark:border-[#354244]">
+            <a href="/" className="flex items-center gap-3 no-underline">
+              <span className="grid size-10 place-items-center border border-[#bd4f32] bg-[#bd4f32] text-[#fffaf1] dark:border-[#dd7659] dark:bg-[#dd7659] dark:text-[#101719]">
+                <MailIcon />
+              </span>
+              <span>
+                <strong className="block text-base tracking-tight">每日科技早报</strong>
+                <span className="mt-0.5 block font-mono text-[10px] tracking-[0.16em] text-[#637078] dark:text-[#aab1ae]">
+                  EVERYDAY TECH NEWS
+                </span>
+              </span>
+            </a>
+          </header>
+
+          <section className="flex flex-1 items-center justify-center py-14">
+            <div className="relative w-full max-w-xl">
+              <div
+                aria-hidden="true"
+                className="absolute -inset-3 translate-x-3 translate-y-3 border border-[#bd4f32]/35 dark:border-[#dd7659]/30"
+              />
+              <div className="relative border border-[#cbd4d2] bg-[rgba(255,254,249,0.94)] p-7 shadow-[0_28px_90px_rgba(35,48,48,0.12)] sm:p-10 dark:border-[#3a4647] dark:bg-[rgba(24,33,36,0.96)] dark:shadow-[0_28px_90px_rgba(0,0,0,0.32)]">
+                <p className="font-mono text-[11px] font-bold tracking-[0.16em] text-[#bd4f32] dark:text-[#dd7659]">
+                  EMAIL CONFIRMATION
+                </p>
+                <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em]">
+                  确认邮件订阅
+                </h1>
+
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className={`mt-7 border px-5 py-4 text-sm leading-7 ${
+                    state.mode === "error"
+                      ? "border-[#bd4f32]/45 bg-[#bd4f32]/5 text-[#8c3521] dark:border-[#dd7659]/45 dark:text-[#f0a18b]"
+                      : state.mode === "success"
+                        ? "border-[#2f6f62]/40 bg-[#2f6f62]/5 text-[#24564c] dark:border-[#79b3a5]/40 dark:text-[#93c8bb]"
+                        : "border-[#cbd4d2] text-[#637078] dark:border-[#3a4647] dark:text-[#aab1ae]"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    {state.mode === "success" && <CheckIcon />}
+                    <span className="flex-1">{state.message}</span>
+                  </div>
+
+                  {state.mode === "confirmation" && confirmationToken && (
+                    <button
+                      type="button"
+                      onClick={handleConfirmation}
+                      className="mt-5 flex w-full cursor-pointer items-center justify-center border-0 bg-[#bd4f32] px-5 py-3.5 font-bold text-[#fffaf1] transition hover:bg-[#8c3521] dark:bg-[#dd7659] dark:text-[#101719] dark:hover:bg-[#c86448]"
+                    >
+                      确认订阅
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="page-grid min-h-screen text-[#172126] dark:text-[#e7e4d9]">
@@ -204,53 +273,53 @@ export default function App() {
               </div>
 
               <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-                <label className="block">
-                  <span className="mb-2 block text-sm font-semibold">你的称呼</span>
-                  <input
-                    name="name"
-                    type="text"
-                    autoComplete="name"
-                    required
-                    minLength={1}
-                    maxLength={50}
-                    placeholder="例如：小林"
-                    className="w-full rounded-none border border-[#9eaaa8] bg-white/35 px-4 py-3.5 text-base outline-none transition placeholder:text-[#8a9598] focus:border-[#bd4f32] focus:ring-2 focus:ring-[#bd4f32]/15 dark:border-[#536264] dark:bg-white/[0.025] dark:placeholder:text-[#778285] dark:focus:border-[#dd7659] dark:focus:ring-[#dd7659]/20"
-                  />
-                </label>
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-semibold">你的称呼</span>
+                    <input
+                      name="name"
+                      type="text"
+                      autoComplete="name"
+                      required
+                      minLength={1}
+                      maxLength={50}
+                      placeholder="例如：小林"
+                      className="w-full rounded-none border border-[#9eaaa8] bg-white/35 px-4 py-3.5 text-base outline-none transition placeholder:text-[#8a9598] focus:border-[#bd4f32] focus:ring-2 focus:ring-[#bd4f32]/15 dark:border-[#536264] dark:bg-white/[0.025] dark:placeholder:text-[#778285] dark:focus:border-[#dd7659] dark:focus:ring-[#dd7659]/20"
+                    />
+                  </label>
 
-                <label className="block">
-                  <span className="mb-2 block text-sm font-semibold">接收邮箱</span>
-                  <input
-                    name="email"
-                    type="email"
-                    inputMode="email"
-                    autoComplete="email"
-                    required
-                    maxLength={254}
-                    placeholder="you@example.com"
-                    className="w-full rounded-none border border-[#9eaaa8] bg-white/35 px-4 py-3.5 font-sans text-base outline-none transition placeholder:text-[#8a9598] focus:border-[#bd4f32] focus:ring-2 focus:ring-[#bd4f32]/15 dark:border-[#536264] dark:bg-white/[0.025] dark:placeholder:text-[#778285] dark:focus:border-[#dd7659] dark:focus:ring-[#dd7659]/20"
-                  />
-                </label>
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-semibold">接收邮箱</span>
+                    <input
+                      name="email"
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      required
+                      maxLength={254}
+                      placeholder="you@example.com"
+                      className="w-full rounded-none border border-[#9eaaa8] bg-white/35 px-4 py-3.5 font-sans text-base outline-none transition placeholder:text-[#8a9598] focus:border-[#bd4f32] focus:ring-2 focus:ring-[#bd4f32]/15 dark:border-[#536264] dark:bg-white/[0.025] dark:placeholder:text-[#778285] dark:focus:border-[#dd7659] dark:focus:ring-[#dd7659]/20"
+                    />
+                  </label>
 
-                <label className="absolute -left-[9999px]" aria-hidden="true">
-                  公司
-                  <input name="company" type="text" tabIndex={-1} autoComplete="off" />
-                </label>
+                  <label className="absolute -left-[9999px]" aria-hidden="true">
+                    公司
+                    <input name="company" type="text" tabIndex={-1} autoComplete="off" />
+                  </label>
 
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="flex w-full cursor-pointer items-center justify-between rounded-none border-0 bg-[#bd4f32] px-5 py-4 text-left text-[#fffaf1] transition hover:bg-[#8c3521] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#bd4f32] disabled:cursor-wait disabled:opacity-65 dark:bg-[#dd7659] dark:text-[#101719] dark:hover:bg-[#c86448]"
-                >
-                  <span className="text-base font-bold">
-                    {isLoading ? "正在订阅" : "订阅每日早报"}
-                  </span>
-                  {isLoading ? (
-                    <span className="size-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                  ) : (
-                    <ArrowIcon />
-                  )}
-                </button>
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="flex w-full cursor-pointer items-center justify-between rounded-none border-0 bg-[#bd4f32] px-5 py-4 text-left text-[#fffaf1] transition hover:bg-[#8c3521] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#bd4f32] disabled:cursor-wait disabled:opacity-65 dark:bg-[#dd7659] dark:text-[#101719] dark:hover:bg-[#c86448]"
+                  >
+                    <span className="text-base font-bold">
+                      {isLoading ? "正在订阅" : "订阅每日早报"}
+                    </span>
+                    {isLoading ? (
+                      <span className="size-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    ) : (
+                      <ArrowIcon />
+                    )}
+                  </button>
               </form>
 
               {state.mode !== "idle" && (
@@ -272,7 +341,7 @@ export default function App() {
                       <button
                         type="button"
                         onClick={handleConfirmation}
-                        className="mt-3 block border border-current bg-transparent px-4 py-2 font-bold"
+                        className="mt-5 flex w-full cursor-pointer items-center justify-center border-0 bg-[#bd4f32] px-5 py-3.5 font-bold text-[#fffaf1] transition hover:bg-[#8c3521] dark:bg-[#dd7659] dark:text-[#101719] dark:hover:bg-[#c86448]"
                       >
                         确认订阅
                       </button>

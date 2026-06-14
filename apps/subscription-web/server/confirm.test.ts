@@ -18,15 +18,18 @@ describe("confirmSubscriber", () => {
   it("activates a pending subscriber and notifies the owner", async () => {
     const repo = repository("待确认");
     const notifyOwner = vi.fn().mockResolvedValue(undefined);
+    const sendSuccess = vi.fn().mockResolvedValue(undefined);
 
     await expect(
       confirmSubscriber("user@example.com", {
         repository: repo,
+        successMailer: { sendSuccess },
         ownerNotifier: { notifyOwner },
       }),
-    ).resolves.toBe("confirmed");
+    ).resolves.toMatchObject({ status: "confirmed" });
 
     expect(repo.activate).toHaveBeenCalledWith("page-id");
+    expect(sendSuccess).toHaveBeenCalledOnce();
     expect(notifyOwner).toHaveBeenCalledOnce();
   });
 
@@ -34,8 +37,11 @@ describe("confirmSubscriber", () => {
     const repo = repository("正常");
 
     await expect(
-      confirmSubscriber("user@example.com", { repository: repo }),
-    ).resolves.toBe("used");
+      confirmSubscriber("user@example.com", {
+        repository: repo,
+        successMailer: { sendSuccess: vi.fn() },
+      }),
+    ).resolves.toMatchObject({ status: "used" });
     expect(repo.activate).not.toHaveBeenCalled();
   });
 
@@ -43,8 +49,11 @@ describe("confirmSubscriber", () => {
     const repo = repository("异常");
 
     await expect(
-      confirmSubscriber("user@example.com", { repository: repo }),
-    ).resolves.toBe("invalid");
+      confirmSubscriber("user@example.com", {
+        repository: repo,
+        successMailer: { sendSuccess: vi.fn() },
+      }),
+    ).resolves.toMatchObject({ status: "invalid" });
     expect(repo.activate).not.toHaveBeenCalled();
   });
 });

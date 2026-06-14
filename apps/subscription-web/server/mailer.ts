@@ -3,6 +3,7 @@ import type {
   ConfirmationMailer,
   OwnerNotifier,
   Subscriber,
+  SuccessMailer,
 } from "./types.js";
 
 interface MailEnvironment {
@@ -15,6 +16,7 @@ interface MailEnvironment {
 
 interface SubscriptionMailers {
   confirmationMailer: ConfirmationMailer;
+  successMailer: SuccessMailer;
   ownerNotifier: OwnerNotifier | null;
 }
 
@@ -79,6 +81,31 @@ export function createSubscriptionMailers(
                 <a href="${escapeHtml(confirmationUrl)}" style="display:inline-block;background:#bd4f32;color:#fffaf1;text-decoration:none;padding:12px 20px;font-weight:700">确认订阅</a>
               </p>
               <p style="font-size:13px;color:#637078">链接将在 24 小时后失效，并且只能确认一次。如果这不是你的操作，可以忽略这封邮件。</p>
+            </div>
+          `.trim(),
+        });
+      },
+    },
+    successMailer: {
+      async sendSuccess(subscriber: Subscriber) {
+        await transporter.sendMail({
+          from: sender,
+          to: subscriber.email,
+          subject: "每日科技早报：订阅成功",
+          text: [
+            `${subscriber.name}，你好：`,
+            "",
+            "你的邮箱已经确认，现已成功订阅每日科技早报。",
+            "下一期早报将发送到这个邮箱。",
+            "",
+            "感谢订阅。",
+          ].join("\n"),
+          html: `
+            <div style="max-width:560px;margin:0 auto;padding:32px 24px;font-family:Arial,'PingFang SC','Microsoft YaHei',sans-serif;color:#172126;line-height:1.7">
+              <p>${escapeHtml(subscriber.name)}，你好：</p>
+              <p>你的邮箱已经确认，现已成功订阅每日科技早报。</p>
+              <p>下一期早报将发送到这个邮箱。</p>
+              <p style="font-size:13px;color:#637078">感谢订阅。</p>
             </div>
           `.trim(),
         });
