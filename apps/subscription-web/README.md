@@ -23,15 +23,19 @@ npm run dev
 - `NOTION_API_KEY`：Notion 集成密钥
 - `NOTION_DATABASE_ID`：订阅数据库 ID
 - `NOTION_DATA_SOURCE_ID`：可选，直接指定 data source ID
-- `SENDING_ACCOUNT`、`SENDING_PASSWORD`、`SERVER`：新订阅通知 SMTP
+- `APP_BASE_URL`：订阅网页的公开地址，本地开发使用 `http://localhost:5173`
+- `SUBSCRIPTION_CONFIRMATION_SECRET`：确认令牌签名密钥，建议使用至少 32 字节的随机值
+- `SENDING_ACCOUNT`、`SENDING_PASSWORD`、`SERVER`：向新订阅者发送确认邮件的 SMTP
 - `SMTP_PORT`：可选，默认 `465`
-- `NOTIFICATION_EMAIL`：可选，接收新订阅通知的邮箱
+- `NOTIFICATION_EMAIL`：可选，订阅者确认后接收站长侧的新订阅通知
 
 Notion 数据源必须包含：
 
 - `Name`：标题字段
 - `Email`：邮箱字段
-- `状态` 或 `Status`：选择或状态字段，并包含 `正常` 选项
+- `状态` 或 `Status`：选择或状态字段，并包含 `待确认`、`正常` 选项
+
+新提交的邮箱先写入 `待确认`，确认邮件中的签名链接有效期为 24 小时。链接会打开确认页面，订阅者点击页面上的确认按钮后状态才更新为 `正常`，避免邮件安全扫描器误触发；同一令牌再次确认只会显示已使用。`待确认` 邮箱可以重新提交以获取新链接；已经为 `正常` 的邮箱不会重复发送邮件。站长通知只在邮箱确认成功后发送。
 
 ## Vercel 部署
 

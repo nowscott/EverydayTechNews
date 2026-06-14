@@ -1,45 +1,57 @@
 import type {
+  ConfirmationMailer,
   Subscriber,
   SubscriberRepository,
-  SubscriptionNotifier,
 } from "./types.js";
 
 export interface SubscribeDependencies {
   repository: SubscriberRepository;
-  notifier?: SubscriptionNotifier | null;
+  confirmationMailer: ConfirmationMailer;
+  createConfirmationLink(email: string): string;
 }
 
 export interface SubscribeResult {
-  status: "subscribed" | "existing";
+  status: "pending" | "existing";
   message: string;
 }
 
 const inFlightSubscriptions = new Map<string, Promise<SubscribeResult>>();
 
+export class ConfirmationDeliveryError extends Error {
+  constructor(cause: unknown) {
+    super("确认邮件发送失败", { cause });
+    this.name = "ConfirmationDeliveryError";
+  }
+}
+
 async function createSubscriber(
   subscriber: Subscriber,
   dependencies: SubscribeDependencies,
 ): Promise<SubscribeResult> {
-  if (await dependencies.repository.exists(subscriber.email)) {
+  const existing = await dependencies.repository.find(subscriber.email);
+  if (existing && existing.status !== "待确认") {
     return {
       status: "existing",
       message: "这个邮箱已经在订阅列表中，无需重复提交。",
     };
   }
 
-  await dependencies.repository.create(subscriber);
+  if (!existing) {
+    await dependencies.repository.createPending(subscriber);
+  }
 
-  if (dependencies.notifier) {
-    try {
-      await dependencies.notifier.notify(subscriber);
-    } catch (error) {
-      console.error("订阅已写入，但通知邮件发送失败", error);
-    }
+  try {
+    await dependencies.confirmationMailer.sendConfirmation(
+      subscriber,
+      dependencies.createConfirmationLink(subscriber.email),
+    );
+  } catch (error) {
+    throw new ConfirmationDeliveryError(error);
   }
 
   return {
-    status: "subscribed",
-    message: "订阅成功。下一期科技早报将发送到你的邮箱。",
+    status: "pending",
+    message: "确认邮件已发送，请在 24 小时内点击邮件中的链接完成订阅。",
   };
 }
 
@@ -52,8 +64,8 @@ export async function registerSubscriber(
   if (inFlight) {
     await inFlight;
     return {
-      status: "existing",
-      message: "这个邮箱已经在订阅列表中，无需重复提交。",
+      status: "pending",
+      message: "确认邮件已发送，请在 24 小时内点击邮件中的链接完成订阅。",
     };
   }
 

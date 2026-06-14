@@ -80,10 +80,11 @@ Notion 数据库需要包含 `Name`、`Email` 和 `状态` 三列。只有状态
 
 1. 将 Root Directory 设置为 `apps/subscription-web`
 2. 配置 `NOTION_API_KEY` 和 `NOTION_DATABASE_ID`
-3. 如需接收新订阅通知，再配置 `SENDING_ACCOUNT`、`SENDING_PASSWORD`、`SERVER` 和 `NOTIFICATION_EMAIL`
-4. 将 `mailist.nowscott.top` 绑定到该 Vercel 项目
+3. 配置 `APP_BASE_URL` 和 `SUBSCRIPTION_CONFIRMATION_SECRET`，用于生成 24 小时有效的一次性确认链接
+4. 配置 `SENDING_ACCOUNT`、`SENDING_PASSWORD` 和 `SERVER`，用于向新订阅者发送确认邮件；如需在确认后接收站长通知，再配置 `NOTIFICATION_EMAIL`
+5. 将 `mailist.nowscott.top` 绑定到该 Vercel 项目
 
-订阅 API 会自动写入 `状态=正常`，并在创建前检查重复邮箱。详细说明见 [`apps/subscription-web/README.md`](apps/subscription-web/README.md)。
+订阅 API 会先写入 `状态=待确认`。订阅者通过邮件中的签名链接打开确认页，并点击确认按钮后，才会更新为 `状态=正常` 并进入每日发送名单；链接有效期为 24 小时，确认后不可重复使用。详细说明见 [`apps/subscription-web/README.md`](apps/subscription-web/README.md)。
 
 最近也有一些朋友订阅了我的每日科技早报，目前的新闻源来自IT之家，滤除了营销信息的新闻，并且也写了一个排序算法，每天只发送排名前25的新闻。
 

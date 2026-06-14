@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildSubscriberProperties } from "./notion.js";
+import {
+  buildStatusProperty,
+  buildSubscriberProperties,
+} from "./notion.js";
 
 describe("buildSubscriberProperties", () => {
-  it("writes the normal select status required by the mail pipeline", () => {
+  it("writes a pending select status before email confirmation", () => {
     expect(
       buildSubscriberProperties(
         { name: "小林", email: "user@example.com" },
@@ -16,7 +19,7 @@ describe("buildSubscriberProperties", () => {
         email: "user@example.com",
       },
       状态: {
-        select: { name: "正常" },
+        select: { name: "待确认" },
       },
     });
   });
@@ -29,7 +32,17 @@ describe("buildSubscriberProperties", () => {
       ),
     ).toMatchObject({
       Status: {
-        status: { name: "正常" },
+        status: { name: "待确认" },
+      },
+    });
+  });
+
+  it("builds the active status update after confirmation", () => {
+    expect(
+      buildStatusProperty({ name: "状态", type: "select" }, "正常"),
+    ).toEqual({
+      状态: {
+        select: { name: "正常" },
       },
     });
   });

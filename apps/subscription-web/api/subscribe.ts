@@ -1,9 +1,13 @@
 import type { IncomingHttpHeaders } from "node:http";
 import { ZodError } from "zod";
-import { createSubscriptionNotifier } from "../server/mailer.js";
+import { createConfirmationLinkFactory } from "../server/confirmation-token.js";
+import { createSubscriptionMailers } from "../server/mailer.js";
 import { createNotionSubscriberRepository } from "../server/notion.js";
 import { checkRateLimit } from "../server/rate-limit.js";
-import { registerSubscriber } from "../server/subscribe.js";
+import {
+  ConfirmationDeliveryError,
+  registerSubscriber,
+} from "../server/subscribe.js";
 import { parseSubscriptionRequest } from "../server/validation.js";
 
 interface ApiRequest {
@@ -48,7 +52,7 @@ export default async function handler(
     if (input.company) {
       return response.status(200).json({
         ok: true,
-        status: "subscribed",
+        status: "pending",
         message: "订阅成功。",
       });
     }
@@ -62,15 +66,17 @@ export default async function handler(
       });
     }
 
+    const mailers = createSubscriptionMailers();
     const result = await registerSubscriber(
       { name: input.name, email: input.email },
       {
         repository: createNotionSubscriberRepository(),
-        notifier: createSubscriptionNotifier(),
+        confirmationMailer: mailers.confirmationMailer,
+        createConfirmationLink: createConfirmationLinkFactory(),
       },
     );
 
-    return response.status(result.status === "subscribed" ? 201 : 200).json({
+    return response.status(result.status === "pending" ? 201 : 200).json({
       ok: true,
       ...result,
     });
@@ -79,6 +85,14 @@ export default async function handler(
       return response.status(400).json({
         ok: false,
         message: error.issues[0]?.message || "提交内容无效。",
+      });
+    }
+
+    if (error instanceof ConfirmationDeliveryError) {
+      console.error("确认邮件发送失败", error.cause);
+      return response.status(502).json({
+        ok: false,
+        message: "确认邮件暂时发送失败，请稍后重新提交。",
       });
     }
 

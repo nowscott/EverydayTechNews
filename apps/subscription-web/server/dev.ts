@@ -2,6 +2,7 @@ import { config } from "dotenv";
 import express from "express";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import confirmHandler from "../api/confirm.js";
 import subscribeHandler from "../api/subscribe.js";
 
 const currentDirectory = dirname(fileURLToPath(import.meta.url));
@@ -15,6 +16,9 @@ app.disable("x-powered-by");
 app.use(express.json({ limit: "16kb" }));
 app.all("/api/subscribe", (request, response) =>
   subscribeHandler(request, response),
+);
+app.all("/api/confirm", (request, response) =>
+  confirmHandler(request, response),
 );
 
 app.listen(port, "127.0.0.1", () => {

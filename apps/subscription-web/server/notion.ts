@@ -1,4 +1,8 @@
-import type { Subscriber, SubscriberRepository } from "./types.js";
+import type {
+  Subscriber,
+  SubscriberRecord,
+  SubscriberRepository,
+} from "./types.js";
 
 const NOTION_API_VERSION = "2026-03-11";
 const NOTION_API_URL = "https://api.notion.com/v1";
@@ -49,6 +53,7 @@ async function notionRequest<T>(
 export function buildSubscriberProperties(
   subscriber: Subscriber,
   statusProperty: StatusProperty,
+  status = "待确认",
 ) {
   return {
     Name: {
@@ -58,7 +63,18 @@ export function buildSubscriberProperties(
       email: subscriber.email,
     },
     [statusProperty.name]: {
-      [statusProperty.type]: { name: "正常" },
+      [statusProperty.type]: { name: status },
+    },
+  };
+}
+
+export function buildStatusProperty(
+  statusProperty: StatusProperty,
+  status: string,
+) {
+  return {
+    [statusProperty.name]: {
+      [statusProperty.type]: { name: status },
     },
   };
 }
@@ -114,9 +130,14 @@ export function createNotionSubscriberRepository(
   }
 
   return {
-    async exists(email) {
+    async find(email) {
       const config = await resolveDataSource();
-      const result = await notionRequest<{ results?: unknown[] }>(
+      const result = await notionRequest<{
+        results?: Array<{
+          id: string;
+          properties?: Record<string, unknown>;
+        }>;
+      }>(
         `/data_sources/${config.id}/query`,
         apiKey,
         {
@@ -130,10 +151,35 @@ export function createNotionSubscriberRepository(
           }),
         },
       );
-      return Boolean(result.results?.length);
+      const page = result.results?.[0];
+      if (!page) return null;
+
+      const properties = page.properties || {};
+      const nameProperty = properties.Name as
+        | { title?: Array<{ plain_text?: string; text?: { content?: string } }> }
+        | undefined;
+      const emailProperty = properties.Email as { email?: string } | undefined;
+      const statusValue = properties[config.statusProperty.name] as
+        | {
+            select?: { name?: string } | null;
+            status?: { name?: string } | null;
+          }
+        | undefined;
+
+      const record: SubscriberRecord = {
+        id: page.id,
+        name:
+          nameProperty?.title?.[0]?.plain_text ||
+          nameProperty?.title?.[0]?.text?.content ||
+          email,
+        email: emailProperty?.email || email,
+        status:
+          statusValue?.[config.statusProperty.type]?.name || null,
+      };
+      return record;
     },
 
-    async create(subscriber) {
+    async createPending(subscriber) {
       const config = await resolveDataSource();
       await notionRequest("/pages", apiKey, {
         method: "POST",
@@ -145,7 +191,18 @@ export function createNotionSubscriberRepository(
           properties: buildSubscriberProperties(
             subscriber,
             config.statusProperty,
+            "待确认",
           ),
+        }),
+      });
+    },
+
+    async activate(id) {
+      const config = await resolveDataSource();
+      await notionRequest(`/pages/${id}`, apiKey, {
+        method: "PATCH",
+        body: JSON.stringify({
+          properties: buildStatusProperty(config.statusProperty, "正常"),
         }),
       });
     },

@@ -1,72 +1,102 @@
 import { describe, expect, it, vi } from "vitest";
 import { registerSubscriber } from "./subscribe.js";
 
+function dependencies(overrides: Record<string, unknown> = {}) {
+  return {
+    repository: {
+      find: vi.fn().mockResolvedValue(null),
+      createPending: vi.fn().mockResolvedValue(undefined),
+      activate: vi.fn().mockResolvedValue(undefined),
+    },
+    confirmationMailer: {
+      sendConfirmation: vi.fn().mockResolvedValue(undefined),
+    },
+    createConfirmationLink: vi.fn().mockReturnValue("https://example.com/confirm"),
+    ...overrides,
+  };
+}
+
 describe("registerSubscriber", () => {
-  it("does not create duplicate subscribers", async () => {
-    const create = vi.fn();
+  it("does not resend mail to an active subscriber", async () => {
+    const deps = dependencies();
+    deps.repository.find.mockResolvedValue({
+      id: "page-id",
+      name: "小林",
+      email: "user@example.com",
+      status: "正常",
+    });
+
     const result = await registerSubscriber(
       { name: "小林", email: "user@example.com" },
-      {
-        repository: {
-          exists: vi.fn().mockResolvedValue(true),
-          create,
-        },
-      },
+      deps,
     );
 
     expect(result.status).toBe("existing");
-    expect(create).not.toHaveBeenCalled();
+    expect(deps.repository.createPending).not.toHaveBeenCalled();
+    expect(deps.confirmationMailer.sendConfirmation).not.toHaveBeenCalled();
   });
 
-  it("keeps a successful subscription when notification mail fails", async () => {
-    const create = vi.fn().mockResolvedValue(undefined);
-    const notify = vi.fn().mockRejectedValue(new Error("SMTP unavailable"));
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+  it("creates a pending subscriber and sends a confirmation link", async () => {
+    const deps = dependencies();
+    const result = await registerSubscriber(
+      { name: "小林", email: "user@example.com" },
+      deps,
+    );
+
+    expect(result.status).toBe("pending");
+    expect(deps.repository.createPending).toHaveBeenCalledOnce();
+    expect(deps.confirmationMailer.sendConfirmation).toHaveBeenCalledWith(
+      { name: "小林", email: "user@example.com" },
+      "https://example.com/confirm",
+    );
+  });
+
+  it("resends a fresh link to a pending subscriber", async () => {
+    const deps = dependencies();
+    deps.repository.find.mockResolvedValue({
+      id: "page-id",
+      name: "小林",
+      email: "user@example.com",
+      status: "待确认",
+    });
 
     const result = await registerSubscriber(
       { name: "小林", email: "user@example.com" },
-      {
-        repository: {
-          exists: vi.fn().mockResolvedValue(false),
-          create,
-        },
-        notifier: { notify },
-      },
+      deps,
     );
 
-    expect(result.status).toBe("subscribed");
-    expect(create).toHaveBeenCalledOnce();
-    expect(notify).toHaveBeenCalledOnce();
-    consoleError.mockRestore();
+    expect(result.status).toBe("pending");
+    expect(deps.repository.createPending).not.toHaveBeenCalled();
+    expect(deps.confirmationMailer.sendConfirmation).toHaveBeenCalledOnce();
   });
 
   it("coalesces concurrent submissions for the same email", async () => {
     let releaseCreate: (() => void) | undefined;
-    const create = vi.fn(
+    const deps = dependencies();
+    deps.repository.createPending.mockImplementation(
       () =>
         new Promise<void>((resolve) => {
           releaseCreate = resolve;
         }),
     );
-    const repository = {
-      exists: vi.fn().mockResolvedValue(false),
-      create,
-    };
 
     const first = registerSubscriber(
       { name: "小林", email: "USER@example.com" },
-      { repository },
+      deps,
     );
     const second = registerSubscriber(
       { name: "小林", email: "user@example.com" },
-      { repository },
+      deps,
     );
 
-    await vi.waitFor(() => expect(create).toHaveBeenCalledOnce());
+    await vi.waitFor(() =>
+      expect(deps.repository.createPending).toHaveBeenCalledOnce(),
+    );
     releaseCreate?.();
 
-    await expect(first).resolves.toMatchObject({ status: "subscribed" });
-    await expect(second).resolves.toMatchObject({ status: "existing" });
-    expect(repository.exists).toHaveBeenCalledOnce();
+    await expect(first).resolves.toMatchObject({ status: "pending" });
+    await expect(second).resolves.toMatchObject({ status: "pending" });
+    expect(deps.repository.find).toHaveBeenCalledOnce();
+    expect(deps.confirmationMailer.sendConfirmation).toHaveBeenCalledOnce();
   });
 });

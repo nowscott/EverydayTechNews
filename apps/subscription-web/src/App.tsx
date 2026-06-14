@@ -1,13 +1,52 @@
-import { useState, type FormEvent } from "react";
-import { subscribe } from "./api";
+import { useEffect, useState, type FormEvent } from "react";
+import { confirmSubscription, subscribe } from "./api";
 
 type SubmissionState =
   | { mode: "idle"; message: "" }
+  | { mode: "confirmation"; message: string }
   | { mode: "loading"; message: string }
   | { mode: "success"; message: string }
   | { mode: "error"; message: string };
 
 const INITIAL_STATE: SubmissionState = { mode: "idle", message: "" };
+
+function initialSubmissionState(): SubmissionState {
+  if (
+    new URLSearchParams(window.location.search).has("confirmation_token")
+  ) {
+    return {
+      mode: "confirmation",
+      message: "请点击下方按钮完成邮箱确认。此链接只能成功使用一次。",
+    };
+  }
+
+  const confirmation = new URLSearchParams(window.location.search).get(
+    "confirmation",
+  );
+  const messages: Record<string, SubmissionState> = {
+    confirmed: {
+      mode: "success",
+      message: "邮箱确认完成，下一期科技早报将发送到你的邮箱。",
+    },
+    used: {
+      mode: "success",
+      message: "这个确认链接已经使用过，你的订阅已生效。",
+    },
+    expired: {
+      mode: "error",
+      message: "确认链接已过期，请重新提交邮箱获取新链接。",
+    },
+    invalid: {
+      mode: "error",
+      message: "确认链接无效，请重新提交邮箱获取新链接。",
+    },
+    error: {
+      mode: "error",
+      message: "暂时无法确认订阅，请稍后再次打开邮件中的链接。",
+    },
+  };
+  return confirmation ? messages[confirmation] || INITIAL_STATE : INITIAL_STATE;
+}
 
 function MailIcon() {
   return (
@@ -35,7 +74,16 @@ function CheckIcon() {
 }
 
 export default function App() {
-  const [state, setState] = useState<SubmissionState>(INITIAL_STATE);
+  const [state, setState] = useState<SubmissionState>(initialSubmissionState);
+  const [confirmationToken, setConfirmationToken] = useState(() =>
+    new URLSearchParams(window.location.search).get("confirmation_token"),
+  );
+
+  useEffect(() => {
+    if (confirmationToken) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, [confirmationToken]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -57,6 +105,25 @@ export default function App() {
       setState({
         mode: "error",
         message: error instanceof Error ? error.message : "订阅失败，请稍后重试。",
+      });
+    }
+  }
+
+  async function handleConfirmation() {
+    if (!confirmationToken || state.mode === "loading") return;
+    setState({ mode: "loading", message: "正在确认你的邮箱…" });
+
+    try {
+      const result = await confirmSubscription(confirmationToken);
+      setState({ mode: "success", message: result.message });
+      setConfirmationToken(null);
+    } catch (error) {
+      setState({
+        mode: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "暂时无法确认订阅，请稍后重试。",
       });
     }
   }
@@ -199,12 +266,23 @@ export default function App() {
                   }`}
                 >
                   {state.mode === "success" && <CheckIcon />}
-                  <span>{state.message}</span>
+                  <div className="flex-1">
+                    <span>{state.message}</span>
+                    {state.mode === "confirmation" && confirmationToken && (
+                      <button
+                        type="button"
+                        onClick={handleConfirmation}
+                        className="mt-3 block border border-current bg-transparent px-4 py-2 font-bold"
+                      >
+                        确认订阅
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
               <p className="mt-5 text-xs leading-6 text-[#6f7b80] dark:text-[#929c99]">
-                提交即表示你同意接收每日科技早报。我们只将邮箱用于发送订阅内容，不会出售或共享。
+                提交后需在 24 小时内通过邮件确认。我们只将邮箱用于发送订阅内容，不会出售或共享。
               </p>
             </section>
           </div>
