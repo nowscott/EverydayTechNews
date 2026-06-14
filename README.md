@@ -89,6 +89,44 @@ Notion 数据库需要包含 `Name`、`Email` 和 `状态` 三列。只有状态
 
 ## 最新更新
 
+### 2026年6月 - v2.3.0 订阅服务合并与重构
+
+#### 为什么合并 EverydayTechNews 与 EmaiListInbox
+
+两个仓库实际上属于同一个产品流程：
+
+- `EmaiListInbox` 负责接收用户订阅并写入 Notion
+- `EverydayTechNews` 从同一个 Notion 数据源读取订阅者并发送每日早报
+
+长期分仓维护导致两端的接口约定逐渐不一致。发送端已经要求订阅者的 `状态` 为 `正常`，旧订阅端却只写入 `Name` 和 `Email`；Notion API、Node.js 依赖、安全修复、部署说明和测试也需要分别维护。用户可能看到“订阅成功”，但数据未必满足发送条件。
+
+因此本次将订阅服务迁入 `apps/subscription-web`，统一 Notion 字段契约、测试、文档、Issue 和版本发布。合并仅发生在代码仓库层面，运行边界仍保持独立：
+
+- Python 抓取、排序和邮件发送继续由 GitHub Actions 运行
+- React 订阅网页和 API 继续由 Vercel 部署
+- 两端通过同一 Notion 数据源协作
+
+#### 主要更新
+
+- 使用 React、TypeScript、Tailwind CSS v4 和 Vite 重写订阅网页
+- 全新响应式视觉设计，自动跟随系统浅色/深色模式
+- Notion API 升级到 `2026-03-11` data source 接口
+- 新订阅自动写入 `状态=正常`，与邮件发送端保持一致
+- 增加邮箱去重、同实例并发保护、IP 限流、蜜罐和输入校验
+- Nodemailer 升级并将 npm 依赖审计清零
+- 新增 7 项 Web 自动测试及独立 GitHub Actions 工作流
+- Vercel 升级至 Node.js 24，并改为连接本仓库的 `apps/subscription-web`
+- 生产地址继续使用 https://mailist.nowscott.top/
+
+#### 线上验证
+
+- Vercel 生产部署及 Git 自动部署成功
+- 首次测试订阅返回 `201 subscribed`
+- 相同邮箱连续提交返回 `200 existing`
+- Notion 中确认只创建一条记录
+- 测试记录已改为 `异常`，不会进入正式群发
+- Python 28 项测试和 Web 7 项测试全部通过
+
 ### 2026年6月 - v2.2.1 邮件任务可靠性更新
 
 - 邮件定时任务改用显式 `Asia/Shanghai` 时区，每日 07:23 执行
