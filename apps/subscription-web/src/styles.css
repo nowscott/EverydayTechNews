@@ -18,6 +18,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 button,
@@ -43,6 +44,12 @@ input {
 input,
 textarea {
   user-select: text;
+}
+
+@media (max-width: 380px) {
+  .page-grid {
+    background-size: auto, 22px 22px, 22px 22px;
+  }
 }
 
 @media (prefers-color-scheme: dark) {

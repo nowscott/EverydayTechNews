@@ -374,6 +374,9 @@ class FormattingTests(unittest.TestCase):
         self.assertIn("&lt;notice&gt;", message)
         self.assertIn("退订每日科技早报", message)
         self.assertIn("a=1&amp;b=2", message)
+        self.assertIn("@media only screen and (max-width: 520px)", message)
+        self.assertIn("background:#fffef9", message)
+        self.assertIn('class="unsubscribe-button"', message)
 
 
 if __name__ == "__main__":

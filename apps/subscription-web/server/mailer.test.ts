@@ -46,6 +46,10 @@ describe("createSubscriptionMailers", () => {
     expect(sendMail.mock.calls[0][0].text).toContain(
       "2026年06月15日 00:30（北京时间）",
     );
+    expect(sendMail.mock.calls[0][0].html).toContain(
+      "@media only screen and (max-width: 520px)",
+    );
+    expect(sendMail.mock.calls[0][0].html).toContain('class="email-button"');
   });
 
   it("preserves the optional owner notification after confirmation", async () => {
@@ -86,6 +90,7 @@ describe("createSubscriptionMailers", () => {
         to: "user@example.com",
         subject: "每日科技早报：订阅成功",
         text: expect.stringContaining("小林"),
+        html: expect.stringContaining("订阅成功"),
       }),
     );
   });

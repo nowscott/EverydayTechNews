@@ -1,5 +1,9 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { confirmSubscription, subscribe, unsubscribe } from "./api";
+import {
+  getStableOperationDays,
+  stableOperationStartLabel,
+} from "./uptime";
 
 type SubmissionState =
   | { mode: "idle"; message: "" }
@@ -81,6 +85,7 @@ function CheckIcon() {
 }
 
 export default function App() {
+  const stableOperationDays = getStableOperationDays();
   const [state, setState] = useState<SubmissionState>(initialSubmissionState);
   const [isConfirmationFlow] = useState(() =>
     new URLSearchParams(window.location.search).has("confirmation_token"),
@@ -168,7 +173,7 @@ export default function App() {
   if (isConfirmationFlow || isUnsubscribeFlow) {
     return (
       <main className="page-grid min-h-screen text-[#172126] dark:text-[#e7e4d9]">
-        <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-5 py-6 sm:px-8 sm:py-8">
+        <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-4 py-5 sm:px-8 sm:py-8">
           <header className="flex items-center border-b border-[#cfd7d5] pb-5 dark:border-[#354244]">
             <a href="/" className="flex items-center gap-3 no-underline">
               <span className="grid size-10 place-items-center border border-[#bd4f32] bg-[#bd4f32] text-[#fffaf1] dark:border-[#dd7659] dark:bg-[#dd7659] dark:text-[#101719]">
@@ -183,24 +188,24 @@ export default function App() {
             </a>
           </header>
 
-          <section className="flex flex-1 items-center justify-center py-14">
+          <section className="flex flex-1 items-center justify-center py-10 sm:py-14">
             <div className="relative w-full max-w-xl">
               <div
                 aria-hidden="true"
-                className="absolute -inset-3 translate-x-3 translate-y-3 border border-[#bd4f32]/35 dark:border-[#dd7659]/30"
+                className="absolute -inset-2 translate-x-1 translate-y-1 border border-[#bd4f32]/35 sm:-inset-3 sm:translate-x-3 sm:translate-y-3 dark:border-[#dd7659]/30"
               />
-              <div className="relative border border-[#cbd4d2] bg-[rgba(255,254,249,0.94)] p-7 shadow-[0_28px_90px_rgba(35,48,48,0.12)] sm:p-10 dark:border-[#3a4647] dark:bg-[rgba(24,33,36,0.96)] dark:shadow-[0_28px_90px_rgba(0,0,0,0.32)]">
+              <div className="relative border border-[#cbd4d2] bg-[rgba(255,254,249,0.94)] p-5 shadow-[0_28px_90px_rgba(35,48,48,0.12)] sm:p-10 dark:border-[#3a4647] dark:bg-[rgba(24,33,36,0.96)] dark:shadow-[0_28px_90px_rgba(0,0,0,0.32)]">
                 <p className="font-mono text-[11px] font-bold tracking-[0.16em] text-[#bd4f32] dark:text-[#dd7659]">
                   {isUnsubscribeFlow ? "UNSUBSCRIBE" : "EMAIL CONFIRMATION"}
                 </p>
-                <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em]">
+                <h1 className="mt-3 text-2xl font-bold tracking-[-0.04em] sm:text-3xl">
                   {isUnsubscribeFlow ? "退订每日科技早报" : "确认邮件订阅"}
                 </h1>
 
                 <div
                   role="status"
                   aria-live="polite"
-                  className={`mt-7 border px-5 py-4 text-sm leading-7 ${
+                  className={`mt-6 border px-4 py-4 text-sm leading-7 sm:mt-7 sm:px-5 ${
                     state.mode === "error"
                       ? "border-[#bd4f32]/45 bg-[#bd4f32]/5 text-[#8c3521] dark:border-[#dd7659]/45 dark:text-[#f0a18b]"
                       : state.mode === "success"
@@ -224,7 +229,7 @@ export default function App() {
                     >
                       {isLoading ? "正在确认…" : "确认订阅"}
                     </button>
-                    )}
+                  )}
                   {isUnsubscribeFlow &&
                     state.mode !== "success" &&
                     unsubscribeToken && (
@@ -232,9 +237,11 @@ export default function App() {
                         type="button"
                         onClick={handleUnsubscribe}
                         disabled={isLoading}
-                        className="mt-5 flex w-full cursor-pointer items-center justify-center border-0 bg-[#bd4f32] px-5 py-3.5 font-bold text-[#fffaf1] transition hover:bg-[#8c3521] disabled:cursor-wait disabled:opacity-65 dark:bg-[#dd7659] dark:text-[#101719] dark:hover:bg-[#c86448]"
+                        className="mx-auto mt-5 grid w-full max-w-xs cursor-pointer place-items-center border-0 bg-[#bd4f32] px-5 py-3.5 text-center font-bold leading-none text-[#fffaf1] transition hover:bg-[#8c3521] disabled:cursor-wait disabled:opacity-65 dark:bg-[#dd7659] dark:text-[#101719] dark:hover:bg-[#c86448]"
                       >
-                        {isLoading ? "正在退订…" : "确认退订"}
+                        <span className="block w-full text-center">
+                          {isLoading ? "正在退订…" : "确认退订"}
+                        </span>
                       </button>
                     )}
                 </div>
@@ -266,107 +273,92 @@ export default function App() {
           </span>
         </header>
 
-        <section className="grid flex-1 items-center gap-12 py-14 lg:grid-cols-[1.08fr_0.92fr] lg:gap-20 lg:py-20">
-          <div className="max-w-2xl">
-            <p className="mb-5 font-mono text-xs font-bold tracking-[0.2em] text-[#bd4f32] dark:text-[#dd7659]">
+        <section className="grid flex-1 gap-8 py-8 sm:gap-10 sm:py-14 lg:grid-cols-[1.08fr_0.92fr] lg:grid-rows-[auto_1fr] lg:items-center lg:gap-x-20 lg:gap-y-8 lg:py-20">
+          <div className="order-1 max-w-2xl lg:col-start-1 lg:row-start-1">
+            <p className="mb-3 font-mono text-[11px] font-bold tracking-[0.2em] text-[#bd4f32] sm:mb-5 sm:text-xs dark:text-[#dd7659]">
               CURATED, NOT CROWDED
             </p>
-            <h1 className="max-w-[12ch] text-[clamp(3.4rem,8vw,6.9rem)] leading-[0.94] font-bold tracking-[-0.065em]">
+            <h1 className="max-w-[12ch] text-[clamp(2.3rem,11vw,6.9rem)] leading-[0.98] font-bold tracking-[-0.055em] sm:text-[clamp(3.4rem,8vw,6.9rem)] sm:leading-[0.94] sm:tracking-[-0.065em]">
               每天一封，
               <span className="block text-[#bd4f32] dark:text-[#dd7659]">刚好读完。</span>
             </h1>
-            <p className="mt-8 max-w-xl text-base leading-8 text-[#59666d] sm:text-lg dark:text-[#aab1ae]">
-              从全天科技资讯中筛选、去重并排序，只保留值得关注的 25 条新闻。
-              没有信息轰炸，也不需要不断刷新页面。
-            </p>
-
-            <div className="mt-10 grid max-w-xl grid-cols-3 border-y border-[#cfd7d5] py-5 dark:border-[#354244]">
-              {[
-                ["25", "每日精选"],
-                ["0", "推广内容"],
-                ["1", "封邮件"],
-              ].map(([value, label]) => (
-                <div
-                  key={label}
-                  className="border-r border-[#d8dfdf] px-3 first:pl-0 last:border-0 dark:border-[#354244]"
-                >
-                  <strong className="block text-2xl text-[#2f6f62] dark:text-[#79b3a5]">
-                    {value}
-                  </strong>
-                  <span className="mt-1 block text-xs text-[#637078] dark:text-[#aab1ae]">
-                    {label}
-                  </span>
-                </div>
-              ))}
-            </div>
           </div>
 
-          <div className="relative">
+          <div className="relative order-2 mx-auto w-full max-w-xl lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mx-0 lg:max-w-none">
             <div
               aria-hidden="true"
-              className="absolute -inset-3 translate-x-3 translate-y-3 border border-[#bd4f32]/35 dark:border-[#dd7659]/30"
+              className="absolute -inset-2 translate-x-1 translate-y-1 border border-[#bd4f32]/35 sm:-inset-3 sm:translate-x-3 sm:translate-y-3 dark:border-[#dd7659]/30"
             />
-            <section className="relative border border-[#cbd4d2] bg-[rgba(255,254,249,0.94)] p-6 shadow-[0_28px_90px_rgba(35,48,48,0.12)] sm:p-9 dark:border-[#3a4647] dark:bg-[rgba(24,33,36,0.96)] dark:shadow-[0_28px_90px_rgba(0,0,0,0.32)]">
+            <section className="relative border border-[#cbd4d2] bg-[rgba(255,254,249,0.94)] p-5 shadow-[0_28px_90px_rgba(35,48,48,0.12)] sm:p-9 dark:border-[#3a4647] dark:bg-[rgba(24,33,36,0.96)] dark:shadow-[0_28px_90px_rgba(0,0,0,0.32)]">
               <div className="flex items-start justify-between gap-6">
                 <div>
                   <p className="font-mono text-[11px] font-bold tracking-[0.16em] text-[#bd4f32] dark:text-[#dd7659]">
                     SUBSCRIPTION
                   </p>
-                  <h2 className="mt-3 text-3xl font-bold tracking-[-0.04em]">加入邮件列表</h2>
+                  <h2 className="mt-3 text-2xl font-bold tracking-[-0.04em] sm:text-3xl">
+                    加入邮件列表
+                  </h2>
                 </div>
                 <span className="grid size-10 place-items-center border border-[#b9cbc5] text-[#2f6f62] dark:border-[#466860] dark:text-[#79b3a5]">
                   <span className="size-2 bg-current" />
                 </span>
               </div>
 
-              <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-semibold">你的称呼</span>
-                    <input
-                      name="name"
-                      type="text"
-                      autoComplete="name"
-                      required
-                      minLength={1}
-                      maxLength={50}
-                      placeholder="例如：小林"
-                      className="w-full rounded-none border border-[#9eaaa8] bg-white/35 px-4 py-3.5 text-base outline-none transition placeholder:text-[#8a9598] focus:border-[#bd4f32] focus:ring-2 focus:ring-[#bd4f32]/15 dark:border-[#536264] dark:bg-white/[0.025] dark:placeholder:text-[#778285] dark:focus:border-[#dd7659] dark:focus:ring-[#dd7659]/20"
-                    />
-                  </label>
+              <form className="mt-7 space-y-5 sm:mt-8" onSubmit={handleSubmit}>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold">你的称呼</span>
+                  <input
+                    name="name"
+                    type="text"
+                    autoComplete="name"
+                    required
+                    minLength={1}
+                    maxLength={50}
+                    placeholder="例如：小林"
+                    className="w-full rounded-none border border-[#9eaaa8] bg-white/35 px-4 py-3.5 text-base outline-none transition placeholder:text-[#8a9598] focus:border-[#bd4f32] focus:ring-2 focus:ring-[#bd4f32]/15 dark:border-[#536264] dark:bg-white/[0.025] dark:placeholder:text-[#778285] dark:focus:border-[#dd7659] dark:focus:ring-[#dd7659]/20"
+                  />
+                </label>
 
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-semibold">接收邮箱</span>
-                    <input
-                      name="email"
-                      type="email"
-                      inputMode="email"
-                      autoComplete="email"
-                      required
-                      maxLength={254}
-                      placeholder="you@example.com"
-                      className="w-full rounded-none border border-[#9eaaa8] bg-white/35 px-4 py-3.5 font-sans text-base outline-none transition placeholder:text-[#8a9598] focus:border-[#bd4f32] focus:ring-2 focus:ring-[#bd4f32]/15 dark:border-[#536264] dark:bg-white/[0.025] dark:placeholder:text-[#778285] dark:focus:border-[#dd7659] dark:focus:ring-[#dd7659]/20"
-                    />
-                  </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold">接收邮箱</span>
+                  <input
+                    name="email"
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    required
+                    maxLength={254}
+                    placeholder="you@example.com"
+                    className="w-full rounded-none border border-[#9eaaa8] bg-white/35 px-4 py-3.5 font-sans text-base outline-none transition placeholder:text-[#8a9598] focus:border-[#bd4f32] focus:ring-2 focus:ring-[#bd4f32]/15 dark:border-[#536264] dark:bg-white/[0.025] dark:placeholder:text-[#778285] dark:focus:border-[#dd7659] dark:focus:ring-[#dd7659]/20"
+                  />
+                </label>
 
-                  <label className="absolute -left-[9999px]" aria-hidden="true">
-                    公司
-                    <input name="company" type="text" tabIndex={-1} autoComplete="off" />
-                  </label>
+                <label className="absolute -left-[9999px]" aria-hidden="true">
+                  公司
+                  <input
+                    name="company"
+                    type="text"
+                    tabIndex={-1}
+                    autoComplete="off"
+                  />
+                </label>
 
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="flex w-full cursor-pointer items-center justify-between rounded-none border-0 bg-[#bd4f32] px-5 py-4 text-left text-[#fffaf1] transition hover:bg-[#8c3521] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#bd4f32] disabled:cursor-wait disabled:opacity-65 dark:bg-[#dd7659] dark:text-[#101719] dark:hover:bg-[#c86448]"
-                  >
-                    <span className="text-base font-bold">
-                      {isLoading ? "正在订阅" : "订阅每日早报"}
-                    </span>
-                    {isLoading ? (
-                      <span className="size-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    ) : (
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="relative flex w-full cursor-pointer items-center justify-center rounded-none border-0 bg-[#bd4f32] px-12 py-4 text-center text-[#fffaf1] transition hover:bg-[#8c3521] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#bd4f32] disabled:cursor-wait disabled:opacity-65 dark:bg-[#dd7659] dark:text-[#101719] dark:hover:bg-[#c86448]"
+                >
+                  <span className="block w-full text-center text-base font-bold">
+                    {isLoading ? "正在订阅" : "订阅每日早报"}
+                  </span>
+                  {isLoading ? (
+                    <span className="absolute right-5 size-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  ) : (
+                    <span className="absolute right-5">
                       <ArrowIcon />
-                    )}
-                  </button>
+                    </span>
+                  )}
+                </button>
               </form>
 
               {state.mode !== "idle" && (
@@ -401,6 +393,44 @@ export default function App() {
                 提交后需在 24 小时内通过邮件确认。我们只将邮箱用于发送订阅内容，不会出售或共享。
               </p>
             </section>
+          </div>
+
+          <div className="order-3 max-w-2xl lg:col-start-1 lg:row-start-2">
+            <p className="max-w-xl text-base leading-7 text-[#59666d] sm:text-lg sm:leading-8 dark:text-[#aab1ae]">
+              从全天科技资讯中筛选、去重并排序，只保留值得关注的 25 条新闻。
+              没有信息轰炸，也不需要不断刷新页面。
+            </p>
+
+            <div className="mt-6 flex max-w-xl items-center gap-3 border-l-2 border-[#2f6f62] bg-[#2f6f62]/5 px-4 py-3 text-sm text-[#526067] dark:border-[#79b3a5] dark:bg-[#79b3a5]/5 dark:text-[#b7bfbc]">
+              <span className="size-2 shrink-0 bg-[#2f6f62] dark:bg-[#79b3a5]" />
+              <span>
+                自 {stableOperationStartLabel} 起，已稳定运行
+                <strong className="mx-1 text-[#24564c] dark:text-[#93c8bb]">
+                  {stableOperationDays.toLocaleString("zh-CN")}
+                </strong>
+                天
+              </span>
+            </div>
+
+            <div className="mt-8 grid max-w-xl grid-cols-3 border-y border-[#cfd7d5] py-4 sm:mt-10 sm:py-5 dark:border-[#354244]">
+              {[
+                ["25", "每日精选"],
+                ["0", "推广内容"],
+                ["1", "封邮件"],
+              ].map(([value, label]) => (
+                <div
+                  key={label}
+                  className="border-r border-[#d8dfdf] px-2 first:pl-0 last:border-0 sm:px-3 dark:border-[#354244]"
+                >
+                  <strong className="block text-2xl text-[#2f6f62] dark:text-[#79b3a5]">
+                    {value}
+                  </strong>
+                  <span className="mt-1 block text-xs text-[#637078] dark:text-[#aab1ae]">
+                    {label}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 

@@ -45,6 +45,42 @@ function formatShanghaiTime(value: Date) {
   return `${part("year")}年${part("month")}月${part("day")}日 ${part("hour")}:${part("minute")}`;
 }
 
+function buildSubscriberEmail(content: string) {
+  return `
+    <!doctype html>
+    <html lang="zh-CN">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <style>
+          @media only screen and (max-width: 520px) {
+            .email-shell { padding: 0 !important; }
+            .email-card { border-left: 0 !important; border-right: 0 !important; }
+            .email-content { padding: 26px 22px !important; }
+            .email-button { display: block !important; text-align: center !important; }
+          }
+        </style>
+      </head>
+      <body style="margin:0;padding:0;background:#ece9e0;color:#172126;-webkit-text-size-adjust:100%;text-size-adjust:100%">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;background:#ece9e0">
+          <tr>
+            <td align="center" class="email-shell" style="padding:28px 12px">
+              <table role="presentation" width="560" cellspacing="0" cellpadding="0" class="email-card" style="width:100%;max-width:560px;border-collapse:collapse;border:1px solid #d1d8d4;background:#fffef9">
+                <tr>
+                  <td class="email-content" style="padding:34px 36px;border-top:5px solid #bd4f32;font-family:Arial,'PingFang SC','Microsoft YaHei',sans-serif;color:#172126;font-size:15px;line-height:1.75">
+                    <p style="margin:0 0 22px;font-family:'Courier New',monospace;font-size:11px;font-weight:700;letter-spacing:2px;color:#bd4f32">EVERYDAY TECH NEWS</p>
+                    ${content}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `.trim();
+}
+
 export function createSubscriptionMailers(
   environment: MailEnvironment = process.env,
 ): SubscriptionMailers {
@@ -91,16 +127,15 @@ export function createSubscriptionMailers(
             "链接只能确认一次。",
             "如果这不是你的操作，可以忽略这封邮件。",
           ].join("\n"),
-          html: `
-            <div style="max-width:560px;margin:0 auto;padding:32px 24px;font-family:Arial,'PingFang SC','Microsoft YaHei',sans-serif;color:#172126;line-height:1.7">
-              <p>${escapeHtml(subscriber.name)}，你好：</p>
-              <p>请确认订阅每日科技早报。确认后，后续早报将发送到这个邮箱。</p>
-              <p style="margin:28px 0">
-                <a href="${escapeHtml(confirmationLink.url)}" style="display:inline-block;background:#bd4f32;color:#fffaf1;text-decoration:none;padding:12px 20px;font-weight:700">确认订阅</a>
-              </p>
-              <p style="font-size:13px;color:#637078">链接失效时间：${escapeHtml(expiresAt)}。链接只能确认一次。如果这不是你的操作，可以忽略这封邮件。</p>
-            </div>
-          `.trim(),
+          html: buildSubscriberEmail(`
+            <h1 style="margin:0;font-size:26px;line-height:1.3">确认邮件订阅</h1>
+            <p style="margin:20px 0 0">${escapeHtml(subscriber.name)}，你好：</p>
+            <p style="margin:10px 0 0">请确认订阅每日科技早报。确认后，后续早报将发送到这个邮箱。</p>
+            <p style="margin:26px 0">
+              <a href="${escapeHtml(confirmationLink.url)}" class="email-button" style="display:inline-block;box-sizing:border-box;background:#bd4f32;color:#fffaf1;text-decoration:none;padding:13px 22px;font-weight:700">确认订阅</a>
+            </p>
+            <p style="margin:0;font-size:13px;color:#637078">链接失效时间：${escapeHtml(expiresAt)}。链接只能确认一次。如果这不是你的操作，可以忽略这封邮件。</p>
+          `),
         });
       },
     },
@@ -118,14 +153,13 @@ export function createSubscriptionMailers(
             "",
             "感谢订阅。",
           ].join("\n"),
-          html: `
-            <div style="max-width:560px;margin:0 auto;padding:32px 24px;font-family:Arial,'PingFang SC','Microsoft YaHei',sans-serif;color:#172126;line-height:1.7">
-              <p>${escapeHtml(subscriber.name)}，你好：</p>
-              <p>你的邮箱已经确认，现已成功订阅每日科技早报。</p>
-              <p>下一期早报将发送到这个邮箱。</p>
-              <p style="font-size:13px;color:#637078">感谢订阅。</p>
-            </div>
-          `.trim(),
+          html: buildSubscriberEmail(`
+            <h1 style="margin:0;font-size:26px;line-height:1.3">订阅成功</h1>
+            <p style="margin:20px 0 0">${escapeHtml(subscriber.name)}，你好：</p>
+            <p style="margin:10px 0 0">你的邮箱已经确认，现已成功订阅每日科技早报。</p>
+            <p style="margin:10px 0 0">下一期早报将发送到这个邮箱。</p>
+            <p style="margin:24px 0 0;font-size:13px;color:#637078">感谢订阅。</p>
+          `),
         });
       },
     },
