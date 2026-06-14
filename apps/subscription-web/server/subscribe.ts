@@ -19,9 +19,12 @@ export interface SubscribeResult {
 const inFlightSubscriptions = new Map<string, Promise<SubscribeResult>>();
 
 export class ConfirmationDeliveryError extends Error {
+  readonly cause: unknown;
+
   constructor(cause: unknown) {
-    super("确认邮件发送失败", { cause });
+    super("确认邮件发送失败");
     this.name = "ConfirmationDeliveryError";
+    this.cause = cause;
   }
 }
 
