@@ -31,12 +31,18 @@ input {
 }
 
 .page-grid {
+  user-select: none;
   background-color: #f4f0e7;
   background-image:
     radial-gradient(circle at 15% 8%, rgba(189, 79, 50, 0.1), transparent 29rem),
     linear-gradient(rgba(34, 62, 64, 0.055) 1px, transparent 1px),
     linear-gradient(90deg, rgba(34, 62, 64, 0.055) 1px, transparent 1px);
   background-size: auto, 28px 28px, 28px 28px;
+}
+
+input,
+textarea {
+  user-select: text;
 }
 
 @media (prefers-color-scheme: dark) {

@@ -6,6 +6,7 @@ function dependencies(overrides: Record<string, unknown> = {}) {
     repository: {
       find: vi.fn().mockResolvedValue(null),
       createPending: vi.fn().mockResolvedValue(undefined),
+      restorePending: vi.fn().mockResolvedValue(undefined),
       activate: vi.fn().mockResolvedValue(undefined),
     },
     confirmationMailer: {
@@ -67,6 +68,29 @@ describe("registerSubscriber", () => {
 
     expect(result.status).toBe("pending");
     expect(deps.repository.createPending).not.toHaveBeenCalled();
+    expect(deps.confirmationMailer.sendConfirmation).toHaveBeenCalledOnce();
+  });
+
+  it("restores an unsubscribed subscriber to pending", async () => {
+    const deps = dependencies();
+    deps.repository.find.mockResolvedValue({
+      id: "page-id",
+      name: "旧称呼",
+      email: "user@example.com",
+      status: "已退订",
+    });
+
+    const result = await registerSubscriber(
+      { name: "新称呼", email: "user@example.com" },
+      deps,
+    );
+
+    expect(result.status).toBe("pending");
+    expect(deps.repository.createPending).not.toHaveBeenCalled();
+    expect(deps.repository.restorePending).toHaveBeenCalledWith("page-id", {
+      name: "新称呼",
+      email: "user@example.com",
+    });
     expect(deps.confirmationMailer.sendConfirmation).toHaveBeenCalledOnce();
   });
 

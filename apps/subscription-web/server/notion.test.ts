@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildPendingRestoreProperties,
   buildStatusProperty,
   buildSubscriberProperties,
 } from "./notion.js";
@@ -43,6 +44,22 @@ describe("buildSubscriberProperties", () => {
     ).toEqual({
       状态: {
         select: { name: "正常" },
+      },
+    });
+  });
+
+  it("restores an unsubscribed record with the latest name", () => {
+    expect(
+      buildPendingRestoreProperties(
+        { name: "新称呼", email: "user@example.com" },
+        { name: "状态", type: "select" },
+      ),
+    ).toEqual({
+      Name: {
+        title: [{ text: { content: "新称呼" } }],
+      },
+      状态: {
+        select: { name: "待确认" },
       },
     });
   });

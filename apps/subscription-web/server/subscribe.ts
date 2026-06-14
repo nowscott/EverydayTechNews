@@ -29,7 +29,11 @@ async function createSubscriber(
   dependencies: SubscribeDependencies,
 ): Promise<SubscribeResult> {
   const existing = await dependencies.repository.find(subscriber.email);
-  if (existing && existing.status !== "待确认") {
+  if (
+    existing &&
+    existing.status !== "待确认" &&
+    existing.status !== "已退订"
+  ) {
     return {
       status: "existing",
       message: "这个邮箱已经在订阅列表中，无需重复提交。",
@@ -38,6 +42,8 @@ async function createSubscriber(
 
   if (!existing) {
     await dependencies.repository.createPending(subscriber);
+  } else if (existing.status === "已退订") {
+    await dependencies.repository.restorePending(existing.id, subscriber);
   }
 
   try {

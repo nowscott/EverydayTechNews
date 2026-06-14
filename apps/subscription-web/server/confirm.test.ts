@@ -10,6 +10,7 @@ function repository(status: string | null) {
       status,
     }),
     createPending: vi.fn(),
+    restorePending: vi.fn(),
     activate: vi.fn().mockResolvedValue(undefined),
   };
 }

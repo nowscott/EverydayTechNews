@@ -79,6 +79,18 @@ export function buildStatusProperty(
   };
 }
 
+export function buildPendingRestoreProperties(
+  subscriber: Subscriber,
+  statusProperty: StatusProperty,
+) {
+  return {
+    Name: {
+      title: [{ text: { content: subscriber.name } }],
+    },
+    ...buildStatusProperty(statusProperty, "待确认"),
+  };
+}
+
 export function createNotionSubscriberRepository(
   environment: NotionEnvironment = process.env,
 ): SubscriberRepository {
@@ -192,6 +204,19 @@ export function createNotionSubscriberRepository(
             subscriber,
             config.statusProperty,
             "待确认",
+          ),
+        }),
+      });
+    },
+
+    async restorePending(id, subscriber) {
+      const config = await resolveDataSource();
+      await notionRequest(`/pages/${id}`, apiKey, {
+        method: "PATCH",
+        body: JSON.stringify({
+          properties: buildPendingRestoreProperties(
+            subscriber,
+            config.statusProperty,
           ),
         }),
       });

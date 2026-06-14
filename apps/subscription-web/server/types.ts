@@ -11,6 +11,7 @@ export interface SubscriberRecord extends Subscriber {
 export interface SubscriberRepository {
   find(email: string): Promise<SubscriberRecord | null>;
   createPending(subscriber: Subscriber): Promise<void>;
+  restorePending(id: string, subscriber: Subscriber): Promise<void>;
   activate(id: string): Promise<void>;
 }
 
