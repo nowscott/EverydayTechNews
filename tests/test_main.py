@@ -1,9 +1,12 @@
 import os
 import smtplib
 import sys
+import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import Mock, patch
+from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -152,6 +155,50 @@ class EnvironmentTests(unittest.TestCase):
         with patch.dict(os.environ, {"SENDING_ACCOUNT": ""}, clear=False):
             with self.assertRaises(ValueError):
                 main.get_env_variable("SENDING_ACCOUNT")
+
+
+class MainWorkflowTests(unittest.TestCase):
+    @patch("main.datetime")
+    def test_missing_news_file_fails(self, mocked_datetime):
+        now = datetime(2026, 6, 14, 7, 23, tzinfo=ZoneInfo("Asia/Shanghai"))
+        mocked_datetime.now.return_value = now
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            old_cwd = os.getcwd()
+            os.chdir(temp_dir)
+            try:
+                with self.assertRaisesRegex(
+                    FileNotFoundError,
+                    "news_archive/2026-06/13.md 不存在",
+                ):
+                    main.main()
+            finally:
+                os.chdir(old_cwd)
+
+    @patch("main.datetime")
+    def test_empty_news_file_fails(self, mocked_datetime):
+        now = datetime(2026, 6, 14, 7, 23, tzinfo=ZoneInfo("Asia/Shanghai"))
+        mocked_datetime.now.return_value = now
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            old_cwd = os.getcwd()
+            os.chdir(temp_dir)
+            try:
+                archive = Path("news_archive/2026-06")
+                archive.mkdir(parents=True)
+                (archive / "13.md").write_text(
+                    "# 今日新闻 - 2026年06月13日\n",
+                    encoding="utf-8",
+                )
+
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "没有可发送的新闻条目",
+                ):
+                    main.main()
+            finally:
+                os.chdir(old_cwd)
+
 
 class NotionStatusUpdateTests(unittest.TestCase):
     @patch("notion_client.requests.patch")

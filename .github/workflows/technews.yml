@@ -7,10 +7,15 @@ on:
         required: false
         type: string
   schedule:
-    - cron: '30 23 * * *'  # 每天上海时间07:30执行（前一天UTC 23:30）
+    - cron: '23 7 * * *'
+      timezone: 'Asia/Shanghai'
 
 permissions:
   contents: read
+
+concurrency:
+  group: newsletter-delivery
+  cancel-in-progress: false
 
 jobs:
   setup-and-test:
@@ -31,6 +36,12 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: '3.14'
+
+      - name: 输出任务信息
+        run: |
+          echo "触发方式: $GITHUB_EVENT_NAME"
+          echo "UTC 时间: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "上海时间: $(TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M:%S %Z')"
 
       - name: 安装 Python 依赖
         run: |

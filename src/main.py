@@ -101,14 +101,13 @@ def main():
     now = datetime.now(ZoneInfo("Asia/Shanghai"))
     news_filename = get_yesterday_news_filename(now)
     if not os.path.exists(news_filename):
-        print(f"{news_filename} 不存在，跳过发送邮件")
-        return
+        raise FileNotFoundError(f"{news_filename} 不存在，无法发送邮件")
 
     with open(news_filename, "r", encoding="utf-8") as news_file:
         formatted_news = format_news(news_file.read())
     if not formatted_news:
-        print("没有新闻条目，结束程序运行")
-        return
+        raise RuntimeError(f"{news_filename} 中没有可发送的新闻条目")
+    print(f"使用新闻文件：{news_filename}")
 
     try:
         sender = get_env_variable("SENDING_ACCOUNT")
@@ -126,6 +125,7 @@ def main():
         print(f"推送消息失败: {error}")
         sys.exit(1)
 
+    print(f"准备发送邮件，收件人数：{len(users)}")
     failed_users = send_newsletter_to_users(
         users,
         formatted_news,
@@ -135,8 +135,11 @@ def main():
         server,
         load_notifications(),
     )
+    success_count = len(users) - len(failed_users)
+    print(
+        f"邮件发送完成：成功 {success_count} 封，失败 {len(failed_users)} 封"
+    )
     if failed_users:
-        print(f"共有 {len(failed_users)} 封邮件发送失败")
         sys.exit(1)
 
 
