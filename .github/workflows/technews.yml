@@ -7,11 +7,11 @@ on:
         required: false
         type: string
   schedule:
-    - cron: '47 4 * * *'
+    - cron: '5 7 * * *'
       timezone: 'Asia/Shanghai'
-    - cron: '17 5 * * *'
+    - cron: '25 7 * * *'
       timezone: 'Asia/Shanghai'
-    - cron: '47 5 * * *'
+    - cron: '45 7 * * *'
       timezone: 'Asia/Shanghai'
 
 permissions:
@@ -24,18 +24,14 @@ concurrency:
 jobs:
   setup-and-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 210
+    timeout-minutes: 30
 
     steps:
-      - name: 计算发送日期与目标时间
+      - name: 计算发送日期
         id: delivery
         run: |
           DELIVERY_DATE=$(TZ=Asia/Shanghai date '+%Y-%m-%d')
-          TARGET_EPOCH=$(TZ=Asia/Shanghai date -d "$DELIVERY_DATE 07:23:00" '+%s')
-          NOW_EPOCH=$(date '+%s')
-          WAIT_SECONDS=$((TARGET_EPOCH > NOW_EPOCH ? TARGET_EPOCH - NOW_EPOCH : 0))
           echo "delivery_date=$DELIVERY_DATE" >> "$GITHUB_OUTPUT"
-          echo "wait_seconds=$WAIT_SECONDS" >> "$GITHUB_OUTPUT"
 
       - name: 检查当日发送标记
         if: github.event_name == 'schedule'
@@ -45,22 +41,10 @@ jobs:
           path: .newsletter-delivery-marker
           key: newsletter-delivery-${{ steps.delivery.outputs.delivery_date }}
 
-      - name: 等待到上海时间 07:23
-        if: github.event_name == 'schedule' && steps.delivery_cache.outputs.cache-hit != 'true'
-        env:
-          WAIT_SECONDS: ${{ steps.delivery.outputs.wait_seconds }}
-        run: |
-          if [ "$WAIT_SECONDS" -gt 0 ]; then
-            echo "提前唤醒成功，等待 $WAIT_SECONDS 秒后发送"
-            sleep "$WAIT_SECONDS"
-          else
-            echo "目标时间已到，立即发送"
-          fi
-
       - name: 跳过当日重复任务
         if: github.event_name == 'schedule' && steps.delivery_cache.outputs.cache-hit == 'true'
         run: |
-          echo "当日邮件已由更早的唤醒任务发送，本次跳过"
+          echo "当日邮件已由更早的任务发送，本次跳过"
 
       - name: 检出代码库
         if: github.event_name != 'schedule' || steps.delivery_cache.outputs.cache-hit != 'true'
