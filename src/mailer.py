@@ -19,28 +19,91 @@ def _is_permanent_recipient_failure(error):
     )
 
 
-def send_message(sender, password, server, receiver, text):
-    msg = MIMEText(text, "html", "utf-8")
-    msg["Subject"] = Header("今日科技早报", "utf-8")
-    msg["From"] = sender
-    msg["To"] = receiver
-    permanent_failures = 0
+def _build_message(sender, receiver, text):
+    message = MIMEText(text, "html", "utf-8")
+    message["Subject"] = Header("今日科技早报", "utf-8")
+    message["From"] = sender
+    message["To"] = receiver
+    return message
 
-    for attempt in range(1, 4):
+
+class SMTPMailer:
+    def __init__(self, sender, password, server, timeout=30):
+        self.sender = sender
+        self.password = password
+        self.server = server
+        self.timeout = timeout
+        self.connection_count = 0
+        self._smtp = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
+    def _connect(self):
+        smtp = smtplib.SMTP_SSL(self.server, timeout=self.timeout)
         try:
-            with smtplib.SMTP_SSL(server, timeout=30) as smtp:
-                smtp.login(sender, password)
-                smtp.sendmail(sender, receiver, msg.as_string())
-            print("邮件发送成功")
-            return SEND_SUCCESS
-        except (smtplib.SMTPException, OSError) as error:
-            if _is_permanent_recipient_failure(error):
-                permanent_failures += 1
-            print(f"第 {attempt} 次邮件发送失败")
-            if attempt < 3:
-                time.sleep(3)
+            smtp.login(self.sender, self.password)
+        except Exception:
+            try:
+                smtp.close()
+            finally:
+                raise
+        self._smtp = smtp
+        self.connection_count += 1
 
-    print("达到最大尝试次数，无法发送邮件")
-    if permanent_failures == 3:
-        return SEND_PERMANENT_FAILURE
-    return SEND_TEMPORARY_FAILURE
+    def _ensure_connected(self):
+        if self._smtp is None:
+            self._connect()
+
+    def _reset_connection(self):
+        smtp, self._smtp = self._smtp, None
+        if smtp is not None:
+            try:
+                smtp.close()
+            except (smtplib.SMTPException, OSError):
+                pass
+
+    def close(self):
+        smtp, self._smtp = self._smtp, None
+        if smtp is None:
+            return
+        try:
+            smtp.quit()
+        except (smtplib.SMTPException, OSError):
+            try:
+                smtp.close()
+            except (smtplib.SMTPException, OSError):
+                pass
+
+    def send_message(self, receiver, text):
+        message = _build_message(self.sender, receiver, text)
+        permanent_failures = 0
+
+        for attempt in range(1, 4):
+            try:
+                self._ensure_connected()
+                self._smtp.sendmail(
+                    self.sender,
+                    receiver,
+                    message.as_string(),
+                )
+                return SEND_SUCCESS
+            except (smtplib.SMTPException, OSError) as error:
+                if _is_permanent_recipient_failure(error):
+                    permanent_failures += 1
+                else:
+                    self._reset_connection()
+                if attempt < 3:
+                    time.sleep(3)
+
+        if permanent_failures == 3:
+            return SEND_PERMANENT_FAILURE
+        return SEND_TEMPORARY_FAILURE
+
+
+def send_message(sender, password, server, receiver, text):
+    with SMTPMailer(sender, password, server) as mailer:
+        return mailer.send_message(receiver, text)

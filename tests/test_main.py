@@ -1,3 +1,4 @@
+import io
 import os
 import smtplib
 import sys
@@ -222,7 +223,7 @@ class SendMessageTests(unittest.TestCase):
     @patch("mailer.time.sleep")
     @patch("mailer.smtplib.SMTP_SSL")
     def test_three_permanent_recipient_rejections_are_classified(self, smtp_ssl, sleep):
-        smtp = smtp_ssl.return_value.__enter__.return_value
+        smtp = smtp_ssl.return_value
         smtp.sendmail.side_effect = smtplib.SMTPRecipientsRefused(
             {"bad@example.com": (550, b"mailbox unavailable")}
         )
@@ -237,11 +238,12 @@ class SendMessageTests(unittest.TestCase):
 
         self.assertEqual(result, main.SEND_PERMANENT_FAILURE)
         self.assertEqual(smtp.sendmail.call_count, 3)
+        smtp_ssl.assert_called_once_with("smtp.example.com", timeout=30)
 
     @patch("mailer.time.sleep")
     @patch("mailer.smtplib.SMTP_SSL")
     def test_authentication_failure_does_not_disable_recipient(self, smtp_ssl, sleep):
-        smtp = smtp_ssl.return_value.__enter__.return_value
+        smtp = smtp_ssl.return_value
         smtp.login.side_effect = smtplib.SMTPAuthenticationError(
             535, b"authentication failed"
         )
@@ -255,16 +257,20 @@ class SendMessageTests(unittest.TestCase):
         )
 
         self.assertEqual(result, main.SEND_TEMPORARY_FAILURE)
+        self.assertEqual(smtp_ssl.call_count, 3)
 
 
 class NewsletterDeliveryTests(unittest.TestCase):
+    @patch("main.SMTPMailer")
     @patch("main.update_notion_user_status")
-    @patch("main.send_message", return_value=main.SEND_PERMANENT_FAILURE)
     def test_permanent_failure_updates_notion_status(
         self,
-        send_message,
         update_status,
+        smtp_mailer,
     ):
+        mailer = smtp_mailer.return_value.__enter__.return_value
+        mailer.send_message.return_value = main.SEND_PERMANENT_FAILURE
+        mailer.connection_count = 1
         user = {
             "name": "Alice",
             "email": "alice@example.com",
@@ -290,13 +296,17 @@ class NewsletterDeliveryTests(unittest.TestCase):
         self.assertEqual(failed, ["alice@example.com"])
         update_status.assert_called_once_with("api-key", user, "异常")
 
+    @patch("main.SMTPMailer")
     @patch("main.update_notion_user_status")
-    @patch("main.send_message", return_value=main.SEND_PERMANENT_FAILURE)
     def test_test_recipient_without_page_id_does_not_update_notion(
         self,
-        send_message,
         update_status,
+        smtp_mailer,
     ):
+        mailer = smtp_mailer.return_value.__enter__.return_value
+        mailer.send_message.return_value = main.SEND_PERMANENT_FAILURE
+        mailer.connection_count = 1
+
         failed = main.send_newsletter_to_users(
             [{"name": "NowScott", "email": "test@example.com"}],
             "<p>news</p>",
@@ -314,15 +324,18 @@ class NewsletterDeliveryTests(unittest.TestCase):
         self.assertEqual(failed, ["test@example.com"])
         update_status.assert_not_called()
 
+    @patch("main.SMTPMailer")
     @patch("main.build_unsubscribe_link", return_value="https://example.com/unsubscribe")
     @patch("main.build_message", return_value="<p>message</p>")
-    @patch("main.send_message", return_value=main.SEND_SUCCESS)
     def test_daily_message_contains_personalized_unsubscribe_link(
         self,
-        send_message,
         build_message,
         build_unsubscribe_link,
+        smtp_mailer,
     ):
+        mailer = smtp_mailer.return_value.__enter__.return_value
+        mailer.send_message.return_value = main.SEND_SUCCESS
+        mailer.connection_count = 1
         user = {"name": "Alice", "email": "alice@example.com"}
 
         failed = main.send_newsletter_to_users(
@@ -351,6 +364,81 @@ class NewsletterDeliveryTests(unittest.TestCase):
             build_message.call_args.kwargs["unsubscribe_url"],
             "https://example.com/unsubscribe",
         )
+
+    @patch("mailer.smtplib.SMTP_SSL")
+    def test_reuses_one_smtp_connection_for_multiple_recipients(self, smtp_ssl):
+        smtp = smtp_ssl.return_value
+        users = [
+            {"name": "Alice", "email": "alice@example.com"},
+            {"name": "Bob", "email": "bob@example.com"},
+        ]
+
+        failed = main.send_newsletter_to_users(
+            users,
+            "<p>news</p>",
+            "",
+            "sender@example.com",
+            "password",
+            "smtp.example.com",
+            {
+                "start_notification": "",
+                "end_notification": "",
+                "end_comment": "",
+            },
+        )
+
+        self.assertEqual(failed, [])
+        smtp_ssl.assert_called_once_with("smtp.example.com", timeout=30)
+        smtp.login.assert_called_once_with("sender@example.com", "password")
+        self.assertEqual(smtp.sendmail.call_count, 2)
+
+    @patch("mailer.time.sleep")
+    @patch("mailer.smtplib.SMTP_SSL")
+    def test_reconnects_after_connection_failure(self, smtp_ssl, sleep):
+        first_smtp = Mock()
+        first_smtp.sendmail.side_effect = smtplib.SMTPServerDisconnected(
+            "connection lost"
+        )
+        second_smtp = Mock()
+        smtp_ssl.side_effect = [first_smtp, second_smtp]
+
+        result = main.send_message(
+            "sender@example.com",
+            "password",
+            "smtp.example.com",
+            "user@example.com",
+            "<p>message</p>",
+        )
+
+        self.assertEqual(result, main.SEND_SUCCESS)
+        self.assertEqual(smtp_ssl.call_count, 2)
+        first_smtp.close.assert_called_once()
+        second_smtp.sendmail.assert_called_once()
+
+    @patch("main.SMTPMailer")
+    def test_delivery_logs_do_not_expose_recipient_address(self, smtp_mailer):
+        mailer = smtp_mailer.return_value.__enter__.return_value
+        mailer.send_message.return_value = main.SEND_TEMPORARY_FAILURE
+        mailer.connection_count = 1
+
+        with patch("sys.stdout", new_callable=io.StringIO) as output:
+            failed = main.send_newsletter_to_users(
+                [{"name": "Alice", "email": "private@example.com"}],
+                "<p>news</p>",
+                "",
+                "sender@example.com",
+                "password",
+                "smtp.example.com",
+                {
+                    "start_notification": "",
+                    "end_notification": "",
+                    "end_comment": "",
+                },
+            )
+
+        self.assertEqual(failed, ["private@example.com"])
+        self.assertNotIn("private@example.com", output.getvalue())
+        self.assertIn("收件人序号 1", output.getvalue())
 
 
 class FormattingTests(unittest.TestCase):

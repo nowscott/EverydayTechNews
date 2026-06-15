@@ -1,6 +1,7 @@
 import configparser
 import os
 import sys
+import time
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -10,6 +11,7 @@ from mailer import (
     SEND_PERMANENT_FAILURE,
     SEND_SUCCESS,
     SEND_TEMPORARY_FAILURE,
+    SMTPMailer,
     send_message,
 )
 from newsletter import build_message, format_news, is_news_sorted, simple_filter_news
@@ -70,41 +72,67 @@ def send_newsletter_to_users(
     confirmation_secret="",
 ):
     failed_users = []
-    for user in users:
-        unsubscribe_url = ""
-        if app_base_url and confirmation_secret:
-            unsubscribe_url = build_unsubscribe_link(
-                user["email"],
-                app_base_url,
-                confirmation_secret,
-            )
-        personalized_message = build_message(
-            user["name"],
-            formatted_news,
-            **notifications,
-            unsubscribe_url=unsubscribe_url,
-        )
-        result = send_message(
-            sender,
-            password,
-            server,
-            user["email"],
-            personalized_message,
-        )
-        if result == SEND_SUCCESS:
-            continue
+    total_users = len(users)
+    started_at = time.monotonic()
+    status_updates = 0
+    status_update_failures = 0
 
-        failed_users.append(user["email"])
-        if result == SEND_PERMANENT_FAILURE and user.get("notion_page_id"):
-            try:
-                update_notion_user_status(api_key, user, "异常")
-                print(f"已将 {user['email']} 的 Notion 状态更新为异常")
-            except Exception as error:
-                print(f"无法更新 {user['email']} 的 Notion 状态: {error}")
+    with SMTPMailer(sender, password, server) as mailer:
+        for index, user in enumerate(users, start=1):
+            unsubscribe_url = ""
+            if app_base_url and confirmation_secret:
+                unsubscribe_url = build_unsubscribe_link(
+                    user["email"],
+                    app_base_url,
+                    confirmation_secret,
+                )
+            personalized_message = build_message(
+                user["name"],
+                formatted_news,
+                **notifications,
+                unsubscribe_url=unsubscribe_url,
+            )
+            result = mailer.send_message(
+                user["email"],
+                personalized_message,
+            )
+            if result != SEND_SUCCESS:
+                failed_users.append(user["email"])
+                failure_type = (
+                    "永久退信"
+                    if result == SEND_PERMANENT_FAILURE
+                    else "临时故障"
+                )
+                print(f"发送失败：收件人序号 {index}，类型 {failure_type}")
+
+                if result == SEND_PERMANENT_FAILURE and user.get("notion_page_id"):
+                    try:
+                        update_notion_user_status(api_key, user, "异常")
+                        status_updates += 1
+                    except Exception as error:
+                        status_update_failures += 1
+                        print(f"订阅状态更新失败：{error}")
+
+            if index % 25 == 0 and index < total_users:
+                print(f"发送进度：{index}/{total_users}")
+
+        connection_count = mailer.connection_count
+
+    elapsed = time.monotonic() - started_at
+    print(
+        f"SMTP 发送阶段完成：耗时 {elapsed:.2f} 秒，"
+        f"连接 {connection_count} 次"
+    )
+    if status_updates or status_update_failures:
+        print(
+            f"永久退信状态处理：更新 {status_updates} 条，"
+            f"失败 {status_update_failures} 条"
+        )
     return failed_users
 
 
 def main():
+    started_at = time.monotonic()
     switch_to_parent_if_src()
     load_dotenv()
     test_recipient = os.environ.get("TEST_RECIPIENT", "").strip()
@@ -118,7 +146,7 @@ def main():
         formatted_news = format_news(news_file.read())
     if not formatted_news:
         raise RuntimeError(f"{news_filename} 中没有可发送的新闻条目")
-    print(f"使用新闻文件：{news_filename}")
+    print(f"新闻准备完成：{news_filename}")
 
     try:
         sender = get_env_variable("SENDING_ACCOUNT")
@@ -131,7 +159,7 @@ def main():
         if test_recipient:
             api_key = ""
             users = [{"name": "NowScott", "email": test_recipient}]
-            print(f"测试模式：仅发送到 {test_recipient}")
+            print("测试模式：仅发送到指定测试收件人")
         else:
             api_key = get_env_variable("NOTION_API_KEY")
             database_id = get_env_variable("NOTION_DATABASE_ID")
@@ -140,7 +168,11 @@ def main():
         print(f"推送消息失败: {error}")
         sys.exit(1)
 
-    print(f"准备发送邮件，收件人数：{len(users)}")
+    preparation_elapsed = time.monotonic() - started_at
+    print(
+        f"收件人准备完成：共 {len(users)} 人，"
+        f"耗时 {preparation_elapsed:.2f} 秒"
+    )
     failed_users = send_newsletter_to_users(
         users,
         formatted_news,
@@ -153,8 +185,10 @@ def main():
         confirmation_secret,
     )
     success_count = len(users) - len(failed_users)
+    total_elapsed = time.monotonic() - started_at
     print(
-        f"邮件发送完成：成功 {success_count} 封，失败 {len(failed_users)} 封"
+        f"邮件任务完成：成功 {success_count} 封，"
+        f"失败 {len(failed_users)} 封，总耗时 {total_elapsed:.2f} 秒"
     )
     if failed_users:
         sys.exit(1)

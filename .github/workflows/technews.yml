@@ -7,7 +7,11 @@ on:
         required: false
         type: string
   schedule:
-    - cron: '23 7 * * *'
+    - cron: '47 4 * * *'
+      timezone: 'Asia/Shanghai'
+    - cron: '17 5 * * *'
+      timezone: 'Asia/Shanghai'
+    - cron: '47 5 * * *'
       timezone: 'Asia/Shanghai'
 
 permissions:
@@ -19,37 +23,88 @@ concurrency:
 
 jobs:
   setup-and-test:
-    runs-on: ubuntu-latest  # 使用 Ubuntu 环境
+    runs-on: ubuntu-latest
+    timeout-minutes: 210
 
     steps:
+      - name: 计算发送日期与目标时间
+        id: delivery
+        run: |
+          DELIVERY_DATE=$(TZ=Asia/Shanghai date '+%Y-%m-%d')
+          TARGET_EPOCH=$(TZ=Asia/Shanghai date -d "$DELIVERY_DATE 07:23:00" '+%s')
+          NOW_EPOCH=$(date '+%s')
+          WAIT_SECONDS=$((TARGET_EPOCH > NOW_EPOCH ? TARGET_EPOCH - NOW_EPOCH : 0))
+          echo "delivery_date=$DELIVERY_DATE" >> "$GITHUB_OUTPUT"
+          echo "wait_seconds=$WAIT_SECONDS" >> "$GITHUB_OUTPUT"
+
+      - name: 检查当日发送标记
+        if: github.event_name == 'schedule'
+        id: delivery_cache
+        uses: actions/cache/restore@v5
+        with:
+          path: .newsletter-delivery-marker
+          key: newsletter-delivery-${{ steps.delivery.outputs.delivery_date }}
+
+      - name: 等待到上海时间 07:23
+        if: github.event_name == 'schedule' && steps.delivery_cache.outputs.cache-hit != 'true'
+        env:
+          WAIT_SECONDS: ${{ steps.delivery.outputs.wait_seconds }}
+        run: |
+          if [ "$WAIT_SECONDS" -gt 0 ]; then
+            echo "提前唤醒成功，等待 $WAIT_SECONDS 秒后发送"
+            sleep "$WAIT_SECONDS"
+          else
+            echo "目标时间已到，立即发送"
+          fi
+
+      - name: 跳过当日重复任务
+        if: github.event_name == 'schedule' && steps.delivery_cache.outputs.cache-hit == 'true'
+        run: |
+          echo "当日邮件已由更早的唤醒任务发送，本次跳过"
+
       - name: 检出代码库
+        if: github.event_name != 'schedule' || steps.delivery_cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v5
         with:
-          persist-credentials: true  # 确保能够推送更改
-
-      - name: 设置 Git
-        run: |
-          git config user.name "NowScott"
-          git config user.email "nowscott@qq.com"
+          persist-credentials: false
 
       - name: 设置 Python
+        if: github.event_name != 'schedule' || steps.delivery_cache.outputs.cache-hit != 'true'
         uses: actions/setup-python@v6
         with:
           python-version: '3.14'
+          cache: pip
 
       - name: 输出任务信息
+        if: github.event_name != 'schedule' || steps.delivery_cache.outputs.cache-hit != 'true'
         run: |
           echo "触发方式: $GITHUB_EVENT_NAME"
           echo "UTC 时间: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           echo "上海时间: $(TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M:%S %Z')"
 
       - name: 安装 Python 依赖
+        if: github.event_name != 'schedule' || steps.delivery_cache.outputs.cache-hit != 'true'
         run: |
-          python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: 安全加载测试收件人
+        if: github.event_name != 'schedule' || steps.delivery_cache.outputs.cache-hit != 'true'
+        run: |
+          TEST_RECIPIENT=$(jq -r '.inputs.test_recipient // ""' "$GITHUB_EVENT_PATH")
+          if [[ "$TEST_RECIPIENT" == *$'\n'* || "$TEST_RECIPIENT" == *$'\r'* ]]; then
+            echo "测试收件人格式无效"
+            exit 1
+          fi
+          if [ -n "$TEST_RECIPIENT" ]; then
+            echo "::add-mask::$TEST_RECIPIENT"
+          fi
+          echo "TEST_RECIPIENT=$TEST_RECIPIENT" >> "$GITHUB_ENV"
+
       - name: 设置环境变量并运行 main.py
+        id: send_newsletter
+        if: github.event_name != 'schedule' || steps.delivery_cache.outputs.cache-hit != 'true'
         env:
+          PYTHONUNBUFFERED: '1'
           SENDING_ACCOUNT: ${{ secrets.SENDING_ACCOUNT }}
           SENDING_PASSWORD: ${{ secrets.SENDING_PASSWORD }}
           SERVER: ${{ secrets.SERVER }}
@@ -57,6 +112,17 @@ jobs:
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
           APP_BASE_URL: https://mailist.nowscott.top
           SUBSCRIPTION_CONFIRMATION_SECRET: ${{ secrets.SUBSCRIPTION_CONFIRMATION_SECRET }}
-          TEST_RECIPIENT: ${{ inputs.test_recipient }}
         run: |
           python src/main.py
+
+      - name: 生成当日发送标记
+        if: always() && github.event_name == 'schedule' && steps.delivery_cache.outputs.cache-hit != 'true' && steps.send_newsletter.outcome != 'skipped'
+        run: |
+          printf '%s\n' "${{ steps.delivery.outputs.delivery_date }}" > .newsletter-delivery-marker
+
+      - name: 保存当日发送标记
+        if: always() && github.event_name == 'schedule' && steps.delivery_cache.outputs.cache-hit != 'true' && steps.send_newsletter.outcome != 'skipped'
+        uses: actions/cache/save@v5
+        with:
+          path: .newsletter-delivery-marker
+          key: newsletter-delivery-${{ steps.delivery.outputs.delivery_date }}
