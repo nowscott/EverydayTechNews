@@ -269,7 +269,7 @@ export default function App() {
             </span>
           </a>
           <span className="hidden border border-[#b9cbc5] px-3 py-1.5 font-mono text-[10px] tracking-[0.12em] text-[#2f6f62] sm:block dark:border-[#466860] dark:text-[#79b3a5]">
-            DAILY · 07:23 CST
+            DAILY · MORNING EDITION
           </span>
         </header>
 
