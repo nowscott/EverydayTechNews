@@ -20,6 +20,11 @@ class NewsFilterTests(unittest.TestCase):
     def test_promotional_language_is_filtered(self):
         self.assertTrue(should_filter_news("限时好价，智能手表 99 元发车"))
 
+    def test_configured_topic_keywords_are_filtered(self):
+        for keyword in ("IT早报", "华为", "鸿蒙", "昆仑"):
+            with self.subTest(keyword=keyword):
+                self.assertTrue(should_filter_news(f"{keyword}相关科技新闻"))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import main
+from mailer import _build_message
 
 
 class FetchNotionUsersTests(unittest.TestCase):
@@ -352,6 +353,7 @@ class NewsletterDeliveryTests(unittest.TestCase):
             },
             "https://mailist.example.com",
             "signing-secret",
+            "2026年06月15日",
         )
 
         self.assertEqual(failed, [])
@@ -363,6 +365,15 @@ class NewsletterDeliveryTests(unittest.TestCase):
         self.assertEqual(
             build_message.call_args.kwargs["unsubscribe_url"],
             "https://example.com/unsubscribe",
+        )
+        self.assertEqual(
+            build_message.call_args.kwargs["delivery_date"],
+            "2026年06月15日",
+        )
+        mailer.send_message.assert_called_once_with(
+            "alice@example.com",
+            "<p>message</p>",
+            "今日科技早报｜2026年06月15日",
         )
 
     @patch("mailer.smtplib.SMTP_SSL")
@@ -456,15 +467,31 @@ class FormattingTests(unittest.TestCase):
             "<p>news</p>",
             start_notification="<notice>",
             unsubscribe_url="https://example.com/?a=1&b=2",
+            delivery_date="2026年06月15日",
         )
 
         self.assertIn("早上好，&lt;Scott&gt;", message)
+        self.assertIn("2026年06月15日", message)
+        self.assertIn("<title>今日科技早报｜2026年06月15日</title>", message)
         self.assertIn("&lt;notice&gt;", message)
         self.assertIn("退订每日科技早报", message)
         self.assertIn("a=1&amp;b=2", message)
         self.assertIn("@media only screen and (max-width: 520px)", message)
         self.assertIn("background:#fffef9", message)
         self.assertIn('class="unsubscribe-button"', message)
+
+    def test_daily_mail_subject_contains_delivery_date(self):
+        message = _build_message(
+            "sender@example.com",
+            "receiver@example.com",
+            "<p>news</p>",
+            "今日科技早报｜2026年06月15日",
+        )
+
+        self.assertEqual(
+            str(message["Subject"]),
+            "今日科技早报｜2026年06月15日",
+        )
 
 
 if __name__ == "__main__":

@@ -19,9 +19,9 @@ def _is_permanent_recipient_failure(error):
     )
 
 
-def _build_message(sender, receiver, text):
+def _build_message(sender, receiver, text, subject="今日科技早报"):
     message = MIMEText(text, "html", "utf-8")
-    message["Subject"] = Header("今日科技早报", "utf-8")
+    message["Subject"] = Header(subject, "utf-8")
     message["From"] = sender
     message["To"] = receiver
     return message
@@ -78,8 +78,8 @@ class SMTPMailer:
             except (smtplib.SMTPException, OSError):
                 pass
 
-    def send_message(self, receiver, text):
-        message = _build_message(self.sender, receiver, text)
+    def send_message(self, receiver, text, subject="今日科技早报"):
+        message = _build_message(self.sender, receiver, text, subject)
         permanent_failures = 0
 
         for attempt in range(1, 4):
@@ -104,6 +104,13 @@ class SMTPMailer:
         return SEND_TEMPORARY_FAILURE
 
 
-def send_message(sender, password, server, receiver, text):
+def send_message(
+    sender,
+    password,
+    server,
+    receiver,
+    text,
+    subject="今日科技早报",
+):
     with SMTPMailer(sender, password, server) as mailer:
-        return mailer.send_message(receiver, text)
+        return mailer.send_message(receiver, text, subject)

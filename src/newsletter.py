@@ -70,8 +70,10 @@ def build_message(
     end_notification="",
     end_comment="",
     unsubscribe_url="",
+    delivery_date="",
 ):
     safe_name = escape(name)
+    safe_delivery_date = escape(delivery_date)
     safe_start_notification = escape(start_notification)
     safe_end_notification = escape(end_notification)
     safe_end_comment = escape(end_comment)
@@ -114,7 +116,7 @@ def build_message(
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light">
-    <title>今日科技早报</title>
+    <title>今日科技早报{f"｜{safe_delivery_date}" if safe_delivery_date else ""}</title>
     <style>
       @media only screen and (max-width: 520px) {{
         .email-shell {{ padding: 0 !important; }}
@@ -138,7 +140,7 @@ def build_message(
   </head>
   <body style="margin:0;padding:0;background:#ece9e0;color:#172126;-webkit-text-size-adjust:100%;text-size-adjust:100%">
     <div style="display:none;max-height:0;overflow:hidden;opacity:0">
-      今日值得关注的科技新闻，已为你筛选整理。
+      {f"{safe_delivery_date}，" if safe_delivery_date else ""}今日值得关注的科技新闻，已为你筛选整理。
     </div>
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0"
            style="width:100%;border-collapse:collapse;background:#ece9e0">
@@ -152,6 +154,9 @@ def build_message(
                 <p style="margin:0;font-family:'Courier New',monospace;font-size:11px;font-weight:700;letter-spacing:2px;color:#bd4f32">
                   EVERYDAY TECH NEWS
                 </p>
+                {f'''<p style="margin:10px 0 0;font-family:'Courier New',monospace;font-size:12px;font-weight:700;letter-spacing:1px;color:#2f6f62">
+                  {safe_delivery_date}
+                </p>''' if safe_delivery_date else ""}
                 <h1 class="email-title" style="margin:10px 0 0;font-family:Arial,'PingFang SC','Microsoft YaHei',sans-serif;font-size:30px;line-height:1.25;letter-spacing:-1px;color:#172126">
                   每日科技早报
                 </h1>

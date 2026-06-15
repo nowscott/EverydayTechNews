@@ -70,6 +70,7 @@ def send_newsletter_to_users(
     notifications,
     app_base_url="",
     confirmation_secret="",
+    delivery_date="",
 ):
     failed_users = []
     total_users = len(users)
@@ -91,10 +92,12 @@ def send_newsletter_to_users(
                 formatted_news,
                 **notifications,
                 unsubscribe_url=unsubscribe_url,
+                delivery_date=delivery_date,
             )
             result = mailer.send_message(
                 user["email"],
                 personalized_message,
+                f"今日科技早报｜{delivery_date}" if delivery_date else "今日科技早报",
             )
             if result != SEND_SUCCESS:
                 failed_users.append(user["email"])
@@ -138,6 +141,7 @@ def main():
     test_recipient = os.environ.get("TEST_RECIPIENT", "").strip()
 
     now = datetime.now(ZoneInfo("Asia/Shanghai"))
+    delivery_date = now.strftime("%Y年%m月%d日")
     news_filename = get_yesterday_news_filename(now)
     if not os.path.exists(news_filename):
         raise FileNotFoundError(f"{news_filename} 不存在，无法发送邮件")
@@ -183,6 +187,7 @@ def main():
         load_notifications(),
         app_base_url,
         confirmation_secret,
+        delivery_date,
     )
     success_count = len(users) - len(failed_users)
     total_elapsed = time.monotonic() - started_at

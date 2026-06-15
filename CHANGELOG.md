@@ -4,6 +4,17 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [2.6.0] - 2026-06-15
+
+### 筛选
+
+- 新增 `IT早报`、`华为`、`鸿蒙`、`昆仑` 标题屏蔽词
+
+### 邮件
+
+- 邮件主题、HTML 标题、预览文本和正文头部统一显示上海当天日期
+- 由邮件任务入口统一计算日期，避免主题与正文因时区或跨日产生差异
+
 ## [2.5.0] - 2026-06-15
 
 ### 性能
@@ -151,6 +162,7 @@
 - 支持通过仓库 Secrets 配置发件邮箱、SMTP 密钥和服务器
 - 支持 Fork 仓库后使用 GitHub Actions 部署每日科技新闻邮件
 
+[2.6.0]: https://github.com/NowScott/EverydayTechNews/releases/tag/v2.6.0
 [2.5.0]: https://github.com/NowScott/EverydayTechNews/releases/tag/v2.5.0
 [2.4.1]: https://github.com/NowScott/EverydayTechNews/releases/tag/v2.4.1
 [2.4.0]: https://github.com/NowScott/EverydayTechNews/releases/tag/v2.4.0
