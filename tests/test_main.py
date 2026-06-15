@@ -461,6 +461,20 @@ class FormattingTests(unittest.TestCase):
         self.assertIn("&lt;b&gt;unsafe&lt;/b&gt;", formatted)
         self.assertNotIn("<b>unsafe</b>", formatted)
 
+    def test_sorted_archive_is_refiltered_and_filled_to_25_items(self):
+        lines = ["# 今日新闻 - 2026年06月14日(sorted)"]
+        lines.append("- [HUAWEI 相关标题](https://example.com/blocked)")
+        lines.extend(
+            f"- [普通科技新闻标题 {index:02d}](https://example.com/{index})"
+            for index in range(1, 26)
+        )
+
+        formatted = main.format_news("\n".join(lines))
+
+        self.assertNotIn("HUAWEI", formatted)
+        self.assertIn("普通科技新闻标题 25", formatted)
+        self.assertEqual(formatted.count('class="news-number"'), 25)
+
     def test_daily_message_escapes_content_and_contains_unsubscribe_button(self):
         message = main.build_message(
             "<Scott>",

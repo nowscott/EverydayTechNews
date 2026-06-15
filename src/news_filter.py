@@ -2,6 +2,20 @@
 
 import re
 
+
+FILTER_KEYWORDS = (
+    '广告', '赞助', '福利', '优惠', '好价', '促销', '大促',
+    '发车', '闭眼囤', '手慢无', '探新低', '神价', '秒杀',
+    'IT早报', '华为', '鸿蒙', '昆仑',
+    'huawei', 'harmonyos', 'openharmony', 'emui',
+    '海思', '麒麟', 'kirin', '昇腾', 'ascend', '鲲鹏', 'kunpeng',
+    '乾崑', '问界', '智界', '享界', '尊界', '尚界',
+    '星闪', 'nearlink', 'hicar', 'hms for car', 'hms core',
+    'appgallery', 'hilink', 'pura', 'matebook', 'matepad',
+    'freebuds', 'watch gt', 'watchgt', '小艺',
+)
+
+
 def should_filter_news(title):
     """判断新闻是否应该被过滤掉
 
@@ -11,15 +25,11 @@ def should_filter_news(title):
     Returns:
         bool: True表示应该过滤掉，False表示保留
     """
-    # 过滤掉包含广告、推广等关键词的新闻
-    filter_keywords = [
-        '广告', '赞助', '福利', '优惠', '好价', '促销', '大促',
-        '发车', '闭眼囤', '手慢无', '探新低', '神价', '秒杀',
-        'IT早报', '华为', '鸿蒙', '昆仑',
-    ]
-
     # 检查是否包含过滤关键词
-    has_filter_keyword = any(keyword in title for keyword in filter_keywords)
+    normalized_title = title.casefold()
+    has_filter_keyword = any(
+        keyword.casefold() in normalized_title for keyword in FILTER_KEYWORDS
+    )
 
     # 使用正则表达式更精确地匹配金额表达
     # 匹配数字+货币单位的模式，但排除大额数字（亿及以上）和文件大小单位

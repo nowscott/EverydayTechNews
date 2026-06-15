@@ -30,7 +30,7 @@ def simple_filter_news(matches):
 def format_news(news_string):
     matches = re.findall(r"\[(.*?)\]\((.*?)\)", news_string)
     if is_news_sorted(news_string):
-        matches = matches[:25]
+        matches = filter_news_list(matches, max_count=25)
     else:
         matches = simple_filter_news(matches)
 
