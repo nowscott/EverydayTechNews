@@ -4,7 +4,7 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [Unreleased]
+## [2.5.0] - 2026-06-15
 
 ### 性能
 
@@ -151,6 +151,7 @@
 - 支持通过仓库 Secrets 配置发件邮箱、SMTP 密钥和服务器
 - 支持 Fork 仓库后使用 GitHub Actions 部署每日科技新闻邮件
 
+[2.5.0]: https://github.com/NowScott/EverydayTechNews/releases/tag/v2.5.0
 [2.4.1]: https://github.com/NowScott/EverydayTechNews/releases/tag/v2.4.1
 [2.4.0]: https://github.com/NowScott/EverydayTechNews/releases/tag/v2.4.0
 [2.3.0]: https://github.com/NowScott/EverydayTechNews/releases/tag/v2.3.0
