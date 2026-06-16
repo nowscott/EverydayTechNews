@@ -60,6 +60,12 @@ def message(name, formatted_news):
     )
 
 
+def build_delivery_message_id_seed(formatted_news, delivery_date=""):
+    if delivery_date:
+        return f"{delivery_date}\n{formatted_news}"
+    return formatted_news
+
+
 def send_newsletter_to_users(
     users,
     formatted_news,
@@ -77,6 +83,10 @@ def send_newsletter_to_users(
     started_at = time.monotonic()
     status_updates = 0
     status_update_failures = 0
+    message_id_seed = build_delivery_message_id_seed(
+        formatted_news,
+        delivery_date,
+    )
 
     with SMTPMailer(sender, password, server) as mailer:
         for index, user in enumerate(users, start=1):
@@ -98,6 +108,7 @@ def send_newsletter_to_users(
                 user["email"],
                 personalized_message,
                 f"今日科技早报｜{delivery_date}" if delivery_date else "今日科技早报",
+                message_id_seed=message_id_seed,
             )
             if result != SEND_SUCCESS:
                 failed_users.append(user["email"])

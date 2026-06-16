@@ -15,6 +15,12 @@ import main
 from mailer import _build_message
 
 
+def configure_successful_smtp(smtp):
+    smtp.mail.return_value = (250, b"OK")
+    smtp.rcpt.return_value = (250, b"OK")
+    smtp.data.return_value = (250, b"OK")
+
+
 class FetchNotionUsersTests(unittest.TestCase):
     @patch("notion_client.requests.get")
     @patch("notion_client.requests.post")
@@ -225,9 +231,8 @@ class SendMessageTests(unittest.TestCase):
     @patch("mailer.smtplib.SMTP_SSL")
     def test_three_permanent_recipient_rejections_are_classified(self, smtp_ssl, sleep):
         smtp = smtp_ssl.return_value
-        smtp.sendmail.side_effect = smtplib.SMTPRecipientsRefused(
-            {"bad@example.com": (550, b"mailbox unavailable")}
-        )
+        smtp.mail.return_value = (250, b"OK")
+        smtp.rcpt.return_value = (550, b"mailbox unavailable")
 
         result = main.send_message(
             "sender@example.com",
@@ -238,7 +243,8 @@ class SendMessageTests(unittest.TestCase):
         )
 
         self.assertEqual(result, main.SEND_PERMANENT_FAILURE)
-        self.assertEqual(smtp.sendmail.call_count, 3)
+        self.assertEqual(smtp.rcpt.call_count, 3)
+        smtp.data.assert_not_called()
         smtp_ssl.assert_called_once_with("smtp.example.com", timeout=30)
 
     @patch("mailer.time.sleep")
@@ -374,11 +380,13 @@ class NewsletterDeliveryTests(unittest.TestCase):
             "alice@example.com",
             "<p>message</p>",
             "今日科技早报｜2026年06月15日",
+            message_id_seed="2026年06月15日\n<p>news</p>",
         )
 
     @patch("mailer.smtplib.SMTP_SSL")
     def test_reuses_one_smtp_connection_for_multiple_recipients(self, smtp_ssl):
         smtp = smtp_ssl.return_value
+        configure_successful_smtp(smtp)
         users = [
             {"name": "Alice", "email": "alice@example.com"},
             {"name": "Bob", "email": "bob@example.com"},
@@ -401,16 +409,19 @@ class NewsletterDeliveryTests(unittest.TestCase):
         self.assertEqual(failed, [])
         smtp_ssl.assert_called_once_with("smtp.example.com", timeout=30)
         smtp.login.assert_called_once_with("sender@example.com", "password")
-        self.assertEqual(smtp.sendmail.call_count, 2)
+        self.assertEqual(smtp.mail.call_count, 2)
+        self.assertEqual(smtp.rcpt.call_count, 2)
+        self.assertEqual(smtp.data.call_count, 2)
 
     @patch("mailer.time.sleep")
     @patch("mailer.smtplib.SMTP_SSL")
     def test_reconnects_after_connection_failure(self, smtp_ssl, sleep):
         first_smtp = Mock()
-        first_smtp.sendmail.side_effect = smtplib.SMTPServerDisconnected(
+        first_smtp.mail.side_effect = smtplib.SMTPServerDisconnected(
             "connection lost"
         )
         second_smtp = Mock()
+        configure_successful_smtp(second_smtp)
         smtp_ssl.side_effect = [first_smtp, second_smtp]
 
         result = main.send_message(
@@ -424,7 +435,28 @@ class NewsletterDeliveryTests(unittest.TestCase):
         self.assertEqual(result, main.SEND_SUCCESS)
         self.assertEqual(smtp_ssl.call_count, 2)
         first_smtp.close.assert_called_once()
-        second_smtp.sendmail.assert_called_once()
+        second_smtp.data.assert_called_once()
+
+    @patch("mailer.time.sleep")
+    @patch("mailer.smtplib.SMTP_SSL")
+    def test_does_not_retry_after_data_stage_disconnect(self, smtp_ssl, sleep):
+        smtp = smtp_ssl.return_value
+        smtp.mail.return_value = (250, b"OK")
+        smtp.rcpt.return_value = (250, b"OK")
+        smtp.data.side_effect = smtplib.SMTPServerDisconnected("connection lost")
+
+        result = main.send_message(
+            "sender@example.com",
+            "password",
+            "smtp.example.com",
+            "user@example.com",
+            "<p>message</p>",
+        )
+
+        self.assertEqual(result, main.SEND_TEMPORARY_FAILURE)
+        smtp_ssl.assert_called_once_with("smtp.example.com", timeout=30)
+        smtp.data.assert_called_once()
+        sleep.assert_not_called()
 
     @patch("main.SMTPMailer")
     def test_delivery_logs_do_not_expose_recipient_address(self, smtp_mailer):
@@ -453,6 +485,41 @@ class NewsletterDeliveryTests(unittest.TestCase):
 
 
 class FormattingTests(unittest.TestCase):
+    def test_message_id_is_stable_for_same_delivery(self):
+        first = _build_message(
+            "sender@example.com",
+            "user@example.com",
+            "<p>message</p>",
+            "今日科技早报｜2026年06月16日",
+        )
+        second = _build_message(
+            "sender@example.com",
+            "user@example.com",
+            "<p>message</p>",
+            "今日科技早报｜2026年06月16日",
+        )
+
+        self.assertEqual(first["Message-ID"], second["Message-ID"])
+        self.assertIn("@example.com>", first["Message-ID"])
+
+    def test_message_id_seed_ignores_randomized_email_html(self):
+        first = _build_message(
+            "sender@example.com",
+            "user@example.com",
+            "<p>message</p><a href='https://example.com/?token=one'>退订</a>",
+            "今日科技早报｜2026年06月16日",
+            message_id_seed="2026年06月16日\n<p>news</p>",
+        )
+        second = _build_message(
+            "sender@example.com",
+            "user@example.com",
+            "<p>message</p><a href='https://example.com/?token=two'>退订</a>",
+            "今日科技早报｜2026年06月16日",
+            message_id_seed="2026年06月16日\n<p>news</p>",
+        )
+
+        self.assertEqual(first["Message-ID"], second["Message-ID"])
+
     def test_escapes_news_html(self):
         content = "- [<b>unsafe</b>](https://example.com/?a=1&b=2)"
 

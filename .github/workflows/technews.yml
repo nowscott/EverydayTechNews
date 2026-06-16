@@ -3,7 +3,11 @@ on:
   workflow_dispatch:
     inputs:
       test_recipient:
-        description: '测试收件邮箱；留空则按 Notion 订阅列表发送'
+        description: '测试收件邮箱；填写后仅发送到该邮箱'
+        required: false
+        type: string
+      send_all_confirmation:
+        description: '仅手动全量发送时填写 SEND_ALL；定时任务不需要'
         required: false
         type: string
   schedule:
@@ -71,12 +75,17 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      - name: 安全加载测试收件人
+      - name: 安全加载手动输入
         if: github.event_name != 'schedule' || steps.delivery_cache.outputs.cache-hit != 'true'
         run: |
           TEST_RECIPIENT=$(jq -r '.inputs.test_recipient // ""' "$GITHUB_EVENT_PATH")
-          if [[ "$TEST_RECIPIENT" == *$'\n'* || "$TEST_RECIPIENT" == *$'\r'* ]]; then
-            echo "测试收件人格式无效"
+          SEND_ALL_CONFIRMATION=$(jq -r '.inputs.send_all_confirmation // ""' "$GITHUB_EVENT_PATH")
+          if [[ "$TEST_RECIPIENT" == *$'\n'* || "$TEST_RECIPIENT" == *$'\r'* || "$SEND_ALL_CONFIRMATION" == *$'\n'* || "$SEND_ALL_CONFIRMATION" == *$'\r'* ]]; then
+            echo "手动输入格式无效"
+            exit 1
+          fi
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] && [ -z "$TEST_RECIPIENT" ] && [ "$SEND_ALL_CONFIRMATION" != "SEND_ALL" ]; then
+            echo "手动全量发送必须填写 send_all_confirmation=SEND_ALL"
             exit 1
           fi
           if [ -n "$TEST_RECIPIENT" ]; then
