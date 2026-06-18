@@ -4,6 +4,21 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [2.6.2] - 2026-06-18
+
+### 修复
+
+- 新闻列表页抓取增加连接超时、读取超时和临时 HTTP 错误重试，降低源站或网络抖动导致的单次任务失败
+- 列表页连续失败后自动降级到 IT之家同站 RSS，避免单一页面入口异常影响当天归档
+
+### 文档
+
+- README 补充当前抓取链路说明，并规划 RSS 摘要清洗、主题筛选和 AI 简报方向
+
+### 测试
+
+- 增加 RSS 解析、列表页超时重试和 RSS 兜底路径测试
+
 ## [2.6.1] - 2026-06-16
 
 ### 修复
@@ -175,6 +190,7 @@
 - 支持通过仓库 Secrets 配置发件邮箱、SMTP 密钥和服务器
 - 支持 Fork 仓库后使用 GitHub Actions 部署每日科技新闻邮件
 
+[2.6.2]: https://github.com/NowScott/EverydayTechNews/releases/tag/v2.6.2
 [2.6.1]: https://github.com/NowScott/EverydayTechNews/releases/tag/v2.6.1
 [2.6.0]: https://github.com/NowScott/EverydayTechNews/releases/tag/v2.6.0
 [2.5.0]: https://github.com/NowScott/EverydayTechNews/releases/tag/v2.5.0
