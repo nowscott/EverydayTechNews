@@ -3,18 +3,69 @@ import re
 import time
 import difflib
 from datetime import datetime
+from email.utils import parsedate_to_datetime
 from zoneinfo import ZoneInfo
+import xml.etree.ElementTree as ET
 import requests
 from bs4 import BeautifulSoup
 
 
 NEWS_URL = "https://www.ithome.com/list/"
+RSS_NEWS_URL = "https://www.ithome.com/rss/"
+REQUEST_TIMEOUT = (10, 30)
+REQUEST_RETRIES = 3
+RETRY_BACKOFF_SECONDS = (2, 5)
+RETRY_HTTP_STATUS_CODES = {429, 500, 502, 503, 504}
 REQUEST_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
         "AppleWebKit/537.36 Chrome/149.0 Safari/537.36"
     )
 }
+
+
+def fetch_response_with_retries(
+    url,
+    source_name,
+    retries=REQUEST_RETRIES,
+    backoff_seconds=RETRY_BACKOFF_SECONDS,
+):
+    last_error = None
+    for attempt in range(1, retries + 1):
+        try:
+            print(f"{source_name} 请求第 {attempt}/{retries} 次: {url}")
+            response = requests.get(
+                url,
+                headers=REQUEST_HEADERS,
+                timeout=REQUEST_TIMEOUT,
+            )
+            status_code = getattr(response, "status_code", None)
+            if (
+                isinstance(status_code, int)
+                and status_code in RETRY_HTTP_STATUS_CODES
+            ):
+                raise requests.HTTPError(
+                    f"HTTP 状态码 {status_code}", response=response
+                )
+            response.raise_for_status()
+            return response
+        except requests.HTTPError as exc:
+            status_code = getattr(exc.response, "status_code", None)
+            if status_code not in RETRY_HTTP_STATUS_CODES:
+                print(f"{source_name} 请求失败，不重试: {exc}")
+                raise
+            last_error = exc
+        except (requests.Timeout, requests.ConnectionError) as exc:
+            last_error = exc
+
+        if attempt < retries:
+            delay = backoff_seconds[
+                min(attempt - 1, len(backoff_seconds) - 1)
+            ]
+            print(f"{source_name} 请求失败，{delay} 秒后重试: {last_error}")
+            time.sleep(delay)
+
+    raise last_error
 
 
 def parse_news_html(html, selector="ul.datel"):
@@ -47,21 +98,66 @@ def parse_news_html(html, selector="ul.datel"):
     return news_data
 
 
+def parse_rss_news(xml_text):
+    root = ET.fromstring(xml_text)
+    news_data = []
+    for item in root.findall("./channel/item"):
+        title = item.findtext("title", default="").strip()
+        link = item.findtext("link", default="").strip()
+        pub_date = item.findtext("pubDate", default="").strip()
+        if not title or not link or not pub_date:
+            continue
+
+        try:
+            news_time = parsedate_to_datetime(pub_date)
+            if news_time.tzinfo is not None:
+                news_time = news_time.astimezone(
+                    ZoneInfo("Asia/Shanghai")
+                ).replace(tzinfo=None)
+        except (TypeError, ValueError) as exc:
+            print(f"跳过无法解析的 RSS 新闻条目: {exc}")
+            continue
+
+        news_data.append({
+            'category': "IT之家",
+            'title': title,
+            'link': link,
+            'time': news_time,
+        })
+    return news_data
+
+
 def fetch_news(url=NEWS_URL, selector="ul.datel"):
-    response = requests.get(
-        url,
-        headers=REQUEST_HEADERS,
-        timeout=30,
-    )
-    response.raise_for_status()
+    response = fetch_response_with_retries(url, "IT之家列表页")
     news_data = parse_news_html(response.text, selector)
     if not news_data:
         raise RuntimeError("新闻列表解析结果为空，网页结构可能已经变化")
     return news_data
 
 
+def fetch_rss_news(url=RSS_NEWS_URL):
+    response = fetch_response_with_retries(url, "IT之家 RSS")
+    news_data = parse_rss_news(response.text)
+    if not news_data:
+        raise RuntimeError("RSS 解析结果为空，网页结构可能已经变化")
+    return news_data
+
+
 def fetch_all_news():
-    return fetch_news()
+    errors = []
+    for source_name, fetcher in (
+        ("列表页", fetch_news),
+        ("RSS", fetch_rss_news),
+    ):
+        try:
+            news_data = fetcher()
+            print(f"使用 IT之家{source_name}抓取成功，共 {len(news_data)} 条新闻。")
+            return news_data
+        except Exception as exc:
+            errors.append(f"{source_name}: {exc}")
+            print(f"IT之家{source_name}抓取失败: {exc}")
+    raise RuntimeError("所有 IT之家抓取方法均失败：" + "；".join(errors))
+
 
 def ensure_dir_exists(path):
     if not os.path.exists(path):

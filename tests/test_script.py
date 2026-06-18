@@ -101,6 +101,82 @@ class FetchAllNewsTests(unittest.TestCase):
             }],
         )
 
+    def test_parses_news_from_rss(self):
+        xml = """
+        <rss version="2.0">
+          <channel>
+            <item>
+              <title>RSS 测试新闻标题</title>
+              <link>https://example.com/rss-news</link>
+              <pubDate>Thu, 18 Jun 2026 02:46:16 GMT</pubDate>
+            </item>
+          </channel>
+        </rss>
+        """
+
+        news = script.parse_rss_news(xml)
+
+        self.assertEqual(
+            news,
+            [{
+                "category": "IT之家",
+                "title": "RSS 测试新闻标题",
+                "link": "https://example.com/rss-news",
+                "time": datetime(2026, 6, 18, 10, 46, 16),
+            }],
+        )
+
+    @patch("script.time.sleep")
+    @patch("script.requests.get")
+    def test_list_fetch_retries_timeout_then_succeeds(self, get, sleep):
+        html = """
+        <ul class="datel">
+          <li>
+            <a class="c">软件之家</a>
+            <a class="t" href="https://example.com/news">测试新闻标题</a>
+            <i>2026-06-13 12:30:00</i>
+          </li>
+        </ul>
+        """
+        response = Mock(text=html, status_code=200)
+        response.raise_for_status.return_value = None
+        get.side_effect = [script.requests.ConnectTimeout("timeout"), response]
+
+        news = script.fetch_news()
+
+        self.assertEqual(len(news), 1)
+        self.assertEqual(get.call_count, 2)
+        sleep.assert_called_once_with(2)
+
+    @patch("script.time.sleep")
+    @patch("script.requests.get")
+    def test_falls_back_to_rss_after_list_timeouts(self, get, sleep):
+        rss = """
+        <rss version="2.0">
+          <channel>
+            <item>
+              <title>RSS 兜底新闻</title>
+              <link>https://example.com/rss-fallback</link>
+              <pubDate>Thu, 18 Jun 2026 02:46:16 GMT</pubDate>
+            </item>
+          </channel>
+        </rss>
+        """
+        rss_response = Mock(text=rss, status_code=200)
+        rss_response.raise_for_status.return_value = None
+        get.side_effect = [
+            script.requests.ConnectTimeout("timeout 1"),
+            script.requests.ConnectTimeout("timeout 2"),
+            script.requests.ConnectTimeout("timeout 3"),
+            rss_response,
+        ]
+
+        news = script.fetch_all_news()
+
+        self.assertEqual(news[0]["title"], "RSS 兜底新闻")
+        self.assertEqual(get.call_count, 4)
+        self.assertEqual(sleep.call_count, 2)
+
     @patch("script.requests.get")
     def test_http_failure_is_raised(self, get):
         response = Mock()
