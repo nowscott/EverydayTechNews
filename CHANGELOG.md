@@ -4,6 +4,14 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [2.6.4] - 2026-07-26
+
+### 安全
+
+- 将订阅网页的 Nodemailer 升级到 9.0.3，修复邮件 `raw` 选项可能绕过文件与 URL 访问限制的问题
+- 更新 PostCSS、shell-quote、body-parser 及其上游依赖到已修复版本
+- SMTP 传输层显式禁用文件和 URL 访问，防止邮件内容读取本地文件或远程 URL
+
 ## [2.6.3] - 2026-07-26
 
 ### 修复

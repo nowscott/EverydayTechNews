@@ -102,6 +102,8 @@ export function createSubscriptionMailers(
       user: sender,
       pass: password,
     },
+    disableFileAccess: true,
+    disableUrlAccess: true,
     connectionTimeout: 15_000,
     socketTimeout: 30_000,
   });
