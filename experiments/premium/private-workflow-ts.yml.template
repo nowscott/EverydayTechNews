@@ -1,0 +1,82 @@
+name: Internal premium pool (TypeScript, private data only)
+on:
+  workflow_dispatch:
+    inputs:
+      maintenance_only:
+        description: 'Restore, collect and archive only; no model or SMTP'
+        type: boolean
+        default: true
+      verify_api:
+        description: 'Single-article TS API verification; no mail'
+        type: boolean
+        default: false
+      fresh_sample:
+        description: 'One frozen current-24h TS launch sample to the allowlisted inbox'
+        type: boolean
+        default: false
+  schedule:
+    - cron: '15,25,45,55 * * * *'
+    - cron: '5,10 22 * * *'
+    - cron: '30 22 * * *'
+    - cron: '0 23 * * *'
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: premium-private-state
+  cancel-in-progress: false
+jobs:
+  pool:
+    if: github.repository == 'nowscott/EverydayTechNews-data' && github.event.repository.private == true && (vars.PREMIUM_ENABLED == 'true' || (github.event_name == 'workflow_dispatch' && (inputs.maintenance_only || inputs.verify_api || inputs.fresh_sample)))
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: state
+          persist-credentials: true
+      - uses: actions/checkout@v5
+        with:
+          repository: nowscott/EverydayTechNews
+          ref: __ENGINE_SHA__
+          path: engine
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: engine/packages/news-engine/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix engine/packages/news-engine --omit=dev --ignore-scripts --no-audit --no-fund
+      - name: Configure private state author
+        working-directory: state
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+      - name: TypeScript restore, maintenance and due tasks
+        id: engine
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          SENDING_ACCOUNT: ${{ secrets.PREMIUM_SMTP_ACCOUNT }}
+          SENDING_PASSWORD: ${{ secrets.PREMIUM_SMTP_PASSWORD }}
+          SERVER: ${{ secrets.PREMIUM_SMTP_SERVER }}
+          MAINTENANCE: ${{ github.event_name == 'workflow_dispatch' && inputs.maintenance_only }}
+          LAUNCH: ${{ github.event_name == 'workflow_dispatch' && inputs.fresh_sample }}
+          VERIFY_API: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_api }}
+        run: >-
+          node engine/packages/news-engine/src/main.ts run --data state --sync-git
+          --maintenance-only "$MAINTENANCE" --launch "$LAUNCH" --verify-api "$VERIFY_API"
+      - name: Store fulltext and raw responses for 90 days
+        id: archive
+        if: always() && steps.engine.outputs.archive_ready == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.engine.outputs.artifact_name }}
+          path: state/.cache/evidence.tar.gz
+          retention-days: 90
+          if-no-files-found: error
+      - name: Confirm uploaded archive and prune superseded daily buckets
+        if: always() && steps.archive.outcome == 'success'
+        run: node engine/packages/news-engine/src/main.ts ack-artifact --data state --sync-git

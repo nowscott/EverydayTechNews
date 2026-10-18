@@ -1,6 +1,6 @@
 # 持久化多来源科技早报（内部实验）
 
-当前入口是pool.py。旧说明保留在 [LEGACY_EXPERIMENT.md](LEGACY_EXPERIMENT.md)，其中8条上限、旧调度和work命令已经被替代。普通订阅、真实名单、网页、支付未改变。
+高级订阅TS运行入口及私有部署状态见 [TS引擎说明](../../packages/news-engine/README.md) 与 [迁移记录](../../packages/news-engine/MIGRATION.md)。下文Python命令保留为原实现参考；上线后的高级订阅工作流使用TS，不执行Python。原入口是pool.py。旧说明保留在 [LEGACY_EXPERIMENT.md](LEGACY_EXPERIMENT.md)，其中8条上限、旧调度和work命令已经被替代。普通订阅、真实名单、网页、支付未改变。
 
 ## 内容及状态
 
