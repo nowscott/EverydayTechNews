@@ -38,11 +38,15 @@ SOURCES = {
     'apple': ('Apple Newsroom', 'https://www.apple.com/newsroom/rss-feed.rss', 'www.apple.com'),
     'tesla': ('Tesla 投资者关系', 'https://ir.tesla.com/press', 'ir.tesla.com'),
     'nasa': ('NASA 官方新闻', 'https://www.nasa.gov/news-release/feed/', 'www.nasa.gov'),
+    'apple_developer': ('Apple 开发者新闻', 'https://developer.apple.com/news/rss/news.rss', 'developer.apple.com'),
+    'macrumors': ('MacRumors', 'https://feeds.macrumors.com/MacRumors-All', 'www.macrumors.com'),
+    'nasa_blogs': ('NASA 任务博客', 'https://www.nasa.gov/blogs/feed/', 'www.nasa.gov'),
+    'ars_science': ('Ars Technica 科学', 'https://feeds.arstechnica.com/arstechnica/science', 'arstechnica.com'),
 }
 
 FEED_ITEM_LIMIT = 100
 DISCOVERY_ONLY_SOURCES = {'openai', 'google_ai', 'bloomberg'}
-ENCODED_REQUIRED_SOURCES = {'nvidia', 'github', 'cloudflare', 'microsoft_foundry', 'nasa'}
+ENCODED_REQUIRED_SOURCES = {'nvidia', 'github', 'cloudflare', 'microsoft_foundry', 'nasa', 'nasa_blogs', 'ars_science'}
 
 def now():
     return datetime.now(SH)
@@ -85,7 +89,7 @@ def parse_feed(xml, source, fetched_at):
             if published.tzinfo is None:
                 continue
             url = canonical(link)
-            hosts={'www.nasa.gov','nasa.gov','science.nasa.gov'} if source=='nasa' else {SOURCES[source][2]}
+            hosts={'www.nasa.gov','nasa.gov','science.nasa.gov','blogs.nasa.gov'} if source in {'nasa','nasa_blogs'} else {SOURCES[source][2]}
             if urlsplit(url).hostname not in hosts:
                 continue
         except (ValueError, TypeError):
@@ -218,8 +222,8 @@ def duplicate(a, b):
     norm=lambda s: re.sub(r'[^\w]', '', s.lower())
     if difflib.SequenceMatcher(None,norm(a['title']),norm(b['title'])).ratio() >= .72:return True
     # A shared brand/product is insufficient: distinguish launch, pricing and safety events.
-    terms=lambda title:set(re.findall(r'[a-z]+[ -]?\d+[a-z0-9.-]*|rtx\s*spark|deepseek[ -]v[\w.-]+',title.lower()))
-    actions=[r'发布|推出|上线|launch|release|introduc|arriv',r'价格|售价|price|pricing',r'安全|漏洞|security|vulnerab',r'交付|deliver',r'测试|预览|beta|preview|test']
+    terms=lambda title:set(re.findall(r'[a-z]+[ -]?\d+[a-z0-9.-]*|rtx\s*spark|deepseek[ -]v[\w.-]+|iphone\s+duo|roadster|robotaxi|starship|starlink',title.lower()))
+    actions=[r'发布|推出|上线|launch|release|introduc|arriv',r'价格|售价|price|pricing',r'安全|漏洞|security|vulnerab',r'交付|deliver',r'测试|预览|beta|preview|test',r'walk[ -]?in|无预约|现货|首发日']
     events=lambda t:{i for i,p in enumerate(actions) if re.search(p,t,re.I)}
     return bool(terms(a['title']) & terms(b['title']) and events(a['title']) & events(b['title']))
 
@@ -242,7 +246,7 @@ def select(rows, cutoff, sample=False, target=None):
                 a['timeliness']='older_publication_recent_content_change_pending_review'
             else:reason='old_news'
         if reason is None and a['content_status']!='usable_excerpt': reason='discovery_only_no_body' if a['content_status']=='discovery_only' else 'insufficient_content'
-        if reason is None and re.search(r'优惠|好价|促销|广告|秒杀|红包|IT早报|新闻汇总|Everything we launched',a['title']): reason='promotion'
+        if reason is None and re.search(r'优惠|好价|促销|广告|秒杀|红包|IT早报|新闻汇总|Everything we launched|Top Stories:|Weekly Roundup|Week in Review|Best Deals|Rocket Report:',a['title'],re.I): reason='promotion_or_roundup'
         matches=[b['id'] for b in selected if duplicate(a,b)] if reason is None else []
         if matches:reason='duplicate_or_event_review'
         if reason: rejected.append(dict(id=a['id'],title=a['title'],reason=reason,event_matches=matches));continue
@@ -512,7 +516,7 @@ def render(db,folder,issue):
     doc,plain=build_email(issue,records)
     (out/'email.html').write_text(doc)
     (out/'email.txt').write_text(plain)
-    write_json(out/'comparison.json',dict(issue=issue,records=records,sendable_count=0,test_preview_count=min(8,sum(bool(r['result']) for r in records)),generation_completed_count=sum(bool(r['result']) for r in records),actual_calls=len(list(db.execute('SELECT id FROM calls'))),cost_is_estimate=True))
+    write_json(out/'comparison.json',dict(issue=issue,records=records,sendable_count=0,test_preview_count=min(20,sum(bool(r['result']) for r in records)),generation_completed_count=sum(bool(r['result']) for r in records),actual_calls=len(list(db.execute('SELECT id FROM calls'))),cost_is_estimate=True))
     with (out/'review.csv').open('w',newline='',encoding='utf-8-sig') as f:
         w=csv.writer(f);w.writerow(['标题','主题','来源','链接','发布时间','抓取时间','内容状态','原文证据','AI标题','AI概括','关键要点','证据映射','状态','关键事实错误','无依据陈述','遗漏','人工修改需求','人工审阅','耗时秒','调用次数','估算费用元','未知费用预留元'])
         for r in records:

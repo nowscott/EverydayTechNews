@@ -33,7 +33,7 @@ def build_email(issue,records):
     minutes=max(1,round(est_chars/350))
     state='离线原文摘录 · 尚未调用 DeepSeek' if generated==0 else f'{generated} 条模型初稿 · 尚待人工核对'
     caution='测试邮件，仅供指定邮箱审阅。包含历史样本，不代表今日24小时新闻。未经逐条人工事实审阅。' if is_sample else '测试邮件，仅供指定邮箱审阅。未经逐条人工事实审阅。'
-    mode='版式与多来源样本' if is_sample else '最近24小时早报'
+    mode='版式与多来源样本' if is_sample else ('最近24小时 · 新选题测试加刊' if issue['mode']=='current_24h_sample' else '最近24小时早报')
     toc=[];groups=OrderedDict();plain=[f'【测试】每日科技早报｜{date_label}',caution,state,f'截止：{cutoff.strftime("%m月%d日 %H:%M")} 上海时间',f'本期 {len(shown)} 条 / {source_count} 个来源 / 约 {minutes} 分钟','今日速览']
     for i,r in enumerate(shown,1):
         a=r['article'];g=r['result'];title=(g or {}).get('title',a['title'])

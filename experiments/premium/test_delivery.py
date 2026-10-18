@@ -31,8 +31,15 @@ def prepare(data, issue_id, recipient, sender):
     fingerprint=hashlib.sha256((recipient+'\0'+issue_id+'\0'+content+'\0'+plain).encode()).hexdigest()
     message=EmailMessage()
     comparison=folder/'comparison.json'
-    has_ai=comparison.exists() and any(row.get('result') for row in json.loads(comparison.read_text()).get('records',[]))
-    message['Subject']=f'【测试】AI科技精编｜{issue_id}｜中文标题与选题审阅' if has_ai else f'【测试】每日科技早报｜{issue_id}｜多来源版式审阅'
+    info=json.loads(comparison.read_text()) if comparison.exists() else {}
+    has_ai=any(row.get('result') for row in info.get('records',[]))
+    issue=info.get('issue',{})
+    if issue.get('mode') in {'daily_24h','current_24h_sample'}:
+        day=issue.get('collection_cutoff','')[:10]
+        count=sum(bool(row.get('result')) for row in info.get('records',[]))
+        label='【测试·新版选题】' if issue['mode']=='current_24h_sample' else '【测试】'
+        message['Subject']=f'{label}科技早报｜{day}｜{count}条精选' if issue.get('kind')!='diagnostic' else f'【测试】早报异常诊断｜{day}'
+    else:message['Subject']=f'【测试】AI科技精编｜{issue_id}｜中文标题与选题审阅' if has_ai else f'【测试】每日科技早报｜{issue_id}｜多来源版式审阅'
     message['From']=formataddr(('每日科技早报 · 测试',sender))
     message['To']=recipient
     message['Message-ID']=f'<premium-test-{fingerprint[:32]}@{sender.rsplit("@",1)[-1]}>'

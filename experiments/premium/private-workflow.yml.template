@@ -11,6 +11,10 @@ on:
         description: 'One-article API acceptance; requires maintenance_only=false; no email'
         type: boolean
         default: false
+      fresh_sample:
+        description: 'Curate a new current-24h sample and send to authorized test inbox; maintenance_only=false'
+        type: boolean
+        default: false
   schedule:
     - cron: '15,25,45,55 * * * *'
     # UTC previous day 21:55=Shanghai 05:55; UTC22:05/10=06:05/10.
@@ -28,7 +32,7 @@ concurrency:
 
 jobs:
   pool:
-    if: github.repository == 'nowscott/EverydayTechNews-data' && github.event.repository.private == true && (vars.PREMIUM_ENABLED == 'true' || (github.event_name == 'workflow_dispatch' && (inputs.maintenance_only || inputs.verify_api)))
+    if: github.repository == 'nowscott/EverydayTechNews-data' && github.event.repository.private == true && (vars.PREMIUM_ENABLED == 'true' || (github.event_name == 'workflow_dispatch' && (inputs.maintenance_only || inputs.verify_api || inputs.fresh_sample)))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -68,20 +72,20 @@ jobs:
           python engine/experiments/premium/pool.py reconcile --data state --sync-git
           python engine/experiments/premium/schedule.py
       - name: Freeze edition if due (never generate here)
-        if: steps.due.outputs.compose == 'true' && !inputs.maintenance_only && !inputs.verify_api
+        if: steps.due.outputs.compose == 'true' && !inputs.maintenance_only && !inputs.verify_api && !inputs.fresh_sample
         run: python engine/experiments/premium/pool.py compose --data state --sync-git
       - name: Deliver only to authorized test inbox
-        if: steps.due.outputs.deliver == 'true' && !inputs.maintenance_only && !inputs.verify_api
+        if: steps.due.outputs.deliver == 'true' && !inputs.maintenance_only && !inputs.verify_api && !inputs.fresh_sample
         env:
           SENDING_ACCOUNT: ${{ secrets.PREMIUM_SMTP_ACCOUNT }}
           SENDING_PASSWORD: ${{ secrets.PREMIUM_SMTP_PASSWORD }}
           SERVER: ${{ secrets.PREMIUM_SMTP_SERVER }}
         run: python engine/experiments/premium/pool.py deliver --data state --sync-git
       - name: Collect and assess independently
-        if: steps.due.outputs.collect == 'true' || inputs.maintenance_only || inputs.verify_api
+        if: steps.due.outputs.collect == 'true' || inputs.maintenance_only || inputs.verify_api || inputs.fresh_sample
         run: python engine/experiments/premium/pool.py collect --data state --sync-git
       - name: Enrich bounded candidate batch
-        if: steps.due.outputs.enrich == 'true' && !inputs.maintenance_only && !inputs.verify_api
+        if: steps.due.outputs.enrich == 'true' && !inputs.maintenance_only && !inputs.verify_api && !inputs.fresh_sample
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: python engine/experiments/premium/pool.py enrich --data state --sync-git
@@ -90,6 +94,18 @@ jobs:
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: python engine/experiments/premium/pool.py verify-api --data state --sync-git
+      - name: Curate current-24h sample from frozen candidate pool
+        if: inputs.fresh_sample && !inputs.maintenance_only
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: python engine/experiments/premium/pool.py fresh-sample --data state --sync-git
+      - name: Send explicitly requested current sample to test inbox
+        if: inputs.fresh_sample && !inputs.maintenance_only
+        env:
+          SENDING_ACCOUNT: ${{ secrets.PREMIUM_SMTP_ACCOUNT }}
+          SENDING_PASSWORD: ${{ secrets.PREMIUM_SMTP_PASSWORD }}
+          SERVER: ${{ secrets.PREMIUM_SMTP_SERVER }}
+        run: python engine/experiments/premium/pool.py send-sample --data state --sync-git
       - name: Save status and seven-day report
         if: always() && steps.restore.outcome == 'success'
         run: python engine/experiments/premium/pool.py report --data state --sync-git

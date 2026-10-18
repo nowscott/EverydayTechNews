@@ -3,8 +3,8 @@ from collections import Counter
 from datetime import datetime
 import re
 
-VERSION='editorial-4.1'
-PRIMARY={'nvidia','github','cloudflare','microsoft_foundry','apple','tesla','nasa'}
+VERSION='editorial-4.2'
+PRIMARY={'nvidia','github','cloudflare','microsoft_foundry','apple','tesla','nasa','apple_developer','nasa_blogs'}
 AI=r'(?<![A-Za-z])ai(?![A-Za-z])|\b(?:llm|agents?|chatgpt|openai|anthropic|claude|copilot|foundry|deepseek|gemini|gpt[- ]?\d|transformer|clef|qwen|llama|mistral|multimodal)\b|人工智能|大模型|智能体|生成式|机器学习|模型训练|推理模型'
 CHIPS=r'\b(?:gpu|cpu|nvidia|geforce|dlss|semiconductor|chips?|hbm|cuda)\b|芯片|算力|半导体|显卡|存储芯片|量子计算'
 SOFTWARE=r'\b(?:release|runner|update|gateway|license|security|vulnerability|open.source|developer|software|api|python|linux|windows)\b|更新|软件|开源|漏洞|开发者'
@@ -57,13 +57,13 @@ def choose(candidates,cutoff,sample=False,target=None):
     for a in candidates:a['ranking']=evaluate(a,cutoff)
     minimum=40 if sample else 58
     target=target or preferences()['edition_maximum']
-    sources=Counter();topics=Counter();selected=[];rejected=[]
+    sources=Counter();topics=Counter();interests=Counter();selected=[];rejected=[]
     pending=sorted(candidates,key=lambda a:(a['ranking']['score'],a['published_at'],a['id']),reverse=True)
     while pending and len(selected)<target:
         # Diversity can only decide between candidates within three score points.
         best=max(x['ranking']['score'] for x in pending)
         close=[x for x in pending if x['ranking']['score']>=best-3]
-        a=min(close,key=lambda a:(sources[a['source']]+topics[a.get('topic')],-a['ranking']['score'],-datetime.fromisoformat(a['published_at']).timestamp()))
+        a=min(close,key=lambda a:(sources[a['source']]+topics[a.get('topic')]+min([interests[x] for x in a['ranking']['interests']] or [0]),-a['ranking']['score'],-datetime.fromisoformat(a['published_at']).timestamp()))
         pending.remove(a)
         reason=None
         if a['ranking']['score']<minimum:reason='editorial_score_below_threshold'
@@ -72,5 +72,6 @@ def choose(candidates,cutoff,sample=False,target=None):
         a['ranking']['selection_order']=len(selected)+1
         a['ranking']['diversity_adjustment']=0
         selected.append(a);sources[a['source']]+=1;topics[a.get('topic')]+=1
+        interests.update(a['ranking']['interests'])
     rejected.extend(dict(id=a['id'],title=a['title'],reason='edition_capacity',ranking=a['ranking']) for a in pending)
     return selected,rejected

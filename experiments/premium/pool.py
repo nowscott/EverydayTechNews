@@ -111,6 +111,13 @@ def writing_window(current):
     return min(current,end),end-timedelta(hours=24)
 
 
+def attempted_versions(store,day):
+    # Migrated legacy-format samples remain in the monetary budget, but the new
+    # dual-format article-version cap counts this pipeline's versions only.
+    return {r[0] for r in store.db.execute('SELECT DISTINCT c.job,j.article FROM calls c LEFT JOIN jobs j ON j.key=c.job WHERE c.day=?',(day,))
+            if r[1] is None or json.loads(r[1]).get('output_schema')=='dual-1'}
+
+
 def assess(store,cutoff=None):
     cutoff=cutoff or b.now();config=preferences();p=b.load_policy()
     inputs,floor=writing_window(cutoff)
@@ -139,7 +146,7 @@ def enrich(store):
     candidates_now,_=candidates(store,inputs,preferences()['new_versions_per_day'],floor)
     eligible={b.cache_key(a,p) for a in candidates_now}
     current_day=b.now().date().isoformat()
-    attempted={r[0] for r in store.db.execute('SELECT DISTINCT job FROM calls WHERE day=?',(current_day,))}
+    attempted=attempted_versions(store,current_day)
     invoked=0;statuses=[]
     jobs=[dict(r) for r in store.db.execute('SELECT * FROM jobs WHERE result IS NULL')]
     jobs.sort(key=lambda j:json.loads(j['article']).get('ranking',{}).get('score',0),reverse=True)
@@ -193,6 +200,104 @@ def verify_api(store):
                 job_key=job['key'],article={k:json.loads(job['article']).get(k) for k in ['id','title','url','source_name','published_at','fetched_at','content_fingerprint']},output=json.loads(row['result']) if row['result'] else None,
                 is_trial_day=False,mail_sent=False,accounting=status(store)['calls'])
     atomic(store.root/'durable/api-verification.json',result);store.checkpoint();return result
+
+
+def fresh_sample(store):
+    """Explicit current-24h sample; frozen reserves, shared ready pool and budget.
+
+    A manual sample is separate from the scheduled seven-day morning editions.
+    First invocation fixes a 30-minute deadline; reruns do not extend or refill it.
+    """
+    if not store.sync_git:raise ValueError('fresh_sample_requires_private_git')
+    issue_id='sample-current-'+b.now().date().isoformat()
+    out=store.root/'issues'/issue_id
+    if (out/'edition.json').exists():return json.loads((out/'edition.json').read_text())
+    path=store.root/'durable/samples'/(issue_id+'.json');p=b.load_policy()
+    if not path.exists():
+        cutoff=b.now();chosen,rejected=candidates(store,cutoff,preferences()['new_versions_per_day'])
+        for a in chosen:
+            key=b.cache_key(a,p);a['job_key']=key
+            with store.db:store.db.execute('INSERT OR IGNORE INTO jobs(key,article,status) VALUES (?,?,?)',(key,json.dumps(a,ensure_ascii=False),'queued'))
+        spec=dict(id=issue_id,mode='current_24h_sample',pool_edition=True,articles=chosen,rejected=rejected,
+                  collection_cutoff=cutoff.isoformat(),generation_cutoff=(cutoff+timedelta(minutes=30)).isoformat(),
+                  created_at=b.stamp(),source_health=status(store)['sources'])
+        atomic(path,store.shrink(spec));store.checkpoint()
+    spec=store.expand(json.loads(path.read_text()))
+    permit=dict(mode='internal_test_anytime',issue_id=issue_id,expires_at=spec['generation_cutoff'])
+    ready=[];failures=[];attempted=attempted_versions(store,b.now().date().isoformat())
+    for a in spec['articles']:
+        job=store.db.execute('SELECT * FROM jobs WHERE key=?',(a['job_key'],)).fetchone()
+        blocked=None
+        while not job['result'] and job['attempts']<p['max_attempts']:
+            if job['key'] not in attempted and len(attempted)>=preferences()['new_versions_per_day']:
+                blocked='daily_new_version_limit';break
+            if job['status']=='failed_validation_review':
+                known=store.db.execute("SELECT id FROM calls WHERE job=? AND status='invalid_response' AND cost IS NOT NULL",(job['key'],)).fetchone()
+                if not known:break
+                with store.db:store.db.execute("UPDATE jobs SET status='queued' WHERE key=?",(job['key'],))
+            before=store.db.execute('SELECT COUNT(*) FROM calls').fetchone()[0]
+            blocked=b.paid_request(store.db,job['key'],a,p,permit,checkpoint=store.checkpoint)
+            job=store.db.execute('SELECT * FROM jobs WHERE key=?',(a['job_key'],)).fetchone()
+            after=store.db.execute('SELECT COUNT(*) FROM calls').fetchone()[0]
+            if after>before:attempted.add(job['key'])
+            if blocked or after==before:break
+            if job['status']!='failed_validation_review':break
+        if job['result']:
+            g=json.loads(job['result'])
+            try:b.validate(g,a)
+            except ValueError:failures.append(dict(id=a['id'],reason='cached_validation_failed'));continue
+            if datetime.fromisoformat(g['generated_at'])<=datetime.fromisoformat(spec['generation_cutoff']):ready.append(a)
+        else:failures.append(dict(id=a['id'],reason=blocked or job['status']))
+        print(json.dumps(dict(article=a['id'],status=job['status'],ready=len(ready)),ensure_ascii=False),flush=True)
+        if len(ready)>=preferences()['edition_maximum']:break
+        if blocked in ['budget_exhausted','daily_new_version_limit','official_rules_unconfirmed','rules_expired_or_future','test_permit_expired','missing_api_key']:break
+    issue=dict(spec,articles=ready,rejected=spec['rejected']+failures,
+               shortfall=max(0,preferences()['edition_minimum']-len(ready)),
+               kind='newsletter' if len(ready)>=preferences()['edition_minimum'] else 'diagnostic',
+               human_review='not_started',is_trial_day=False)
+    render_root=store.root/'transient/render-workspace'
+    b.render(store.db,render_root,issue)
+    rendered=render_root/'issues'/issue_id
+    out.mkdir(parents=True,exist_ok=True)
+    review=store.root/'transient/reviews'/issue_id
+    if issue['shortfall']:review=review/b.digest(json.dumps([a['id'] for a in ready]))[:12]
+    review.mkdir(parents=True,exist_ok=True)
+    for name in ['review.html','review.csv','comparison.json']:
+        shutil.copy2(rendered/name,review/name)
+    comparison=json.loads((rendered/'comparison.json').read_text())
+    atomic(out/'comparison.json',store.shrink(comparison))
+    for name in ['email.html','email.txt','ranking.json']:shutil.copy2(rendered/name,out/name)
+    # Raw render files never touch the Git-staged issues directory, even on crash.
+    import csv
+    with (out/'review.csv').open('w',encoding='utf-8-sig',newline='') as file:
+        writer=csv.writer(file);writer.writerow(['中文标题','来源','原文链接','发布时间','兴趣','长概括','短讯','关键证据','关键事实错误','无依据陈述','遗漏','修改需求','人工审阅','耗时秒','调用次数','估算费用'])
+        for r in comparison['records']:
+            a=r['article'];g=r['result'];calls=r['calls']
+            values=[g['title'],a['source_name'],a['url'],a['published_at'],','.join(a['ranking']['interests']),g['summary'],g['short_summary'],json.dumps(g['claims'],ensure_ascii=False),'待审','待审','待审','待审','未开始',sum(c['seconds'] or 0 for c in calls),len(calls),sum(c['cost'] or 0 for c in calls)]
+            writer.writerow(["'"+v if isinstance(v,str) and v.startswith(('=','+','-','@')) else v for v in values])
+    if issue['shortfall']:
+        shutil.copy2(out/'email.html',review/'draft-email.html');shutil.copy2(out/'email.txt',review/'draft-email.txt')
+        plain='【测试】新选题样稿未达到15条，暂不发送正常简报。未经逐条人工事实审阅。\n'+json.dumps(dict(ready=len(ready),failures=failures),ensure_ascii=False,indent=2)
+        (out/'email.txt').write_text(plain);(out/'email.html').write_text('<!doctype html><meta charset="utf-8"><pre>'+html.escape(plain)+'</pre>')
+        if failures and b.now()<datetime.fromisoformat(spec['generation_cutoff'])-timedelta(minutes=3):
+            store.checkpoint();return dict(id=issue_id,status='pending_resume',count=len(ready),failures=failures)
+    issue['html_sha256']=b.digest((out/'email.html').read_text());issue['text_sha256']=b.digest((out/'email.txt').read_text())
+    atomic(out/'edition.json',store.shrink(issue))
+    with store.db:store.db.execute('INSERT OR IGNORE INTO issues VALUES (?,?)',(issue_id,json.dumps(issue,ensure_ascii=False)))
+    store.checkpoint();return dict(id=issue_id,kind=issue['kind'],count=len(ready),new_version_limit=preferences()['new_versions_per_day'])
+
+
+def send_sample(store):
+    if not store.sync_git:raise ValueError('sample_delivery_requires_private_git')
+    config=trial(store);issue_id='sample-current-'+b.now().date().isoformat()
+    out=store.root/'issues'/issue_id
+    if not (out/'edition.json').exists():return dict(status='sample_missing')
+    issue=json.loads((out/'edition.json').read_text())
+    if issue['kind']!='newsletter':return dict(status='sample_below_minimum_not_sent')
+    if b.digest((out/'email.html').read_text())!=issue['html_sha256'] or b.digest((out/'email.txt').read_text())!=issue['text_sha256']:raise ValueError('frozen_sample_changed')
+    # Only the explicitly invoked manual workflow reaches this function; cron never does.
+    from test_delivery import send_once
+    return send_once(store.root,issue_id,config['allowed_recipient'],*(os.environ[k] for k in ['SENDING_ACCOUNT','SENDING_PASSWORD','SERVER']),checkpoint=store.checkpoint)
 
 
 def reconcile(store):
@@ -384,7 +489,7 @@ def preview_legacy(store):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command',choices=['init','collect','assess','enrich','verify-api','compose','deliver','reconcile','status','report','import-legacy','preview-legacy','archive','restore-artifact','ack-artifact'])
+    parser.add_argument('command',choices=['init','collect','assess','enrich','verify-api','fresh-sample','send-sample','compose','deliver','reconcile','status','report','import-legacy','preview-legacy','archive','restore-artifact','ack-artifact'])
     parser.add_argument('--data',type=Path,default=Path('premium_data/pool'))
     parser.add_argument('--legacy',type=Path)
     parser.add_argument('--sync-git',action='store_true',help='Persist private Git checkpoints before external side effects')
@@ -401,6 +506,8 @@ def main():
         elif args.command=='assess':result=assess(store)
         elif args.command=='enrich':result=enrich(store)
         elif args.command=='verify-api':result=verify_api(store)
+        elif args.command=='fresh-sample':result=fresh_sample(store)
+        elif args.command=='send-sample':result=send_sample(store)
         elif args.command=='compose':result=compose(store)
         elif args.command=='deliver':result=deliver(store)
         elif args.command=='reconcile':result=reconcile(store)

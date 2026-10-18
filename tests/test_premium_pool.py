@@ -241,6 +241,39 @@ class PoolTests(unittest.TestCase):
                 second=pool.verify_api(self.s)
             self.assertEqual(second['status'],'test_permit_expired')
             self.assertEqual(authorization,(self.root/'durable/acceptance.json').read_text());request.assert_not_called()
+    def test_fresh_sample_uses_twenty_ready_results_and_retains_fulltext_only_in_artifact(self):
+        for i in range(20):self.insert(article(i),True)
+        self.s.sync_git=True
+        with patch.object(self.s,'checkpoint'),patch.object(b,'duplicate',return_value=False),patch.object(b.requests,'post') as request:
+            outcome=pool.fresh_sample(self.s);self.assertEqual(outcome['count'],20)
+            pool.fresh_sample(self.s);request.assert_not_called()
+        out=self.root/'issues/sample-current-2026-10-18'
+        self.assertIn('新选题测试加刊',(out/'email.html').read_text())
+        self.assertNotIn(article()['text'],(out/'comparison.json').read_text())
+        self.assertNotIn(article()['text'],(out/'review.csv').read_text())
+        self.assertFalse((out/'review.html').exists())
+        self.assertTrue((self.root/'transient/reviews/sample-current-2026-10-18/review.html').exists())
+    def test_fresh_sample_does_not_send_an_underfilled_edition(self):
+        self.insert(article(),True);self.s.sync_git=True
+        with patch.object(self.s,'checkpoint'):outcome=pool.fresh_sample(self.s)
+        self.assertEqual(outcome['kind'],'diagnostic')
+        self.assertEqual(pool.send_sample(self.s)['status'],'sample_below_minimum_not_sent')
+    def test_legacy_usage_counts_in_budget_but_not_new_dual_format_version_cap(self):
+        old=article();old.pop('output_schema');key=self.insert(old,True)
+        with self.s.db:self.s.db.execute('INSERT INTO calls(day,job,reserved,cost,status) VALUES (?,?,?,?,?)',('2026-10-18',key,.01,.005,'response_received'))
+        self.assertEqual(pool.attempted_versions(self.s,'2026-10-18'),set())
+        self.assertAlmostEqual(pool.status(self.s)['calls'][0]['estimated_cny'],.005)
+    def test_cross_language_same_iphone_retail_story_is_deduplicated(self):
+        a=article();c=article(1)
+        a['title']='Apple Retail Staff Told to Warn Against iPhone Duo Walk-In Purchases'
+        c['title']='消息称苹果要求零售店员工劝退无预约顾客：iPhone Duo 首发日基本不卖现货'
+        self.assertTrue(b.duplicate(a,c))
+        c['title']='WPS适配iPhone Duo新增布局'
+        self.assertFalse(b.duplicate(a,c))
+    def test_weekly_roundup_is_not_counted_as_a_single_fresh_news_item(self):
+        a=article();a['title']='Top Stories: Apple HomeView and New Apple TV'
+        chosen,rejected=b.select([a],CLOCK)
+        self.assertEqual(chosen,[]);self.assertEqual(rejected[0]['reason'],'promotion_or_roundup')
 
 
 if __name__=='__main__':unittest.main()
