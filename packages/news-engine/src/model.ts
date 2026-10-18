@@ -53,10 +53,10 @@ export function gate(p: Row, now: Date, verified: boolean, permit?: Row): string
   if (now < at(day(now), '05:00:00') || now.getTime() >= at(day(now), '06:15:00').getTime() - p.stop_new_before_seconds * 1000) return 'outside_window_or_margin';
   return null;
 }
-export async function verifyRules(p: Row, fetcher: typeof fetch = fetch): Promise<boolean> {
-  if (p.source !== 'https://api-docs.deepseek.com/zh-cn/quick_start/pricing/') return false;
+export async function inspectRules(p: Row, fetcher: typeof fetch = fetch): Promise<Row> {
+  if (p.source !== 'https://api-docs.deepseek.com/zh-cn/quick_start/pricing/') return { verified: false, reason: 'unexpected_source' };
   try {
-    const response = await fetcher(p.source, { signal: AbortSignal.timeout(30000) }); if (!response.ok) return false;
+    const response = await fetcher(p.source, { signal: AbortSignal.timeout(30000) }); if (!response.ok) return { verified: false, reason: 'http_error', http_status: response.status };
     const $ = load(await response.text()); const table = $('table').first();
     const cellText = (node: any): string => {
       const tokens: string[] = [];
@@ -64,14 +64,22 @@ export async function verifyRules(p: Row, fetcher: typeof fetch = fetch): Promis
       visit(node); return whitespace(tokens.join(' '));
     };
     const rows = table.find('tr').toArray().map(tr => $(tr).children('th,td').toArray().map(cellText));
+    if (!rows.length) return { verified: false, reason: 'pricing_table_missing' };
     const index = rows[0].map(s => s.split(' ')[0]).indexOf(p.model);
-    if (![1, 2].includes(index) || rows[3]?.[index] !== p.model_version) return false;
+    if (![1, 2].includes(index) || rows[3]?.[index] !== p.model_version) return { verified: false, reason: 'model_version_mismatch', model_index: index, observed_version: rows[3]?.[index] ?? null };
     const prices = rows.filter(row => row.includes('空闲时段')).map(row => Number(row.at(-(3 - index))!.replace(/元$/, '')));
     const expected = [p.input_hit_per_million, p.input_miss_per_million, p.output_per_million];
     const rule = $.root().text().match(/北京时间[\s\S]*?均为空闲时段。/);
     const understood = '北京时间周一至周五（不含中国法定节假日）9:00 - 12:00、14:00 - 18:00 为高峰时段；其余时段，包括周末及中国法定节假日全天均为空闲时段。';
-    return JSON.stringify(prices) === JSON.stringify(expected) && !!rule && whitespace(rule[0]).replaceAll(' ', '') === whitespace(understood).replaceAll(' ', '');
-  } catch { return false; }
+    const pricesMatch = JSON.stringify(prices) === JSON.stringify(expected);
+    const timeRuleMatch = !!rule && whitespace(rule[0]).replaceAll(' ', '') === whitespace(understood).replaceAll(' ', '');
+    return { verified: pricesMatch && timeRuleMatch, reason: pricesMatch && timeRuleMatch ? 'confirmed' : 'pricing_or_time_rule_mismatch', prices, prices_match: pricesMatch, time_rule_match: timeRuleMatch };
+  } catch { return { verified: false, reason: 'network_or_parse_failure' }; }
+}
+export async function verifyRules(p: Row, fetcher: typeof fetch = fetch): Promise<boolean> {
+  const check = await inspectRules(p, fetcher);
+  if (!check.verified) console.log(JSON.stringify({ stage: 'pricing_check', ...check }));
+  return check.verified;
 }
 
 export interface PaidDependencies {

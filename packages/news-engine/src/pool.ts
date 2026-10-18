@@ -3,7 +3,7 @@ import { Store, files } from './store.ts';
 import { atomic, read, pyjson, digest, policy, trial, active, stamp, day, localParts, at, EXPIRY, type Row } from './core.ts';
 import { preferences, VERSION } from './ranking.ts';
 import { duplicate, select } from './editor.ts';
-import { cacheKey, paidRequest, validate, codepoints } from './model.ts';
+import { cacheKey, paidRequest, validate, codepoints, inspectRules } from './model.ts';
 import { fetchSource, mapLimit, SOURCES } from './sources.ts';
 import { freezeIssue, sendOnce } from './mail.ts';
 
@@ -148,18 +148,20 @@ export function compose(store: Store, now = new Date()) {
     source_health: status(store).sources, shortfall: Math.max(0, Number(preferences().edition_minimum) - records.length), human_review: 'not_started', kind: records.length >= Number(preferences().edition_minimum) ? 'newsletter' : 'diagnostic', sendable_count: 0, engine: 'typescript' };
   return freezeIssue(store, issue, records);
 }
-export type SampleRevision = 'initial' | 'serif';
+export type SampleRevision = 'initial' | 'serif' | 'serif-retry';
 export function samplePath(root: string, revision: SampleRevision = 'initial') {
-  if (!['initial', 'serif'].includes(revision)) throw new Error('invalid_sample_revision');
-  return root + (revision === 'serif' ? '/durable/ts-launch-serif.json' : '/durable/ts-launch.json');
+  if (!['initial', 'serif', 'serif-retry'].includes(revision)) throw new Error('invalid_sample_revision');
+  return root + (revision === 'initial' ? '/durable/ts-launch.json' : '/durable/ts-launch-' + revision + '.json');
 }
 export async function launchSample(store: Store, revision: SampleRevision = 'initial') {
   if (!store.syncGit) throw new Error('launch_requires_authoritative_private_git');
   const t = trial(store.root); if (!t.enabled || !t.model_enabled || Date.now() >= Date.parse(EXPIRY)) return { status: 'trial_or_model_disabled_or_expired' };
   const path = samplePath(store.root, revision); const p = policy();
   if (!existsSync(path)) {
+    const check = await inspectRules(p); console.log(JSON.stringify({ stage: 'launch_pricing_preflight', ...check }));
+    if (!check.verified) return { status: 'official_rules_unconfirmed', pricing: check };
     const cutoff = stamp(); const [chosen, rejected] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER); queue(store, chosen, p);
-    const spec = { id: (revision === 'serif' ? 'sample-ts-serif-' : 'sample-ts-launch-') + day(), mode: 'current_24h_sample', pool_edition: true, articles: chosen, rejected, collection_cutoff: cutoff,
+    const spec = { id: (revision === 'initial' ? 'sample-ts-launch-' : 'sample-ts-' + revision + '-') + day(), mode: 'current_24h_sample', pool_edition: true, articles: chosen, rejected, collection_cutoff: cutoff,
       generation_cutoff: stamp(new Date(Math.min(Date.parse(cutoff) + 30 * 60000, Date.parse(EXPIRY), Date.parse(p.valid_until)))), created_at: stamp(), source_health: status(store).sources };
     atomic(path, store.shrink(spec)); store.checkpoint();
   }

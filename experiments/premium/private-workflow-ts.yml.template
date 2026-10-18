@@ -17,7 +17,7 @@ on:
       sample_revision:
         description: 'Keep each authorized sample immutable; serif is the requested revised sample'
         type: choice
-        options: [initial, serif]
+        options: [initial, serif, serif-retry]
         default: initial
   schedule:
     - cron: '15,25,45,55 * * * *'

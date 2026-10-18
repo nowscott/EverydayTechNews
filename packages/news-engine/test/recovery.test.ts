@@ -268,3 +268,21 @@ test('100-version limit allows cached pool reuse and admits only remaining new v
     }
   } finally { if (originalToken === undefined) delete process.env.DEEPSEEK_API_KEY; else process.env.DEEPSEEK_API_KEY = originalToken; t.mock.timers.reset(); }
 });
+
+test('pricing preflight failure leaves retry sample unfrozen and makes no paid request', async t => {
+  const { store, close } = setup(); let posts = 0;
+  try {
+    store.syncGit = true; store.push = () => {};
+    t.mock.method(globalThis, 'fetch', (async (_url: any, options: any) => {
+      if (options?.method === 'POST') posts++;
+      return new Response('temporarily unavailable', { status: 503 });
+    }) as typeof fetch);
+    const blocked = await launchSample(store, 'serif-retry');
+    assert.equal(blocked.status, 'official_rules_unconfirmed');
+    assert.equal(blocked.pricing.reason, 'http_error');
+    assert.equal(blocked.pricing.http_status, 503);
+    assert.equal(posts, 0);
+    assert.equal(existsSync(store.root + '/durable/ts-launch-serif-retry.json'), false);
+    assert.equal(existsSync(store.root + '/issues/sample-ts-serif-retry-2026-10-18/edition.json'), false);
+  } finally { close(); }
+});
