@@ -14,6 +14,11 @@ on:
         description: 'One frozen current-24h TS launch sample to the allowlisted inbox'
         type: boolean
         default: false
+      sample_revision:
+        description: 'Keep each authorized sample immutable; serif is the requested revised sample'
+        type: choice
+        options: [initial, serif]
+        default: initial
   schedule:
     - cron: '15,25,45,55 * * * *'
     - cron: '5,10 22 * * *'
@@ -64,10 +69,11 @@ jobs:
           SERVER: ${{ secrets.PREMIUM_SMTP_SERVER }}
           MAINTENANCE: ${{ github.event_name == 'workflow_dispatch' && inputs.maintenance_only }}
           LAUNCH: ${{ github.event_name == 'workflow_dispatch' && inputs.fresh_sample }}
+          SAMPLE_REVISION: ${{ inputs.sample_revision || 'initial' }}
           VERIFY_API: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_api }}
         run: >-
           node engine/packages/news-engine/src/main.ts run --data state --sync-git
-          --maintenance-only "$MAINTENANCE" --launch "$LAUNCH" --verify-api "$VERIFY_API"
+          --maintenance-only "$MAINTENANCE" --launch "$LAUNCH" --verify-api "$VERIFY_API" --sample-revision "$SAMPLE_REVISION"
       - name: Store fulltext and raw responses for 90 days
         id: archive
         if: always() && steps.engine.outputs.archive_ready == 'true'

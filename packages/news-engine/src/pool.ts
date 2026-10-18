@@ -11,9 +11,13 @@ export function rows(store: Store, cutoff = stamp()): Row[] {
   const last = new Map(store.all('SELECT id,fingerprint,MAX(observed_at) observed FROM observations WHERE observed_at<=? GROUP BY id,fingerprint', cutoff).map(r => [r.id + '\0' + r.fingerprint, r.observed]));
   return store.all('SELECT data FROM articles').map(r => { const a = JSON.parse(r.data); a._last_observed_at = last.get(a.id + '\0' + a.content_fingerprint) ?? a.fetched_at; return a; });
 }
-export function candidates(store: Store, cutoff: string, target = 32, floor?: string): [Row[], Row[]] {
+export function candidates(store: Store, cutoff: string, target = Number.MAX_SAFE_INTEGER, floor?: string): [Row[], Row[]] {
   const prior = files(store.root + '/deliveries').map(read).filter(r => r.status === 'smtp_accepted').flatMap(r => {
-    const path = store.root + '/issues/' + r.issue + '/edition.json'; return existsSync(path) ? read(path).articles : [];
+    const path = store.root + '/issues/' + r.issue + '/edition.json';
+    if (!existsSync(path)) return [];
+    const edition = read(path);
+    // A diagnostic does not display its article drafts, so it must not consume them.
+    return edition.kind === 'diagnostic' ? [] : edition.articles;
   });
   const articles: Row[] = []; const reasons: Row[] = [];
   for (const a of rows(store, cutoff)) {
@@ -57,7 +61,7 @@ function queue(store: Store, articles: Row[], p: Row) {
 }
 export function assess(store: Store, now = new Date()) {
   const config = preferences(); const p = policy(); const [cutoff, floor] = writingWindow(now);
-  const [selected, rejected] = candidates(store, cutoff, Number(config.new_versions_per_day), floor); queue(store, selected, p);
+  const [selected, rejected] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER, floor); queue(store, selected, p);
   const excluded: Row = {}; for (const r of rejected) excluded[r.reason] = (excluded[r.reason] ?? 0) + 1;
   const report = { at: stamp(now), ranking_version: VERSION, config, selected: selected.map(a => ({ id: a.id, fingerprint: a.content_fingerprint, title: a.title, ranking: a.ranking })),
     rejections: rejected, funnel: { total_versions: rows(store).length, selected: selected.length, excluded } };
@@ -88,7 +92,9 @@ export async function enrich(store: Store) {
   let batchDeadline = at(day(), '06:15:00'); if (Date.now() >= batchDeadline.getTime()) batchDeadline = new Date(batchDeadline.getTime() + 86400000);
   // A batch admitted at 06:10 must stop admitting requests at 06:12 even if it runs long.
   const permit = { mode: 'internal_test_anytime', issue_id: 'test-pool-' + config.start, expires_at: stamp(new Date(Math.min(batchDeadline.getTime(), Date.parse(config.expires_at)))) };
-  const [cutoff, floor] = writingWindow(); const [eligible] = candidates(store, cutoff, Number(preferences().new_versions_per_day), floor);
+  const [cutoff, floor] = writingWindow(); const [eligible] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER, floor);
+  const ready = recordsReady(store, eligible, permit.expires_at, []);
+  if (ready.length >= Number(preferences().edition_maximum)) return { status: 'ready_pool_sufficient', ready: ready.length, calls: 0 };
   const keys = new Set(eligible.map(a => cacheKey(a, p))); const attempted = attemptedVersions(store); let invoked = 0; const statuses: Row[] = [];
   const jobs = store.all('SELECT * FROM jobs WHERE result IS NULL').sort((a, b) => (JSON.parse(b.article).ranking?.score ?? 0) - (JSON.parse(a.article).ranking?.score ?? 0));
   for (const job of jobs) {
@@ -137,34 +143,45 @@ export function compose(store: Store, now = new Date()) {
   const cutoff = stamp(at(day(now), '06:00:00')); const deadline = stamp(at(day(now), '06:15:00'));
   if (now.getTime() < Date.parse(deadline)) return { status: 'generation_deadline_not_reached' };
   const id = 'test-' + day(now); const path = store.root + '/issues/' + id + '/edition.json'; if (existsSync(path)) return read(path);
-  const [chosen, rejected] = candidates(store, cutoff, Number(preferences().new_versions_per_day)); const records = recordsReady(store, chosen, deadline, rejected);
+  const [chosen, rejected] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER); const records = recordsReady(store, chosen, deadline, rejected);
   const issue = { id, pool_edition: true, mode: 'daily_24h', collection_cutoff: cutoff, generation_cutoff: deadline, frozen_at: stamp(now), articles: records.map(r => r.article), rejected,
     source_health: status(store).sources, shortfall: Math.max(0, Number(preferences().edition_minimum) - records.length), human_review: 'not_started', kind: records.length >= Number(preferences().edition_minimum) ? 'newsletter' : 'diagnostic', sendable_count: 0, engine: 'typescript' };
   return freezeIssue(store, issue, records);
 }
-export async function launchSample(store: Store) {
+export type SampleRevision = 'initial' | 'serif';
+export function samplePath(root: string, revision: SampleRevision = 'initial') {
+  if (!['initial', 'serif'].includes(revision)) throw new Error('invalid_sample_revision');
+  return root + (revision === 'serif' ? '/durable/ts-launch-serif.json' : '/durable/ts-launch.json');
+}
+export async function launchSample(store: Store, revision: SampleRevision = 'initial') {
   if (!store.syncGit) throw new Error('launch_requires_authoritative_private_git');
   const t = trial(store.root); if (!t.enabled || !t.model_enabled || Date.now() >= Date.parse(EXPIRY)) return { status: 'trial_or_model_disabled_or_expired' };
-  const path = store.root + '/durable/ts-launch.json'; const p = policy();
+  const path = samplePath(store.root, revision); const p = policy();
   if (!existsSync(path)) {
-    const cutoff = stamp(); const [chosen, rejected] = candidates(store, cutoff, Number(preferences().new_versions_per_day)); queue(store, chosen, p);
-    const spec = { id: 'sample-ts-launch-' + day(), mode: 'current_24h_sample', pool_edition: true, articles: chosen, rejected, collection_cutoff: cutoff,
+    const cutoff = stamp(); const [chosen, rejected] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER); queue(store, chosen, p);
+    const spec = { id: (revision === 'serif' ? 'sample-ts-serif-' : 'sample-ts-launch-') + day(), mode: 'current_24h_sample', pool_edition: true, articles: chosen, rejected, collection_cutoff: cutoff,
       generation_cutoff: stamp(new Date(Math.min(Date.parse(cutoff) + 30 * 60000, Date.parse(EXPIRY), Date.parse(p.valid_until)))), created_at: stamp(), source_health: status(store).sources };
     atomic(path, store.shrink(spec)); store.checkpoint();
   }
   const spec = store.expand(read(path)); const out = store.root + '/issues/' + spec.id + '/edition.json'; if (existsSync(out)) return read(out);
   const permit = { mode: 'internal_test_anytime', issue_id: spec.id, expires_at: spec.generation_cutoff }; const attempted = attemptedVersions(store);
-  for (const a of spec.articles) {
+  processing: for (const a of spec.articles) {
+    // Reuse all valid accumulated drafts before paying for any missing ones.
+    if (recordsReady(store, spec.articles, spec.generation_cutoff, []).length >= Number(preferences().edition_maximum)) break;
     let job = store.one('SELECT * FROM jobs WHERE key=?', a.job_key)!;
     while (!job.result && job.attempts < p.max_attempts) {
-      if (!attempted.has(job.key) && attempted.size >= Number(preferences().new_versions_per_day)) { spec.rejected.push({ id: a.id, reason: 'daily_new_version_limit' }); break; }
+      if (!attempted.has(job.key) && attempted.size >= Number(preferences().new_versions_per_day)) { spec.rejected.push({ id: a.id, reason: 'daily_new_version_limit' }); break processing; }
       repairKnown(store, job, p); const before = store.one('SELECT COUNT(*) n FROM calls')!.n;
       const blocked = await paidRequest(store, job.key, a, p, permit); job = store.one('SELECT * FROM jobs WHERE key=?', a.job_key)!;
       const after = store.one('SELECT COUNT(*) n FROM calls')!.n; if (after > before) attempted.add(job.key);
-      if (blocked) { spec.rejected.push({ id: a.id, reason: blocked }); break; }
+      if (blocked) {
+        spec.rejected.push({ id: a.id, reason: blocked });
+        if (['budget_exhausted', 'billing_period_changed', 'missing_api_key', 'official_rules_unconfirmed', 'rules_expired_or_future', 'test_permit_expired', 'trial_expired'].includes(blocked)) break processing;
+        break;
+      }
       if (after === before || job.status !== 'failed_validation_review') break;
     }
-    const ready = spec.articles.filter((a: Row) => store.one('SELECT result FROM jobs WHERE key=?', a.job_key)?.result).length;
+    const ready = recordsReady(store, spec.articles, spec.generation_cutoff, []).length;
     console.log(JSON.stringify({ stage: 'launch_progress', ready, attempted_versions: attempted.size }));
     if (ready >= Number(preferences().edition_maximum)) break;
   }
@@ -186,11 +203,11 @@ export async function verifyApi(store: Store) {
   const result = { status: blocked ?? store.one('SELECT status FROM jobs WHERE key=?', job.key)!.status, mail_sent: false, is_trial_day: false, accounting: status(store).calls };
   atomic(store.root + '/durable/ts-api-verification.json', result); store.checkpoint(); return result;
 }
-export async function deliver(store: Store, sample = false, now = new Date()) {
+export async function deliver(store: Store, sample = false, now = new Date(), revision: SampleRevision = 'initial') {
   const t = trial(store.root); const { hour, minute } = localParts(now);
   if (!sample && (!active(t, now) || hour !== 6 || minute < 30)) return { status: 'outside_0630_0700_delivery_window' };
   let id: string;
-  if (sample) { const path = store.root + '/durable/ts-launch.json'; if (!existsSync(path)) return { status: 'sample_missing' }; id = read(path).id; }
+  if (sample) { const path = samplePath(store.root, revision); if (!existsSync(path)) return { status: 'sample_missing' }; id = read(path).id; }
   else id = 'test-' + day(now);
   if (!existsSync(store.root + '/issues/' + id + '/edition.json')) return { status: 'edition_missing_do_not_send' };
   return sendOnce(store, id);

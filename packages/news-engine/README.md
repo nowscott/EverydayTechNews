@@ -9,9 +9,11 @@ node packages/news-engine/src/main.ts init --data /tmp/premium-offline
 node packages/news-engine/src/main.ts status --data /tmp/premium-offline
 ```
 
-权威状态在私有数据仓库。正式内测入口为 `run --data state --sync-git`，Linux 使用与旧任务一致的 `flock` 和工作流并发组；`run` 默认仅维护，只有显式 `--maintenance-only false` 才处理到期的生成/投递。`--launch true` 创建一次固定候选、固定30分钟期限的TS验收样稿；重跑不延长、不换期、不自动重发。`--verify-api true` 仅验证单篇，不发邮件。三个布尔参数必须明确为 `true/false`，不能同时选择两种验收模式。
+权威状态在私有数据仓库。正式内测入口为 `run --data state --sync-git`，Linux 使用与旧任务一致的 `flock` 和工作流并发组；`run` 默认仅维护，只有显式 `--maintenance-only false` 才处理到期的生成/投递。`--launch true` 创建一次固定候选、固定30分钟期限的TS验收样稿；重跑不延长、不换期、不自动重发。`--verify-api true` 仅验证单篇，不发邮件。三个布尔参数必须明确为 `true/false`，不能同时选择两种验收模式。`--sample-revision serif` 为本次明确请求的衬线版加刊，具有独立冻结输入及投递记录，不覆盖初次诊断。
 
-私有工作流使用 `experiments/premium/private-workflow-ts.yml.template` 并固定完整引擎SHA。仅允许 `nowscott@qq.com`，沿用2026-10-19至25日七天试刊，10月26日00:00上海时间停止新增模型和发送；每日最多2元、32个新格式文章版本、每批4次请求，旧费用与未知预留照常计入。正文不足15条发诊断，模型初稿仍待人工核对。维护、过期清理和日桶归档在内测到期后继续。
+标题与正文采用中文宋体/衬线字体栈，按客户端可用字体回退，不远程加载字体。补足时优先复用过去24小时内、合格且未实际投递的模型结果；只有展示文章的简报才消耗选题，诊断不消耗。每日100名额统计不同的新格式文章版本，缓存复用不占新增名额，修复仍计费用与每篇3次尝试。选题候选池与每日新版本额度分别处理，避免早期候选截断让后续完成内容无法组稿。
+
+私有工作流使用 `experiments/premium/private-workflow-ts.yml.template` 并固定完整引擎SHA。仅允许 `nowscott@qq.com`，沿用2026-10-19至25日七天试刊，10月26日00:00上海时间停止新增模型和发送；每日最多2元、100个新格式文章版本、每批4次请求，旧费用与未知预留照常计入。正文不足15条发诊断，模型初稿仍待人工核对。维护、过期清理和日桶归档在内测到期后继续。
 
 `collect/assess/enrich/compose/deliver/reconcile/status/report/archive/restore-artifact/ack-artifact` 均有对应TS命令；`fresh-sample` 是 `launch-sample` 的别名，`send-sample` 只发送已冻结TS验收期。历史导入、历史预览保留为离线Python参考，不是上线运行链路。
 

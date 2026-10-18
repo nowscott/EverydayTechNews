@@ -7,12 +7,13 @@ import { collect, assess, enrich, compose, deliver, launchSample, verifyApi, rec
 
 const args = process.argv.slice(2); const operation = args.shift(); const flags: Row = {};
 for (let i = 0; i < args.length; i += 2) {
-  if (!['--data', '--sync-git', '--collect-workers', '--maintenance-only', '--launch', '--verify-api'].includes(args[i])) throw new Error('unknown_argument');
+  if (!['--data', '--sync-git', '--collect-workers', '--maintenance-only', '--launch', '--verify-api', '--sample-revision'].includes(args[i])) throw new Error('unknown_argument');
   if (args[i] === '--sync-git') { flags.syncGit = true; i--; continue; }
   if (!args[i + 1] || args[i + 1].startsWith('--')) throw new Error('missing_argument');
   flags[args[i].slice(2)] = args[i + 1];
 }
 for (const key of ['maintenance-only', 'launch', 'verify-api']) if (flags[key] !== undefined && !['true', 'false'].includes(flags[key])) throw new Error('invalid_boolean');
+if (flags['sample-revision'] !== undefined && !['initial', 'serif'].includes(flags['sample-revision'])) throw new Error('invalid_sample_revision');
 const root = resolve(flags.data ?? 'premium_data/pool'); mkdirSync(root, { recursive: true });
 const allowed = ['init', 'run', 'collect', 'assess', 'enrich', 'verify-api', 'launch-sample', 'fresh-sample', 'send-sample', 'compose', 'deliver', 'reconcile', 'status', 'report', 'archive', 'restore-artifact', 'ack-artifact'];
 if (!operation || !allowed.includes(operation)) throw new Error('unknown_command');
@@ -48,7 +49,7 @@ try {
         if (!maintenance && !launch && !verify && plan.compose) compose(store);
         if (!maintenance && !launch && !verify && plan.deliver) console.log(JSON.stringify({ stage: 'delivery', receipt: await deliver(store) }));
         if (plan.collect || maintenance || launch || verify) await collect(store, Number(flags['collect-workers'] ?? 4));
-        if (!maintenance && launch) { await launchSample(store); console.log(JSON.stringify({ stage: 'launch_delivery', receipt: await deliver(store, true) })); }
+        if (!maintenance && launch) { await launchSample(store, flags['sample-revision']); console.log(JSON.stringify({ stage: 'launch_delivery', receipt: await deliver(store, true, new Date(), flags['sample-revision']) })); }
         else if (!maintenance && verify) console.log(JSON.stringify({ stage: 'api_verification', result: await verifyApi(store) }));
         else if (!maintenance && plan.enrich) console.log(JSON.stringify({ stage: 'enrichment', result: await enrich(store) }));
       } finally {
@@ -63,8 +64,8 @@ try {
         case 'assess': result = assess(store); break;
         case 'enrich': result = await enrich(store); break;
         case 'verify-api': result = await verifyApi(store); break;
-        case 'launch-sample': case 'fresh-sample': result = await launchSample(store); break;
-        case 'send-sample': result = await deliver(store, true); break;
+        case 'launch-sample': case 'fresh-sample': result = await launchSample(store, flags['sample-revision']); break;
+        case 'send-sample': result = await deliver(store, true, new Date(), flags['sample-revision']); break;
         case 'compose': result = compose(store); break;
         case 'deliver': result = await deliver(store); break;
         case 'reconcile': result = reconcile(store); break;

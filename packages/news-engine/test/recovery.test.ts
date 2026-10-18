@@ -6,7 +6,8 @@ import * as tar from 'tar';
 import { Store, extractEvidence } from '../src/store.ts';
 import { atomic, policy, digest, pyjson, EXPIRY, RECIPIENT, stamp, type Row } from '../src/core.ts';
 import { paidRequest, cacheKey, gate, validate, verifyRules } from '../src/model.ts';
-import { candidates, compose, due, reconcile, collect, assess, writingWindow, reportTrial } from '../src/pool.ts';
+import { candidates, compose, due, reconcile, collect, assess, writingWindow, reportTrial, launchSample, attemptedVersions } from '../src/pool.ts';
+import { preferences } from '../src/ranking.ts';
 import { buildEmail, freezeIssue, sendOnce } from '../src/mail.ts';
 import { mapLimit } from '../src/sources.ts';
 import { article } from './fixtures.ts';
@@ -110,6 +111,9 @@ test('dedupe history and missing update approvals block unchanged and unreviewed
     const old = { ...a }; atomic(root + '/issues/old/edition.json', { articles: [old] }); atomic(root + '/deliveries/old.json', { issue: 'old', recipient: RECIPIENT, status: 'smtp_accepted' });
     store.run('INSERT INTO articles VALUES (?,?,?)', a.id, 'v1', pyjson(a));
     const [chosen, rejected] = candidates(store, stamp(now())); assert.equal(chosen.length, 0); assert.equal(rejected[0].reason, 'already_sent_unchanged');
+    atomic(root + '/issues/old/edition.json', { kind: 'diagnostic', articles: [old] });
+    const [retained] = candidates(store, stamp(now())); assert.equal(retained.length, 1);
+    atomic(root + '/issues/old/edition.json', { kind: 'newsletter', articles: [old] });
     const updated = { ...a, content_fingerprint: digest(text + '更新'), text: text + '更新' };
     store.run('DELETE FROM articles'); store.run('INSERT INTO articles VALUES (?,?,?)', a.id, 'v2', pyjson(updated));
     assert.equal(candidates(store, stamp(now()))[1].at(-1)!.reason, 'update_delta_pending_review');
@@ -230,4 +234,37 @@ test('known-cost repairs stop at the shared three-attempt limit', async () => {
     store.run("UPDATE jobs SET status='queued' WHERE key=?", key);
     assert.equal(await paidRequest(store, key, a, p, permit, { now, verify: async () => true, fetcher, token: 'test' }), 'attempt_limit'); assert.equal(count, 3);
   } finally { close(); }
+});
+test('100-version limit allows cached pool reuse and admits only remaining new versions', async t => {
+  assert.equal(preferences().new_versions_per_day, 100);
+  t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-10-18T12:00:00+08:00').getTime() });
+  const originalToken = process.env.DEEPSEEK_API_KEY; process.env.DEEPSEEK_API_KEY = 'test-token';
+  try {
+    for (const cached of [true, false]) {
+      const { store, p, close } = setup(); let posts = 0;
+      try {
+        store.syncGit = true; store.push = () => {}; // Offline fixture: checkpoints stay on disk, never touch GitHub.
+        const previous = cached ? 100 : 99;
+        for (let i = 0; i < previous; i++) {
+          store.run('INSERT INTO jobs(key,article,status) VALUES (?,?,?)', 'prior-' + i, pyjson({ output_schema: 'dual-1' }), 'pending_human_review');
+          store.run('INSERT INTO calls(day,job,reserved,cost,status) VALUES (?,?,?,?,?)', '2026-10-18', 'prior-' + i, .001, .001, 'response_received');
+        }
+        for (let i = 0; i < 20; i++) {
+          const unique = Array.from({ length: 30 }, (_, j) => String.fromCodePoint(0x4e00 + i * 31 + j)).join('');
+          const input = { ...a, id: `cached-${i}`, title: 'AI 发布 ' + unique, url: 'https://example.org/cached/' + i, text: text + unique, content_fingerprint: digest(text + unique) };
+          const key = cacheKey(input, p); store.run('INSERT INTO articles VALUES (?,?,?)', input.id, 'version', pyjson(input));
+          if (cached) store.run('INSERT INTO jobs(key,article,status,result) VALUES (?,?,?,?)', key, pyjson(input), 'pending_human_review', pyjson(result));
+        }
+        const prices = `<table><tr><th>模型</th><th>deepseek-flash</th><th>other</th></tr><tr><td>base</td></tr><tr><td>base</td></tr><tr><td>version</td><td>${p.model_version}</td></tr><tr><td>空闲时段</td><td>0.02元</td><td>1元</td></tr><tr><td>空闲时段</td><td>1元</td><td>2元</td></tr><tr><td>空闲时段</td><td>4元</td><td>8元</td></tr></table><p>北京时间周一至周五（不含中国法定节假日）9:00 - 12:00、14:00 - 18:00 为高峰时段；其余时段，包括周末及中国法定节假日全天均为空闲时段。</p>`;
+        const fetchMock = t.mock.method(globalThis, 'fetch', (async (_url: any, options: any) => {
+          if (options?.method === 'POST') { posts++; return goodResponse(); } return new Response(prices);
+        }) as typeof fetch);
+        const issue = await launchSample(store, 'serif'); fetchMock.mock.restore();
+        assert.equal(issue.articles.length, cached ? 20 : 1); assert.equal(posts, cached ? 0 : 1);
+        assert.equal(attemptedVersions(store, '2026-10-18').size, 100);
+        const html = readFileSync(store.root + '/issues/' + issue.id + '/email.html', 'utf8');
+        if (cached) { assert.ok(html.includes('Songti SC')); assert.ok(html.includes('morning-4-pool-ts-serif')); }
+      } finally { close(); }
+    }
+  } finally { if (originalToken === undefined) delete process.env.DEEPSEEK_API_KEY; else process.env.DEEPSEEK_API_KEY = originalToken; t.mock.timers.reset(); }
 });

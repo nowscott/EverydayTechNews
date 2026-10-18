@@ -4,7 +4,8 @@
   "edition_minimum": 15,
   "edition_maximum": 20,
   "lead_count": 5,
-  "new_versions_per_day": 32,
+  "new_versions_per_day": 100,
+  "processing_limit_mode": "daily_versions_and_budget",
   "batch_size": 4,
   "broad_topics": ["芯片", "开发工具", "软件更新", "安全", "机器人", "智能汽车", "商业航天", "其他科技"]
 }
