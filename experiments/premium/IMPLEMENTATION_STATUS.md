@@ -1,5 +1,7 @@
 # 实施验证记录 · 2026-10-18
 
+高级订阅现已迁至TypeScript，日新文章上限更新为100，邮件改为衬线字体。当前部署、27项TS与133项Python测试、实际调用及投递记录见[迁移记录](../../packages/news-engine/MIGRATION.md)。下文保留Python阶段的历史验证，费用和调用不得重置。
+
 - PR #6（草稿）保存实验代码，尚未合并main；普通版采集、排序、名单和发送未改动。私有数据仓库EverydayTechNews-data已创建，源全文不在Git历史中。
 - 131项离线测试通过（含本次选题修正）；GitHub Python CI通过。覆盖窗口、预算、版本恢复、日桶归档、截止、等权兴趣、诊断、重复投递，以及固定30分钟API验收授权。
 - [GitHub来源及归档验证](https://github.com/nowscott/EverydayTechNews-data/actions/runs/39092189224)成功：12路配置、11路可用，282条（含历史），128条可用摘录、154条发现线索。NASA10条含正文；Apple20条短摘要/更新时间；Tesla IR403；SpaceX没有已验证直接源。数量不代表24小时覆盖或已完成精编。

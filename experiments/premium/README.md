@@ -94,14 +94,14 @@ paid_request是唯一模型POST；写作、翻译、已知费用修复都走同�
 
 私有手动工作流选择maintenance_only=false、verify_api=true，可在试刊开始前做单篇验收；同样经过唯一paid_request、远端预算预留、实时官方规则核对及测试时段授权。首次执行固定文章和30分钟有效期，重复执行不延长授权、不换文章，完成结果复用；已知费用格式修复总尝试不超过3次，未知费用不重试。结果在durable/api-verification.json，不发邮件、不计七天。maintenance_only=true始终不调用模型。
 
-滚动写作按下一期06:00截止倒推24小时，避免在午夜把每天32个名额花在到早报时已过期的新闻；06:00～06:15的补处理只使用当天06:00之前已获取的版本。
+滚动写作按下一期06:00截止倒推24小时，避免在午夜把每天100个新文章版本名额花在到早报时已过期的新闻；06:00～06:15的补处理只使用当天06:00之前已获取的版本。
 
 ## 当前24小时新选题样稿（2026-10-18反馈后）
 
-刚发送的pool-preview为历史20篇重排，不能代表新偏好选题。新增fresh-sample手动入口：冻结当前24小时最多32篇候选、30分钟生成截止，先复用双长度结果，再经统一付费入口精编至最多20条；失败保留，可按原冻结输入恢复。少于15条不发正常样稿。它独立于每日06:00截止的七天试刊，不计完成天数。工作流maintenance_only=false、fresh_sample=true会生成并仅向指定测试邮箱发送，主题标注“新版选题”；定时任务不会触发此入口。
+刚发送的pool-preview为历史20篇重排，不能代表新偏好选题。新增fresh-sample手动入口：冻结当前24小时全部合格候选（每日最多100个新文章版本，已有缓存不占新名额）、30分钟生成截止，先复用双长度结果，再经统一付费入口精编至最多20条；失败保留，可按原冻结输入恢复。少于15条不发正常样稿。它独立于每日06:00截止的七天试刊，不计完成天数。工作流maintenance_only=false、fresh_sample=true会生成并仅向指定测试邮箱发送，主题标注“新版选题”；定时任务不会触发此入口。
 
 补充已探测来源：MacRumors官方全文RSS（description较完整，带时区pubDate）；Apple Developer官方RSS（description有可用公告正文，pubDate含PDT）；NASA任务博客（content:encoded）；Ars Technica科学RSS（content:encoded，仅可用摘录，不宣称完整原文）。9to5Mac/Electrek RSS显式more…截断，未接入生成；Spaceflight Now/NASASpaceflight403，不绕过；SpaceNews当前短摘要不足，未接入生成。SpaceX不足时明确显示缺口，不拿旧新闻凑齐兴趣。
 
 MacRumors的[RSS说明](https://macrumors.zendesk.com/hc/en-us/articles/201096058-Where-are-the-RSS-feeds)与[注册/版权条款](https://macrumors.zendesk.com/hc/en-us/articles/201146626-MacRumors-Registration-Agreement)不能视为第三方模型或商业分发授权；Apple/NASA仍适用前述条件；Ars站点版权和具体适用协议仍待进一步核实。四类用途均保持unconfirmed，不使用图片、不购买付费服务。
 
-新格式每日32版本上限只统计dual-1任务（未知归属任务按新格式保守计入）；当天迁移的旧版20篇仍完整计入人民币2元费用预算，不通过迁移清空账单。相近3分内的多样性排序同时考虑来源、主题与兴趣重复，品牌加分不叠加、不强制分配名额。
+新格式每日100个新文章版本上限只统计dual-1任务（未知归属任务按新格式保守计入）；当天迁移的旧版20篇仍完整计入人民币2元费用预算，不通过迁移清空账单。相近3分内的多样性排序同时考虑来源、主题与兴趣重复，品牌加分不叠加、不强制分配名额。
