@@ -27,6 +27,8 @@ jobs:
     if: github.repository == 'nowscott/EverydayTechNews-data' && github.event.repository.private == true && (vars.PREMIUM_ENABLED == 'true' || (github.event_name == 'workflow_dispatch' && inputs.maintenance_only))
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v5
         with:

@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import sys
 import tempfile
+import tarfile
 import unittest
 from unittest.mock import patch,Mock,MagicMock
 
@@ -180,6 +181,32 @@ class PoolTests(unittest.TestCase):
         self.insert(article(),True);pool.compose(self.s)
         report=pool.report_trial(self.s)
         self.assertEqual(report['completed_normal_editions'],0);self.assertEqual(len(report['days']),7)
+    def test_daily_buckets_do_not_roll_yesterdays_fulltext_into_new_artifact(self):
+        self.s.put_bulk('raw/yesterday.txt',b'yesterday','2026-10-17T06:00:00+08:00')
+        self.s.put_bulk('raw/today.txt',b'today','2026-10-18T06:00:00+08:00')
+        archive=self.s.archive('2026-10-18')
+        with tarfile.open(archive) as f:names=f.getnames()
+        self.assertIn('transient/raw/today.txt',names)
+        self.assertNotIn('transient/raw/yesterday.txt',names)
+    def test_raw_responses_are_archived_without_entering_canonical_git_state(self):
+        payload='PRIVATE RAW COMPLETION TO RETAIN FOR 90 DAYS'
+        with self.s.db:self.s.db.execute('INSERT INTO responses VALUES (?,?,?)',(1,json.dumps(dict(raw=payload)),'invalid'))
+        self.s.checkpoint()
+        self.assertNotIn(payload,(self.root/'durable/state.json').read_text())
+        self.restart()
+        self.assertIn(payload,self.s.db.execute('SELECT data FROM responses').fetchone()[0])
+    def test_missing_then_restored_evidence_recovers_without_new_ai(self):
+        self.insert(article(),True);self.s.checkpoint()
+        path=next((self.root/'transient/bodies').glob('*.json'));raw=path.read_bytes();path.unlink()
+        self.s.db.close();self.s=Store(self.root)
+        self.assertTrue(pool.rows(self.s)[0]['evidence_expired_or_missing'])
+        path.write_bytes(raw);self.restart()
+        self.assertFalse(pool.rows(self.s)[0].get('evidence_expired_or_missing',False))
+    def test_modified_frozen_email_cannot_be_sent(self):
+        self.insert(article(),True);pool.compose(self.s)
+        path=self.root/'issues/test-2026-10-18/email.txt';path.write_text(path.read_text()+' changed')
+        with patch.dict(os.environ,{'SENDING_ACCOUNT':'x','SENDING_PASSWORD':'fake','SERVER':'smtp.example'}):
+            self.assertEqual(pool.deliver(self.s)['status'],'frozen_content_changed_do_not_send')
 
 
 if __name__=='__main__':unittest.main()

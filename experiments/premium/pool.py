@@ -155,6 +155,10 @@ def reconcile(store):
 
 def status(store):
     ledger=[dict(r) for r in store.db.execute('SELECT day,COUNT(*) calls,SUM(cost) estimated_cny,SUM(CASE WHEN cost IS NULL THEN reserved ELSE 0 END) unknown_reserved_cny FROM calls GROUP BY day')]
+    for day in ledger:
+        usages=[json.loads(r[0]) for r in store.db.execute('SELECT usage FROM calls WHERE day=? AND usage IS NOT NULL',(day['day'],))]
+        day['actual_api_tokens']={key:sum(u.get(key,0) for u in usages) for key in ['prompt_tokens','completion_tokens','prompt_cache_hit_tokens']}
+        day['calls_with_usage']=len(usages)
     report=dict(at=b.stamp(),jobs=[dict(r) for r in store.db.execute('SELECT status,COUNT(*) count FROM jobs GROUP BY status')],
                 calls=ledger,missing_or_expired_evidence=len(set(store.missing)),cost_is_estimate=True,
                 sources=(json.loads(store.db.execute("SELECT data FROM meta WHERE key='health'").fetchone()[0]) if store.db.execute("SELECT data FROM meta WHERE key='health'").fetchone() else None),
