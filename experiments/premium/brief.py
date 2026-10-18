@@ -372,7 +372,7 @@ def paid_request(db,key,a,p,test_permit=None,checkpoint=None):
     if j['status'] in ['inflight','uncertain_requires_review','failed_validation_review']:return 'held_for_review'
     if j['attempts']>=p['max_attempts']:return 'attempt_limit'
     if j['status'].startswith('retry_after:') and now()<datetime.fromisoformat(j['status'].split(':',1)[1]):return 'backoff_pending'
-    if a['content_status']!='usable_excerpt':return 'insufficient_content'
+    if a['content_status']!='usable_excerpt' or a.get('evidence_expired_or_missing') or complete(a.get('text',''))!='usable_excerpt':return 'insufficient_content'
     if cache_key(a,p)!=key:return 'model_or_prompt_changed_create_new_issue'
     blocked=gate(p,now(),True,test_permit)
     if blocked:return blocked
