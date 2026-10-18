@@ -74,7 +74,7 @@ jobs:
           SERVER: ${{ secrets.PREMIUM_SMTP_SERVER }}
         run: python engine/experiments/premium/pool.py deliver --data state --sync-git
       - name: Collect and assess independently
-        if: steps.due.outputs.collect == 'true'
+        if: steps.due.outputs.collect == 'true' || inputs.maintenance_only
         run: python engine/experiments/premium/pool.py collect --data state --sync-git
       - name: Enrich bounded candidate batch
         if: steps.due.outputs.enrich == 'true' && !inputs.maintenance_only

@@ -207,6 +207,8 @@ class PoolTests(unittest.TestCase):
         path=self.root/'issues/test-2026-10-18/email.txt';path.write_text(path.read_text()+' changed')
         with patch.dict(os.environ,{'SENDING_ACCOUNT':'x','SENDING_PASSWORD':'fake','SERVER':'smtp.example'}):
             self.assertEqual(pool.deliver(self.s)['status'],'frozen_content_changed_do_not_send')
+    def test_original_url_keeps_semantic_query_but_drops_tracking(self):
+        self.assertEqual(b.canonical('https://news.ycombinator.com/item?id=123&utm_source=test#top'),'https://news.ycombinator.com/item?id=123')
 
 
 if __name__=='__main__':unittest.main()

@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 from email.utils import parsedate_to_datetime
 from zoneinfo import ZoneInfo
 import xml.etree.ElementTree as ET
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 
 import requests
 from bs4 import BeautifulSoup
@@ -57,7 +57,9 @@ def canonical(url):
     p = urlsplit(url)
     if p.scheme != 'https' or p.username or p.password:
         raise ValueError('unsafe URL')
-    return urlunsplit((p.scheme, p.netloc.lower(), p.path.rstrip('/'), '', ''))
+    query=urlencode(sorted((k,v) for k,v in parse_qsl(p.query,keep_blank_values=True)
+                           if not k.lower().startswith('utm_') and k.lower() not in {'fbclid','gclid'}))
+    return urlunsplit((p.scheme, p.netloc.lower(), p.path.rstrip('/'), query, ''))
 
 def clean(s):
     soup = BeautifulSoup(s, 'html.parser')
