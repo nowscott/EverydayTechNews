@@ -1,0 +1,36 @@
+name: 内部实验来源探测（只读）
+
+# Manual only. No model/SMTP secrets, no schedules, no generation, no sending.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: premium-source-check
+  cancel-in-progress: false
+
+jobs:
+  source-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: 只采集并输出来源健康，不生成或发送
+        run: python experiments/premium/brief.py collect --data premium_probe
+      - name: 保存来源健康报告（不含新闻正文、队列或环境配置）
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: premium-source-health-${{ github.run_id }}
+          path: premium_probe/source-health.json
+          retention-days: 7
+          if-no-files-found: error

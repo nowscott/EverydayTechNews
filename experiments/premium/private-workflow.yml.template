@@ -1,0 +1,102 @@
+name: Internal premium pool (private data only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      maintenance_only:
+        description: 'Only restore, collect and archive; no paid API or mail'
+        type: boolean
+        default: true
+  schedule:
+    - cron: '15,25,45,55 * * * *'
+    # UTC previous day 21:55=Shanghai 05:55; UTC22:05/10=06:05/10.
+    - cron: '5,10 22 * * *'
+    - cron: '30 22 * * *'
+    - cron: '0 23 * * *'
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: premium-private-state
+  cancel-in-progress: false
+
+jobs:
+  pool:
+    if: github.repository == 'nowscott/EverydayTechNews-data' && github.event.repository.private == true && (vars.PREMIUM_ENABLED == 'true' || (github.event_name == 'workflow_dispatch' && inputs.maintenance_only))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: state
+          persist-credentials: true
+      - uses: actions/checkout@v5
+        with:
+          repository: nowscott/EverydayTechNews
+          ref: __ENGINE_SHA__
+          path: engine
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+          cache: pip
+          cache-dependency-path: engine/requirements.txt
+      - run: pip install -r engine/requirements.txt
+      - name: Configure private state author
+        working-directory: state
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+      - name: Restore expiring evidence
+        id: restore
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python engine/experiments/premium/pool.py restore-artifact --data state
+      - name: Recover interrupted work and read due tasks
+        id: due
+        env:
+          PREMIUM_DATA: state
+        run: |
+          python engine/experiments/premium/pool.py reconcile --data state --sync-git
+          python engine/experiments/premium/schedule.py
+      - name: Freeze edition if due (never generate here)
+        if: steps.due.outputs.compose == 'true' && !inputs.maintenance_only
+        run: python engine/experiments/premium/pool.py compose --data state --sync-git
+      - name: Deliver only to authorized test inbox
+        if: steps.due.outputs.deliver == 'true' && !inputs.maintenance_only
+        env:
+          SENDING_ACCOUNT: ${{ secrets.PREMIUM_SMTP_ACCOUNT }}
+          SENDING_PASSWORD: ${{ secrets.PREMIUM_SMTP_PASSWORD }}
+          SERVER: ${{ secrets.PREMIUM_SMTP_SERVER }}
+        run: python engine/experiments/premium/pool.py deliver --data state --sync-git
+      - name: Collect and assess independently
+        if: steps.due.outputs.collect == 'true'
+        run: python engine/experiments/premium/pool.py collect --data state --sync-git
+      - name: Enrich bounded candidate batch
+        if: steps.due.outputs.enrich == 'true' && !inputs.maintenance_only
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: python engine/experiments/premium/pool.py enrich --data state --sync-git
+      - name: Save status and seven-day report
+        if: always() && steps.restore.outcome == 'success'
+        run: python engine/experiments/premium/pool.py report --data state --sync-git
+      - name: Package expiring evidence
+        id: package
+        if: always() && steps.restore.outcome == 'success'
+        run: python engine/experiments/premium/pool.py archive --data state --sync-git
+      - name: Store fulltext and raw responses for 90 days
+        id: archive
+        if: always() && steps.package.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.package.outputs.artifact_name }}
+          path: state/.cache/evidence.tar.gz
+          retention-days: 90
+          if-no-files-found: error
+      - name: Advance durable archive pointer only after successful upload
+        if: always() && steps.archive.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python engine/experiments/premium/pool.py ack-artifact --data state --sync-git

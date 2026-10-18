@@ -6,12 +6,14 @@ on:
       - main
     paths:
       - 'src/**'
+      - 'experiments/premium/**'
       - 'tests/**'
       - 'requirements.txt'
       - '.github/workflows/tests.yml'
   pull_request:
     paths:
       - 'src/**'
+      - 'experiments/premium/**'
       - 'tests/**'
       - 'requirements.txt'
 

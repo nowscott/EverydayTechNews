@@ -38,3 +38,8 @@ node_modules/
 dist/
 .vercel/
 *.tsbuildinfo
+
+# Local premium experiment (source evidence, queue and private artifacts)
+.venv/
+/premium_data/
+/premium_probe/
