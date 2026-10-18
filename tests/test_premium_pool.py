@@ -90,6 +90,10 @@ class PoolTests(unittest.TestCase):
             a=article();a['title']=title
             bonuses.append(evaluate(a,CLOCK)['breakdown']['interest_bonus'])
         self.assertEqual(bonuses,[12]*6)
+    def test_interest_names_adjacent_to_chinese_still_match(self):
+        for title in ['AI研究发布','Apple发布新产品','NVIDIA发布新芯片','Tesla扩大测试','SpaceX发射任务']:
+            a=article();a['title']=title
+            self.assertEqual(evaluate(a,CLOCK)['breakdown']['interest_bonus'],12,title)
     def test_same_brand_distinct_events_are_not_merged(self):
         a=article();c=article(1)
         a['title']='NVIDIA RTX Spark arrives globally';c['title']='NVIDIA RTX Spark security vulnerability affects Linux driver'

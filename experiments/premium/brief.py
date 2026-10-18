@@ -243,9 +243,10 @@ def select(rows, cutoff, sample=False, target=None):
             else:reason='old_news'
         if reason is None and a['content_status']!='usable_excerpt': reason='discovery_only_no_body' if a['content_status']=='discovery_only' else 'insufficient_content'
         if reason is None and re.search(r'优惠|好价|促销|广告|秒杀|红包|IT早报|新闻汇总|Everything we launched',a['title']): reason='promotion'
-        if reason is None and any(duplicate(a,b) for b in selected): reason='duplicate_or_event_review'
-        if reason: rejected.append(dict(id=a['id'],title=a['title'],reason=reason));continue
-        a['topic']=topic(a);selected.append(a)
+        matches=[b['id'] for b in selected if duplicate(a,b)] if reason is None else []
+        if matches:reason='duplicate_or_event_review'
+        if reason: rejected.append(dict(id=a['id'],title=a['title'],reason=reason,event_matches=matches));continue
+        a['topic']=topic(a);a['event_group']=a['id'];selected.append(a)
     from ranking import choose
     selected,editorial_rejections=choose(selected,cutoff,sample,target)
     return selected,rejected+editorial_rejections

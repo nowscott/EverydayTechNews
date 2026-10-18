@@ -3,17 +3,17 @@ from collections import Counter
 from datetime import datetime
 import re
 
-VERSION='editorial-4.0'
+VERSION='editorial-4.1'
 PRIMARY={'nvidia','github','cloudflare','microsoft_foundry','apple','tesla','nasa'}
 AI=r'(?<![A-Za-z])ai(?![A-Za-z])|\b(?:llm|agents?|chatgpt|openai|anthropic|claude|copilot|foundry|deepseek|gemini|gpt[- ]?\d|transformer|clef|qwen|llama|mistral|multimodal)\b|人工智能|大模型|智能体|生成式|机器学习|模型训练|推理模型'
 CHIPS=r'\b(?:gpu|cpu|nvidia|geforce|dlss|semiconductor|chips?|hbm|cuda)\b|芯片|算力|半导体|显卡|存储芯片|量子计算'
 SOFTWARE=r'\b(?:release|runner|update|gateway|license|security|vulnerability|open.source|developer|software|api|python|linux|windows)\b|更新|软件|开源|漏洞|开发者'
 INTERESTS = {
     'AI': AI,
-    'Apple': r'\b(?:apple|iphone|ipad|macbook|macos|ios|watchos|visionos|airpods)\b|苹果',
-    'NVIDIA': r'\b(?:nvidia|geforce|cuda|rtx|blackwell|rubin)\b|英伟达',
-    'Tesla': r'\b(?:tesla|cybertruck|cybercab|fsd)\b|特斯拉',
-    'SpaceX': r'\b(?:spacex|starlink|starship|falcon)\b|星舰|星链',
+    'Apple': r'(?<![A-Za-z0-9])(?:apple|iphone|ipad|macbook|macos|ios|watchos|visionos|airpods)(?![A-Za-z0-9])|苹果',
+    'NVIDIA': r'(?<![A-Za-z0-9])(?:nvidia|geforce|cuda|rtx|blackwell|rubin)(?![A-Za-z0-9])|英伟达',
+    'Tesla': r'(?<![A-Za-z0-9])(?:tesla|cybertruck|cybercab|fsd)(?![A-Za-z0-9])|特斯拉',
+    'SpaceX': r'(?<![A-Za-z0-9])(?:spacex|starlink|starship|falcon)(?![A-Za-z0-9])|星舰|星链',
 }
 BROAD = r'\b(?:robot|robotics|automotive|satellite|space|rocket|electric vehicle|battery|hardware|smartphone)\b|机器人|智能汽车|自动驾驶|商业航天|卫星|火箭|手机|电池|产品|系统|汽车|航天'
 

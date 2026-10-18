@@ -1,7 +1,7 @@
 # 实施验证记录 · 2026-10-18
 
 - PR #6（草稿）保存实验代码，尚未合并main；普通版采集、排序、名单和发送未改动。私有数据仓库EverydayTechNews-data已创建，源全文不在Git历史中。
-- 122项离线测试通过；GitHub Python CI通过。覆盖窗口、预算、版本恢复、日桶归档、截止、等权兴趣、诊断、重复投递，以及固定30分钟API验收授权。
+- 123项离线测试通过；GitHub Python CI通过。覆盖窗口、预算、版本恢复、日桶归档、截止、等权兴趣、诊断、重复投递，以及固定30分钟API验收授权。
 - [GitHub来源及归档验证](https://github.com/nowscott/EverydayTechNews-data/actions/runs/39092189224)成功：12路配置、11路可用，282条（含历史），128条可用摘录、154条发现线索。NASA10条含正文；Apple20条短摘要/更新时间；Tesla IR403；SpaceX没有已验证直接源。数量不代表24小时覆盖或已完成精编。
 - [新版真实API验收](https://github.com/nowscott/EverydayTechNews-data/actions/runs/39092512076)完成1篇，长概括138字、短讯74字，882输入＋744输出token，估算0.003858元。使用已配置的私有DEEPSEEK_API_KEY；没有打印、写入代码、本地密钥文件或Git。四个模型/SMTP Secret已就绪。
 - 验收通过结构和原文证据子串检查，仍为pending_human_review。它不代替人工事实核对，也不证明20篇新版双长度均已验证。
