@@ -96,7 +96,8 @@ def parse_feed(xml, source, fetched_at):
             continue
         description = item.findtext('description', '')
         encoded = item.findtext('{http://purl.org/rss/1.0/modules/content/}encoded', '')
-        text = clean(encoded or description)
+        description_clean = clean(description)
+        text = clean(encoded) if encoded else description_clean
         state=complete(text)
         if source in DISCOVERY_ONLY_SOURCES or (source in ENCODED_REQUIRED_SOURCES and not encoded):
             state='discovery_only'
@@ -105,7 +106,7 @@ def parse_feed(xml, source, fetched_at):
                          fetched_at=fetched_at, event_time=None, text=text,
                          content_status=state, content_fingerprint=digest(text),
                          content_origin='rss_content_encoded' if encoded else 'rss_description',
-                         language='zh-CN' if source=='ithome' else 'en', description_clean=clean(description), rights_status='unconfirmed_model_and_distribution'))
+                         language='zh-CN' if source=='ithome' else 'en', description_clean=description_clean, rights_status='unconfirmed_model_and_distribution'))
     return rows
 
 def parse_hn_item(item, fetched_at, rank):
@@ -166,45 +167,60 @@ def connect(folder):
     db.commit()
     return db
 
-def collect(db, folder):
-    health = []
-    for source, (_, url, _) in SOURCES.items():
-        started = time.monotonic()
-        try:
-            r = requests.get(url, timeout=(10, 30), headers={'User-Agent': 'EverydayTechNews-internal-research/1.0'})
-            r.raise_for_status()
-            observed=stamp()
-            if source=='hackernews':
-                rows,raw,feed_items,scanned,item_failures=fetch_hn_items(r.json(),observed)
-                suffix='.json'
-            elif source in {'apple','tesla'}:
-                from adapters import parse_atom,parse_tesla,supplement
-                raw=r.content
-                rows=(parse_atom if source=='apple' else parse_tesla)(raw,observed)
-                feed_items=len(rows);scanned=feed_items;item_failures=0
-                suffix='.xml' if source=='apple' else '.html'
-                rows=supplement(rows,folder)
-            else:
-                raw=r.content;rows=parse_feed(raw,source,observed)
-                feed_items=len(ET.fromstring(raw).findall('./channel/item'))
-                scanned=min(FEED_ITEM_LIMIT,feed_items);item_failures=0;suffix='.xml'
-            feed_hash=hashlib.sha256(raw).hexdigest()
-            snapshot=folder/'feeds'/source/(feed_hash+suffix)
-            snapshot.parent.mkdir(parents=True,exist_ok=True)
-            if not snapshot.exists():snapshot.write_bytes(raw)
+def fetch_source(source, folder):
+    """Workers fetch/parse only; they never access SQLite or paid transports."""
+    _,url,_=SOURCES[source]
+    started = time.monotonic()
+    try:
+        r = requests.get(url, timeout=(10, 30), headers={'User-Agent': 'EverydayTechNews-internal-research/1.0'})
+        r.raise_for_status()
+        observed=stamp()
+        if source=='hackernews':
+            rows,raw,feed_items,scanned,item_failures=fetch_hn_items(r.json(),observed)
+            suffix='.json'
+        elif source in {'apple','tesla'}:
+            from adapters import parse_atom,parse_tesla,supplement
+            raw=r.content
+            rows=(parse_atom if source=='apple' else parse_tesla)(raw,observed)
+            feed_items=len(rows);scanned=feed_items;item_failures=0
+            suffix='.xml' if source=='apple' else '.html'
+            rows=supplement(rows,folder)
+        else:
+            raw=r.content;rows=parse_feed(raw,source,observed)
+            feed_items=len(ET.fromstring(raw).findall('./channel/item'))
+            scanned=min(FEED_ITEM_LIMIT,feed_items);item_failures=0;suffix='.xml'
+        feed_hash=hashlib.sha256(raw).hexdigest()
+        snapshot=folder/'feeds'/source/(feed_hash+suffix)
+        snapshot.parent.mkdir(parents=True,exist_ok=True)
+        if not snapshot.exists():snapshot.write_bytes(raw)
+        for a in rows:
+            a['feed_sha256']=feed_hash
+            a['source_observed_at']=observed
+            a['feed_snapshot']=str(snapshot)
+        if not rows:
+            raise ValueError('empty feed')
+        health=dict(source=source, ok=True, count=len(rows), usable=sum(a['content_status']=='usable_excerpt' for a in rows), discovery_only=sum(a['content_status']=='discovery_only' for a in rows), feed_item_count=feed_items, scanned=scanned, item_failures=item_failures, retained_limit=30 if source=='hackernews' else FEED_ITEM_LIMIT, http_status=r.status_code, final_url=r.url, execution_environment='github_actions' if os.environ.get('GITHUB_ACTIONS')=='true' else 'local', seconds=time.monotonic()-started)
+    except (requests.RequestException, ValueError, ET.ParseError) as error:
+        status=getattr(getattr(error,'response',None),'status_code',None)
+        health=dict(source=source, ok=False, error='fetch_or_parse_failed', http_status=status, execution_environment='github_actions' if os.environ.get('GITHUB_ACTIONS')=='true' else 'local', seconds=time.monotonic()-started)
+        rows=[]
+    return rows,health
+
+
+def collect(db, folder, max_workers=4):
+    # One task per source; HN retains its existing five-item transport bound.
+    # No shared requests.Session or SQLite connection crosses worker threads.
+    if type(max_workers) is not int or not 1<=max_workers<=4:
+        raise ValueError('collection_workers_must_be_1_to_4')
+    started=time.monotonic();cpu_started=time.process_time();health=[]
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        results=executor.map(lambda source:fetch_source(source,folder),SOURCES)
+        for rows,source_health in results:
             for a in rows:
-                a['feed_sha256']=feed_hash
-                a['feed_snapshot']=str(snapshot)
-            if not rows:
-                raise ValueError('empty feed')
-            for a in rows:
-                db.execute('INSERT INTO observations VALUES (?,?,?,?)',(a['id'],a['content_fingerprint'],observed,feed_hash))
+                db.execute('INSERT INTO observations VALUES (?,?,?,?)',(a['id'],a['content_fingerprint'],a['source_observed_at'],a['feed_sha256']))
                 db.execute('INSERT OR IGNORE INTO articles VALUES (?,?,?)', (a['id'], digest(json.dumps([a['content_fingerprint'],a['title'],a['published_at']],ensure_ascii=False)), json.dumps(a, ensure_ascii=False)))
-            health.append(dict(source=source, ok=True, count=len(rows), usable=sum(a['content_status']=='usable_excerpt' for a in rows), discovery_only=sum(a['content_status']=='discovery_only' for a in rows), feed_item_count=feed_items, scanned=scanned, item_failures=item_failures, retained_limit=30 if source=='hackernews' else FEED_ITEM_LIMIT, http_status=r.status_code, final_url=r.url, execution_environment='github_actions' if os.environ.get('GITHUB_ACTIONS')=='true' else 'local', seconds=time.monotonic()-started))
-        except (requests.RequestException, ValueError, ET.ParseError) as error:
-            status=getattr(getattr(error,'response',None),'status_code',None)
-            health.append(dict(source=source, ok=False, error='fetch_or_parse_failed', http_status=status, execution_environment='github_actions' if os.environ.get('GITHUB_ACTIONS')=='true' else 'local'))
-    report=dict(at=stamp(),sources=health,coverage_gaps=[dict(source='spacex',status='no_verified_accessible_official_feed',note='Official updates page blocked; NASA is partial coverage only')])
+            health.append(source_health)
+    report=dict(at=stamp(),sources=health,performance=dict(collection_workers=max_workers, wall_seconds=time.monotonic()-started, cpu_seconds=time.process_time()-cpu_started, source_seconds_sum=sum(x['seconds'] for x in health)),coverage_gaps=[dict(source='spacex',status='no_verified_accessible_official_feed',note='Official updates page blocked; NASA is partial coverage only')])
     db.execute('INSERT OR REPLACE INTO meta VALUES (?,?)', ('health', json.dumps(report)))
     db.commit()
     write_json(folder / 'source-health.json', report)
@@ -536,6 +552,7 @@ def main():
     parser.add_argument('command',choices=['collect','sample','daily','work','render','status','revalidate'])
     parser.add_argument('--data',type=Path,default=Path('premium_data'))
     parser.add_argument('--issue',default=None)
+    parser.add_argument('--collect-workers',type=int,choices=range(1,5),default=4)
     parser.add_argument('--retry-validation',action='store_true',help='Explicit retry of known-usage validation failures only; successful results are reused')
     parser.add_argument('--test-anytime',action='store_true',help='Explicit internal test authorization; never used by the daily scheduler')
     args=parser.parse_args()
@@ -546,7 +563,7 @@ def main():
     with (args.data/'worker.lock').open('w') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX)
         db=connect(args.data)
-        if args.command=='collect':print(json.dumps(collect(db,args.data),ensure_ascii=False));return
+        if args.command=='collect':print(json.dumps(collect(db,args.data,max_workers=args.collect_workers),ensure_ascii=False));return
         if args.command=='status':
             print(json.dumps(dict(jobs=[dict(r) for r in db.execute('SELECT status,COUNT(*) AS count FROM jobs GROUP BY status')],calls=[dict(r) for r in db.execute('SELECT day,COUNT(*) AS count,SUM(cost) AS estimated_cny,SUM(CASE WHEN cost IS NULL THEN reserved ELSE 0 END) AS unknown_reserved_cny FROM calls GROUP BY day')]),ensure_ascii=False));return
         if args.command in ['sample','daily']:

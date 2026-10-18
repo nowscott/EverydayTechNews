@@ -492,6 +492,7 @@ def main():
     parser.add_argument('command',choices=['init','collect','assess','enrich','verify-api','fresh-sample','send-sample','compose','deliver','reconcile','status','report','import-legacy','preview-legacy','archive','restore-artifact','ack-artifact'])
     parser.add_argument('--data',type=Path,default=Path('premium_data/pool'))
     parser.add_argument('--legacy',type=Path)
+    parser.add_argument('--collect-workers',type=int,choices=range(1,5),default=4,help='Source fetch workers; 1 restores serial collection')
     parser.add_argument('--sync-git',action='store_true',help='Persist private Git checkpoints before external side effects')
     args=parser.parse_args();args.data.mkdir(parents=True,exist_ok=True)
     if args.command=='restore-artifact':restore_artifact(args.data);return
@@ -502,7 +503,7 @@ def main():
         elif args.command=='import-legacy':result=import_legacy(store,args.legacy or Path('premium_data'))
         elif args.command=='preview-legacy':result=preview_legacy(store)
         elif args.command=='collect':
-            result=b.collect(store.db,store.root);store.checkpoint();assess(store)
+            result=b.collect(store.db,store.root,max_workers=args.collect_workers);store.checkpoint();assess(store)
         elif args.command=='assess':result=assess(store)
         elif args.command=='enrich':result=enrich(store)
         elif args.command=='verify-api':result=verify_api(store)
