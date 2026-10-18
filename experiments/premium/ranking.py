@@ -3,14 +3,14 @@ from collections import Counter
 from datetime import datetime
 import re
 
-VERSION='editorial-4.2'
+VERSION='editorial-4.3'
 PRIMARY={'nvidia','github','cloudflare','microsoft_foundry','apple','tesla','nasa','apple_developer','nasa_blogs'}
 AI=r'(?<![A-Za-z])ai(?![A-Za-z])|\b(?:llm|agents?|chatgpt|openai|anthropic|claude|copilot|foundry|deepseek|gemini|gpt[- ]?\d|transformer|clef|qwen|llama|mistral|multimodal)\b|人工智能|大模型|智能体|生成式|机器学习|模型训练|推理模型'
 CHIPS=r'\b(?:gpu|cpu|nvidia|geforce|dlss|semiconductor|chips?|hbm|cuda)\b|芯片|算力|半导体|显卡|存储芯片|量子计算'
 SOFTWARE=r'\b(?:release|runner|update|gateway|license|security|vulnerability|open.source|developer|software|api|python|linux|windows)\b|更新|软件|开源|漏洞|开发者'
 INTERESTS = {
     'AI': AI,
-    'Apple': r'(?<![A-Za-z0-9])(?:apple|iphone|ipad|macbook|macos|ios|watchos|visionos|airpods)(?![A-Za-z0-9])|苹果',
+    'Apple': r'(?<![A-Za-z0-9])(?:apple|iphone|ipad|macbook|macos|ios|watchos|visionos|airpods|imac|homepod|mac\s+(?:mini|studio|pro)|vision\s+pro)(?![A-Za-z0-9])|苹果',
     'NVIDIA': r'(?<![A-Za-z0-9])(?:nvidia|geforce|cuda|rtx|blackwell|rubin)(?![A-Za-z0-9])|英伟达',
     'Tesla': r'(?<![A-Za-z0-9])(?:tesla|cybertruck|cybercab|fsd)(?![A-Za-z0-9])|特斯拉',
     'SpaceX': r'(?<![A-Za-z0-9])(?:spacex|starlink|starship|falcon)(?![A-Za-z0-9])|星舰|星链',
@@ -36,14 +36,17 @@ def evaluate(a,cutoff):
     for pattern,value,reason in [
         (r'安全|漏洞|修复|security|vulnerabilit|deprecat|shutdown|停用|关停',18,'安全、修复或服务变化'),
         (r'研究|报告|监管|收购|融资|research|study|report|regulat|acqui',16,'研究或行业事件'),
+        (r'诉讼|指控|调查|litigation|lawsuit|allegation|investigation',16,'法律或行业风险，仍需保留指控/未证实限定'),
+        (r'运营时间|全天候|自动驾驶|robotaxi|\bfsd\b|self.driving|driverless|launch mission|发射任务',16,'运营或核心能力变化'),
         (r'发布|推出|上线|正式|开源|launch|release|available|introduc|new in|arrive',14,'发布或可用性变化'),
         (r'测试|预览|计划|传闻|preview|beta|plan|rumou?r',8,'测试或未落定进展'),
     ]:
         if re.search(pattern,title,re.I):impact=max(impact,value);signals.append(reason)
     age=max(0,(cutoff-datetime.fromisoformat(a['published_at'])).total_seconds()/3600)
     freshness=round(15*max(0,1-age/48),2)
-    evidence=9 if a.get('content_origin')=='rss_description' else 13
-    if len(body)>=500:evidence+=2
+    # RSS transport format and English character count are not evidence quality.
+    # IT之家/MacRumors descriptions can contain as much evidence as encoded feeds.
+    evidence=13
     provenance=8 if a['source'] in PRIMARY else 5
     penalty=0
     if re.search(r'优惠|好价|促销|广告|秒杀|红包|sponsored|deals|giveaway',title,re.I):penalty=45;signals.append('营销选题降权')

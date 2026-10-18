@@ -94,6 +94,17 @@ class PoolTests(unittest.TestCase):
         for title in ['AI研究发布','Apple发布新产品','NVIDIA发布新芯片','Tesla扩大测试','SpaceX发射任务']:
             a=article();a['title']=title
             self.assertEqual(evaluate(a,CLOCK)['breakdown']['interest_bonus'],12,title)
+    def test_feed_encoding_and_ascii_length_do_not_create_source_quality_bonus(self):
+        a=article();other=dict(a,content_origin='rss_content_encoded')
+        self.assertEqual(evaluate(a,CLOCK)['score'],evaluate(other,CLOCK)['score'])
+        other['text']+='x'*1000
+        self.assertEqual(evaluate(a,CLOCK)['breakdown']['evidence_amount'],evaluate(other,CLOCK)['breakdown']['evidence_amount'])
+    def test_operational_tesla_changes_and_apple_devices_are_recognized(self):
+        a=article();a['title']='特斯拉延长Robotaxi运营时间至午夜'
+        self.assertGreaterEqual(evaluate(a,CLOCK)['breakdown']['impact'],16)
+        for title in ['Mac mini更新','iMac发布','HomePod mini更新','Vision Pro发布']:
+            a['title']=title
+            self.assertEqual(evaluate(a,CLOCK)['breakdown']['interest_bonus'],12,title)
     def test_same_brand_distinct_events_are_not_merged(self):
         a=article();c=article(1)
         a['title']='NVIDIA RTX Spark arrives globally';c['title']='NVIDIA RTX Spark security vulnerability affects Linux driver'
