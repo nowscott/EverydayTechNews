@@ -12,6 +12,7 @@ import { buildEmail, freezeIssue, sendOnce } from '../src/mail.ts';
 import { mapLimit } from '../src/sources.ts';
 import { article } from './fixtures.ts';
 
+const domainTitles = ['AI模型发布', '开源编译器重大更新', 'NVIDIA 芯片发布', '火箭重大突破', '机器人重大升级'];
 const text = '公司计划在中国测试这一人工智能模型，尚未独立验证。'.repeat(20);
 const a = { ...article(), source_name: 'GitHub', url: 'https://example.org/test', text, description_clean: text, content_fingerprint: digest(text), fetched_at: '2026-10-18T04:30:00+08:00', original_article_published_at: '2026-10-18T04:00:00+08:00', output_schema: 'dual-1' };
 const result = { title: '新模型测试', summary: '公司计划在中国测试这一人工智能模型。', short_summary: '公司测试模型，尚未独立验证。', points: [], why: '', uncertainties: [], claims: [{ claim: '模型测试', evidence: '公司计划在中国测试这一人工智能模型' }], generated_at: '2026-10-18T06:00:00+08:00' };
@@ -192,7 +193,7 @@ test('offline end-to-end collection, assessment, cached composition and frozen a
       if (host !== 'www.ithome.com') return new Response('', { status: 503 });
       const entries = Array.from({ length: 20 }, (_, i) => {
         const unique = Array.from({ length: 30 }, (_, j) => String.fromCodePoint(0x4e00 + i * 31 + j)).join('');
-        return `<item><title>AI发布 ${unique}</title><link>https://www.ithome.com/${i}</link><pubDate>Mon, 19 Oct 2026 04:00:00 +0800</pubDate><description><![CDATA[${text + unique}]]></description></item>`;
+        return `<item><title>${domainTitles[i % 5]} ${unique}</title><link>https://www.ithome.com/${i}</link><pubDate>Mon, 19 Oct 2026 04:00:00 +0800</pubDate><description><![CDATA[${text + unique}]]></description></item>`;
       }).join('');
       return new Response(`<rss><channel>${entries}</channel></rss>`, { status: 200 });
     }) as typeof fetch;
@@ -251,7 +252,7 @@ test('100-version limit allows cached pool reuse and admits only remaining new v
         }
         for (let i = 0; i < 20; i++) {
           const unique = Array.from({ length: 30 }, (_, j) => String.fromCodePoint(0x4e00 + i * 31 + j)).join('');
-          const input = { ...a, id: `cached-${i}`, title: 'AI 发布 ' + unique, url: 'https://example.org/cached/' + i, text: text + unique, content_fingerprint: digest(text + unique) };
+          const input = { ...a, id: `cached-${i}`, title: domainTitles[i % 5] + ' ' + unique, url: 'https://example.org/cached/' + i, text: text + unique, content_fingerprint: digest(text + unique) };
           const key = cacheKey(input, p); store.run('INSERT INTO articles VALUES (?,?,?)', input.id, 'version', pyjson(input));
           if (cached) store.run('INSERT INTO jobs(key,article,status,result) VALUES (?,?,?,?)', key, pyjson(input), 'pending_human_review', pyjson(result));
         }
@@ -284,5 +285,18 @@ test('pricing preflight failure leaves retry sample unfrozen and makes no paid r
     assert.equal(posts, 0);
     assert.equal(existsSync(store.root + '/durable/ts-launch-serif-retry.json'), false);
     assert.equal(existsSync(store.root + '/issues/sample-ts-serif-retry-2026-10-18/edition.json'), false);
+  } finally { close(); }
+});
+
+test('shared title exclusions stop legacy queued articles before pricing and paid POST', async () => {
+  const { store, p, close } = setup(); let network = 0;
+  try {
+    for (const title of ['华为发布新模型', '新款手机 3999 元']) {
+      const blockedArticle = { ...a, title }; const key = cacheKey(blockedArticle, p);
+      store.run('INSERT INTO jobs(key,article,status) VALUES (?,?,?)', key, pyjson(blockedArticle), 'queued');
+      const result = await paidRequest(store, key, blockedArticle, p, permit, { now, verify: async () => { network++; return true; }, fetcher: (async () => { network++; return goodResponse(); }) as typeof fetch, token: 'test' });
+      assert.equal(result, title.startsWith('华为') ? 'shared_filter_keyword' : 'shared_filter_price');
+    }
+    assert.equal(network, 0); assert.equal(store.one('SELECT COUNT(*) n FROM calls')!.n, 0);
   } finally { close(); }
 });

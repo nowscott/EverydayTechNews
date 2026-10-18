@@ -13,7 +13,7 @@ const python = process.env.PYTHON ?? (existsSync(`${root}.venv/bin/python`) ? `$
 const config = preferences();
 
 test('all synthetic reference outputs match Python, including Unicode and ties', () => {
-  const cases = parityCases();
+  const cases = [...parityCases(), ...['Parser Combinators', 'Show HN: Run ESP32 firmware in the browser', 'A new Rust compiler'].map(title => ({ articles: [article({title})], cutoff }))];
   const result = spawnSync(python, [fileURLToPath(new URL('../tools/python_reference.py', import.meta.url))], {
     input: JSON.stringify(cases), encoding: 'utf8', maxBuffer: 30 * 1024 * 1024,
   });

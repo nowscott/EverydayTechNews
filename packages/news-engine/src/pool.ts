@@ -5,6 +5,7 @@ import { preferences, VERSION } from './ranking.ts';
 import { duplicate, select } from './editor.ts';
 import { cacheKey, paidRequest, validate, codepoints, inspectRules } from './model.ts';
 import { fetchSource, mapLimit, SOURCES } from './sources.ts';
+import { limitDomains, analyzeDomain, titleExclusion } from './editorial-policy.ts';
 import { freezeIssue, sendOnce } from './mail.ts';
 
 export function rows(store: Store, cutoff = stamp()): Row[] {
@@ -21,6 +22,8 @@ export function candidates(store: Store, cutoff: string, target = Number.MAX_SAF
   });
   const articles: Row[] = []; const reasons: Row[] = [];
   for (const a of rows(store, cutoff)) {
+    const exclusion = titleExclusion(a.title);
+    if (exclusion) { reasons.push({ id: a.id, title: a.title, ...exclusion }); continue; }
     let reason: string | null = null;
     if (floor && Date.parse(a.published_at) < Date.parse(floor)) reason = 'expires_before_next_edition';
     else if (a.evidence_expired_or_missing) reason = 'evidence_expired_or_missing';
@@ -43,6 +46,7 @@ export function candidates(store: Store, cutoff: string, target = Number.MAX_SAF
       }
       a.confirmed_update_facts = facts;
     }
+    a.domain_analysis = analyzeDomain(a); a.domain = a.domain_analysis.primary;
     approved.push(a);
   }
   return [approved, [...reasons, ...rejected]];
@@ -63,7 +67,7 @@ export function assess(store: Store, now = new Date()) {
   const config = preferences(); const p = policy(); const [cutoff, floor] = writingWindow(now);
   const [selected, rejected] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER, floor); queue(store, selected, p);
   const excluded: Row = {}; for (const r of rejected) excluded[r.reason] = (excluded[r.reason] ?? 0) + 1;
-  const report = { at: stamp(now), ranking_version: VERSION, config, selected: selected.map(a => ({ id: a.id, fingerprint: a.content_fingerprint, title: a.title, ranking: a.ranking })),
+  const report = { at: stamp(now), ranking_version: VERSION, config, selected: selected.map(a => ({ id: a.id, fingerprint: a.content_fingerprint, title: a.title, domain: a.domain, domain_analysis: a.domain_analysis, ranking: a.ranking })),
     rejections: rejected, funnel: { total_versions: rows(store).length, selected: selected.length, excluded } };
   atomic(store.root + '/durable/assessments/' + stamp(now).replaceAll(/[^0-9]/g, '') + '.json', report); store.checkpoint(); return report;
 }
@@ -100,7 +104,9 @@ export async function enrich(store: Store) {
   for (const job of jobs) {
     if (invoked >= Number(preferences().batch_size)) break; if (!keys.has(job.key)) continue;
     if (!attempted.has(job.key) && attempted.size >= Number(preferences().new_versions_per_day)) break;
-    const a = JSON.parse(job.article); if (!a.text || a.evidence_expired_or_missing) continue; repairKnown(store, job, p);
+    const a = eligible.find(a => cacheKey(a, p) === job.key)!; if (!a.text || a.evidence_expired_or_missing) continue; repairKnown(store, job, p);
+    const completed = recordsReady(store, eligible, permit.expires_at, [], false);
+    if (completed.filter(r => r.article.domain === analyzeDomain(a).primary).length >= Number((preferences().domain_policy as Row).maximum_per_domain)) continue;
     const before = store.one('SELECT COUNT(*) n FROM calls')!.n;
     const blocked = await paidRequest(store, job.key, a, p, permit); const added = store.one('SELECT COUNT(*) n FROM calls')!.n - before;
     invoked += added; if (added) attempted.add(job.key); statuses.push({ job: job.key, status: blocked ?? store.one('SELECT status FROM jobs WHERE key=?', job.key)!.status });
@@ -125,7 +131,7 @@ export function reconcile(store: Store) {
   store.run("UPDATE jobs SET status='uncertain_requires_review' WHERE status='inflight'");
   store.run("UPDATE calls SET status='interrupted_usage_unknown' WHERE status='reserved'"); store.expire(); store.checkpoint(); return status(store);
 }
-function recordsReady(store: Store, articles: Row[], deadline: string, rejected: Row[]): Row[] {
+function recordsReady(store: Store, articles: Row[], deadline: string, rejected: Row[], restrictDomains = true): Row[] {
   const records: Row[] = []; const p = policy();
   for (const a of articles) {
     const key = cacheKey(a, p); const job = store.one('SELECT * FROM jobs WHERE key=?', key);
@@ -133,10 +139,11 @@ function recordsReady(store: Store, articles: Row[], deadline: string, rejected:
     const g = JSON.parse(job.result);
     if (!g.generated_at || Date.parse(g.generated_at) > Date.parse(deadline)) { rejected.push({ id: a.id, reason: 'generated_after_deadline' }); continue; }
     try { validate(g, a); } catch { rejected.push({ id: a.id, reason: 'saved_result_failed_current_validation' }); continue; }
-    a.job_key = key; records.push({ article: a, result: g, status: job.status, calls: store.all('SELECT * FROM calls WHERE job=?', key), human_review: 'not_started' });
-    if (records.length >= Number(preferences().edition_maximum)) break;
+    const exclusion = titleExclusion(a.title) ?? titleExclusion(g.title);
+    if (exclusion) { rejected.push({ id: a.id, ...exclusion }); continue; }
+    a.domain = analyzeDomain(a).primary; a.job_key = key; records.push({ article: a, result: g, status: job.status, calls: store.all('SELECT * FROM calls WHERE job=?', key), human_review: 'not_started' });
   }
-  return records;
+  return restrictDomains ? limitDomains(records, rejected) : records;
 }
 export function compose(store: Store, now = new Date()) {
   const config = trial(store.root); if (!active(config, now)) return { status: 'trial_disabled_or_expired' };
@@ -145,7 +152,7 @@ export function compose(store: Store, now = new Date()) {
   const id = 'test-' + day(now); const path = store.root + '/issues/' + id + '/edition.json'; if (existsSync(path)) return read(path);
   const [chosen, rejected] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER); const records = recordsReady(store, chosen, deadline, rejected);
   const issue = { id, pool_edition: true, mode: 'daily_24h', collection_cutoff: cutoff, generation_cutoff: deadline, frozen_at: stamp(now), articles: records.map(r => r.article), rejected,
-    source_health: status(store).sources, shortfall: Math.max(0, Number(preferences().edition_minimum) - records.length), human_review: 'not_started', kind: records.length >= Number(preferences().edition_minimum) ? 'newsletter' : 'diagnostic', sendable_count: 0, engine: 'typescript' };
+    source_health: status(store).sources, shortfall: Math.max(0, Number(preferences().edition_minimum) - records.length), editorial_policy: preferences().domain_policy, human_review: 'not_started', kind: records.length >= Number(preferences().edition_minimum) ? 'newsletter' : 'diagnostic', sendable_count: 0, engine: 'typescript' };
   return freezeIssue(store, issue, records);
 }
 export type SampleRevision = 'initial' | 'serif' | 'serif-retry';
@@ -170,6 +177,8 @@ export async function launchSample(store: Store, revision: SampleRevision = 'ini
   processing: for (const a of spec.articles) {
     // Reuse all valid accumulated drafts before paying for any missing ones.
     if (recordsReady(store, spec.articles, spec.generation_cutoff, []).length >= Number(preferences().edition_maximum)) break;
+    const completed = recordsReady(store, spec.articles, spec.generation_cutoff, [], false);
+    if (completed.filter(r => r.article.domain === analyzeDomain(a).primary).length >= Number((preferences().domain_policy as Row).maximum_per_domain)) continue;
     let job = store.one('SELECT * FROM jobs WHERE key=?', a.job_key)!;
     while (!job.result && job.attempts < p.max_attempts) {
       if (!attempted.has(job.key) && attempted.size >= Number(preferences().new_versions_per_day)) { spec.rejected.push({ id: a.id, reason: 'daily_new_version_limit' }); break processing; }
@@ -189,7 +198,7 @@ export async function launchSample(store: Store, revision: SampleRevision = 'ini
   }
   const records = recordsReady(store, spec.articles, spec.generation_cutoff, spec.rejected);
   const issue = { ...spec, articles: records.map(r => r.article), shortfall: Math.max(0, Number(preferences().edition_minimum) - records.length),
-    human_review: 'not_started', is_trial_day: false, kind: records.length >= Number(preferences().edition_minimum) ? 'newsletter' : 'diagnostic', engine: 'typescript' };
+    editorial_policy: preferences().domain_policy, human_review: 'not_started', is_trial_day: false, kind: records.length >= Number(preferences().edition_minimum) ? 'newsletter' : 'diagnostic', engine: 'typescript' };
   return freezeIssue(store, issue, records);
 }
 export async function verifyApi(store: Store) {

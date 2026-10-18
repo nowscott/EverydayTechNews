@@ -1,3 +1,5 @@
+import { VERSION } from './ranking.ts';
+import { limitDomains } from './editorial-policy.ts';
 import nodemailer from 'nodemailer';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { Store, files } from './store.ts';
@@ -21,7 +23,7 @@ export function buildEmail(issue: Row, records: Row[]): [string, string] {
     const why = i < 5 && g.why ? `<p style="padding:12px 14px;border-left:3px solid #a6ca58;background:#f6f9ee;font-size:14px;line-height:1.8"><strong>为什么值得关注</strong><br>${escape(g.why)}</p>` : '';
     const pending = `AI 初稿，待人工核对${a.update_review_required ? ' · 更新待审' : ''}`;
     plain.push('', `${i + 1} / ${label}`, g.title, summary, ...(i < 5 ? g.points : []), i < 5 ? g.why : '', `${a.source_name} / ${a.published_at} 上海时间`, a.url, pending);
-    return group + `<tr><td class="pad" style="padding:18px 36px 25px"><p style="font-size:11px;color:#73816b;font-weight:700">${String(i + 1).padStart(2, '0')} / ${label}</p><h2 style="font-size:22px;line-height:1.5;margin:0 0 14px"><a href="${escape(a.url)}" style="color:#111b12;text-decoration:none">${escape(g.title)}</a></h2><p style="font-size:16px;line-height:1.95;color:#353f35;overflow-wrap:anywhere">${escape(summary)}</p>${points}${why}<p style="font-size:11px;color:#768071;line-height:1.8">${escape(a.source_name)} · ${escape(a.published_at.slice(5, 16).replace('T', ' '))}（上海时间）<br><span style="color:#8a6542">${pending}</span>　<a href="${escape(a.url)}" style="color:#526b32">阅读原文 ↗</a></p><div style="margin-top:25px;border-bottom:1px solid #e8eae3"></div></td></tr>`;
+    return group + `<tr><td class="pad" style="padding:18px 36px 25px"><p style="font-size:11px;color:#73816b;font-weight:700">${String(i + 1).padStart(2, '0')} / ${label}${a.domain ? ' · ' + escape(a.domain) : ''}</p><h2 style="font-size:22px;line-height:1.5;margin:0 0 14px"><a href="${escape(a.url)}" style="color:#111b12;text-decoration:none">${escape(g.title)}</a></h2><p style="font-size:16px;line-height:1.95;color:#353f35;overflow-wrap:anywhere">${escape(summary)}</p>${points}${why}<p style="font-size:11px;color:#768071;line-height:1.8">${escape(a.source_name)}${a.content_origin === 'hn_show_original_post' ? ' · 项目投稿自述' : ''} · ${escape(a.published_at.slice(5, 16).replace('T', ' '))}（上海时间）<br><span style="color:#8a6542">${pending}</span>　<a href="${escape(a.url)}" style="color:#526b32">阅读原文 ↗</a></p><div style="margin-top:25px;border-bottom:1px solid #e8eae3"></div></td></tr>`;
   }).join('');
   const health = issue.source_health?.sources ?? [];
   const coverage = health.length ? `采集状态：${health.filter((s: Row) => s.ok).length}/${health.length} 路可用；${health.reduce((n: number, s: Row) => n + (s.discovery_only ?? 0), 0)} 条仅供发现线索，不据此补写正文。` : '采集范围有限，来源健康详情见内部审阅记录。';
@@ -30,6 +32,10 @@ export function buildEmail(issue: Row, records: Row[]): [string, string] {
   return [doc, plain.filter(Boolean).join('\n\n')];
 }
 export function freezeIssue(store: Store, issue: Row, records: Row[]) {
+  if (issue.editorial_policy) {
+    const checked = limitDomains(structuredClone(records));
+    if (checked.length !== records.length || checked.some((r, i) => r.article.id !== records[i].article.id)) throw new Error('editorial_policy_changed_before_freeze');
+  }
   const root = store.root; const out = root + '/issues/' + issue.id;
   if (store.one('SELECT id FROM issues WHERE id=?', issue.id) || (() => { try { read(out + '/edition.json'); return true; } catch { return false; } })()) throw new Error('edition_already_frozen');
   mkdirSync(out, { recursive: true }); const review = root + '/transient/reviews/' + issue.id; mkdirSync(review, { recursive: true });
@@ -46,7 +52,7 @@ export function freezeIssue(store: Store, issue: Row, records: Row[]) {
   const csv = [['文章ID', '中文标题', '原文链接', '关键事实错误', '无依据陈述', '遗漏', '修改需求', '人工审阅', '调用次数', '估算费用元'], ...records.map(r => [r.article.id, r.result.title, r.article.url, '待审', '待审', '待审', '待审', '未开始', r.calls.length, r.calls.reduce((n: number, c: Row) => n + (c.cost ?? 0), 0)])];
   write(out + '/review.csv', '\ufeff' + csv.map(row => row.map(cell => '"' + (/^[=+@-]/.test(String(cell)) ? "'" : '') + String(cell).replaceAll('"', '""') + '"').join(',')).join('\r\n') + '\r\n');
   atomic(out + '/comparison.json', store.shrink({ issue, records, sendable_count: 0, cost_is_estimate: true }));
-  atomic(out + '/ranking.json', { version: 'editorial-4.3', selected: issue.articles.map((a: Row) => ({ id: a.id, ranking: a.ranking })), rejected: issue.rejected });
+  atomic(out + '/ranking.json', { version: VERSION, selected: issue.articles.map((a: Row) => ({ id: a.id, domain: a.domain, domain_analysis: a.domain_analysis, ranking: a.ranking })), rejected: issue.rejected });
   const frozen = store.shrink(issue); atomic(out + '/edition.json', frozen);
   store.run('INSERT INTO issues VALUES (?,?)', issue.id, JSON.stringify(issue)); store.checkpoint(); return frozen;
 }

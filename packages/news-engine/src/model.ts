@@ -2,6 +2,7 @@ import { load } from 'cheerio/slim';
 import { PROMPT, POOL_PROMPT } from './constants.ts';
 import { digest, pyjson, stamp, day, localParts, at, EXPIRY, type Row } from './core.ts';
 import { complete, whitespace } from './sources.ts';
+import { titleExclusion } from './editorial-policy.ts';
 import { Store } from './store.ts';
 export const codepoints = (s: string) => Array.from(s).length;
 function tariff(clock: Date) {
@@ -90,6 +91,7 @@ export async function paidRequest(store: Store, key: string, a: Row, p: Row, per
   if (!store.syncGit && !deps.fetcher) throw new Error('paid_transport_requires_authoritative_checkpoint');
   const now = deps.now ?? (() => new Date()); const fetcher = deps.fetcher ?? fetch;
   const job = store.one('SELECT * FROM jobs WHERE key=?', key); if (!job) return 'unknown_job';
+  const exclusion = titleExclusion(a.title); if (exclusion) return exclusion.reason;
   if (job.result) return 'cached';
   if (['inflight', 'uncertain_requires_review', 'failed_validation_review'].includes(job.status)) return 'held_for_review';
   // Unknown-cost failures are held even when a legacy job carries retry_after.
