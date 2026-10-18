@@ -85,5 +85,10 @@ class SourceAndDeliveryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             folder=Path(tmp);out=self.setup_folder(folder);(out/'email.html').write_text('no test label')
             with self.assertRaises(ValueError):prepare(folder,'test','test@example.com','sender@example.com')
+    def test_musk_article_slug_is_not_an_api_key(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp);out=self.setup_folder(folder)
+            (out/'email.html').write_text('【测试】https://example.com/elon-musk-space-technology-development-news')
+            prepare(folder,'test','test@example.com','sender@example.com')
 
 if __name__=='__main__':unittest.main()

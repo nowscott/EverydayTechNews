@@ -26,7 +26,7 @@ def prepare(data, issue_id, recipient, sender):
     folder=data/'issues'/issue_id
     content=(folder/'email.html').read_text();plain=(folder/'email.txt').read_text()
     if '【测试】' not in content or '【测试】' not in plain:raise ValueError('missing_test_label')
-    if re.search(r'sk-[A-Za-z0-9_-]{20,}',content+'\n'+plain):raise ValueError('credential_like_text_blocked')
+    if re.search(r'(?<![A-Za-z0-9_-])sk-[A-Za-z0-9_-]{20,}',content+'\n'+plain):raise ValueError('credential_like_text_blocked')
     if not sender or any(c in sender for c in '\r\n'):raise ValueError('invalid_sender')
     fingerprint=hashlib.sha256((recipient+'\0'+issue_id+'\0'+content+'\0'+plain).encode()).hexdigest()
     message=EmailMessage()
