@@ -4,6 +4,10 @@ import { digest, pyjson, stamp, day, localParts, at, EXPIRY, type Row } from './
 import { complete, whitespace } from './sources.ts';
 import { Store } from './store.ts';
 export const codepoints = (s: string) => Array.from(s).length;
+function tariff(clock: Date) {
+  const { hour } = localParts(clock); const weekday = new Date(clock.getTime() + 8 * 3600000).getUTCDay();
+  return weekday >= 1 && weekday <= 5 && ((hour >= 9 && hour < 12) || (hour >= 14 && hour < 18)) ? 2 : 1;
+}
 export function cacheKey(a: Row, p: Row): string {
   const prompt = a.output_schema === 'dual-1' ? POOL_PROMPT : PROMPT;
   const parts = [a.url, a.title, a.published_at, a.content_fingerprint, p.model, p.model_version, p.prompt_version, digest(prompt)];
@@ -99,8 +103,7 @@ export async function paidRequest(store: Store, key: string, a: Row, p: Row, per
   }
   const prompt = a.output_schema === 'dual-1' ? POOL_PROMPT : PROMPT;
   const body = { model: p.model, thinking: { type: 'disabled' }, max_tokens: 1800, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: prompt }, { role: 'user', content: pyjson(evidence) }] };
-  const clock = now(); const parts = localParts(clock); const weekday = new Date(clock.getTime() + 8 * 3600000).getUTCDay();
-  const multiplier = weekday >= 1 && weekday <= 5 && ((parts.hour >= 9 && parts.hour < 12) || (parts.hour >= 14 && parts.hour < 18)) ? 2 : 1;
+  const clock = now(); const multiplier = tariff(clock);
   const reserve = ((Buffer.byteLength(pyjson(body)) + 512) * p.input_miss_per_million + 1800 * p.output_per_million) / 1e6 * (permit ? Math.max(multiplier, 2) : multiplier);
   const spent = store.one('SELECT COALESCE(SUM(COALESCE(cost,reserved)),0) total FROM calls WHERE day=?', day(clock))!.total;
   if (spent + reserve > Math.min(p.daily_budget_cny, 2)) return 'budget_exhausted';
@@ -111,6 +114,7 @@ export async function paidRequest(store: Store, key: string, a: Row, p: Row, per
   });
   store.checkpoint(); // Fail before any POST if reservation push failed.
   blocked = gate(p, now(), verified, permit);
+  if (!blocked && (day(now()) !== day(clock) || tariff(now()) !== multiplier)) blocked = 'billing_period_changed';
   if (blocked) {
     store.run("UPDATE calls SET cost=0,status='not_sent' WHERE id=?", callId); store.run("UPDATE jobs SET status='queued' WHERE key=?", key); store.checkpoint(); return blocked;
   }

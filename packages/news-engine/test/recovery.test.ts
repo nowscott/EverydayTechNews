@@ -59,6 +59,17 @@ test('time is rechecked after durable reservation', async () => {
     assert.equal(calls, 0); assert.equal(store.one('SELECT cost FROM calls')!.cost, 0);
   } finally { close(); }
 });
+test('midnight or tariff changes during reservation prevent POST under the old accounting period', async () => {
+  for (const [start, end] of [['2026-10-18T23:59:59+08:00', '2026-10-19T00:00:00+08:00'], ['2026-10-19T08:59:59+08:00', '2026-10-19T09:00:00+08:00']]) {
+    const { store, p, key, close } = setup(); let current = new Date(start); let calls = 0; const checkpoint = store.checkpoint.bind(store);
+    try {
+      store.checkpoint = () => { checkpoint(); current = new Date(end); };
+      const permit = { mode: 'internal_test_anytime', issue_id: 'test-billing', expires_at: '2026-10-20T00:00:00+08:00' };
+      assert.equal(await paidRequest(store, key, a, p, permit, { now: () => current, verify: async () => true, token: 'test', fetcher: (async () => { calls++; return goodResponse(); }) as typeof fetch }), 'billing_period_changed');
+      assert.equal(calls, 0); assert.equal(store.one('SELECT cost FROM calls')!.cost, 0);
+    } finally { close(); }
+  }
+});
 test('timeouts, 429, invalid usage and interrupted calls cannot cause another paid call', async () => {
   for (const failure of ['timeout', '429', 'usage', 'interrupted']) {
     const { store, p, key, close } = setup(); let calls = 0;
@@ -132,10 +143,24 @@ test('unknown SMTP result persists and is never automatically resent', async () 
     assert.equal((await sendOnce(store, issue.id, { transport, now })).reused, true); assert.equal(sent, 1);
   } finally { process.env = env; close(); }
 });
+test('SMTP rechecks the 07:00 cutoff after the durable sending claim', async () => {
+  const { store, close } = setup(); const env = { ...process.env }; let current = new Date('2026-10-19T06:59:59+08:00'); let sent = 0;
+  try {
+    process.env.SENDING_ACCOUNT = 'sender@example.org'; process.env.SENDING_PASSWORD = 'test'; process.env.SERVER = 'smtp.example.org';
+    const issue = { id: 'test-2026-10-19', kind: 'diagnostic', mode: 'daily_24h', pool_edition: true, collection_cutoff: '2026-10-19T06:00:00+08:00', generation_cutoff: '2026-10-19T06:15:00+08:00', articles: [], rejected: [], source_health: null };
+    freezeIssue(store, issue, []); const checkpoint = store.checkpoint.bind(store);
+    store.checkpoint = () => { checkpoint(); current = new Date('2026-10-19T07:00:00+08:00'); };
+    const transport = { sendMail: async () => { sent++; return { accepted: [RECIPIENT] }; }, close: () => {} };
+    assert.equal((await sendOnce(store, issue.id, { transport, now: () => current })).status, 'not_sent_outside_window'); assert.equal(sent, 0);
+  } finally { process.env = env; close(); }
+});
 test('schedule honors Shanghai cutoffs, trial expiry, writing floor and no late deliveries', () => {
   const { store, close } = setup();
   try {
     assert.equal(due(store, new Date('2026-10-19T06:12:00+08:00')).enrich, false);
+    const batchPermit = { mode: 'internal_test_anytime', issue_id: 'test-pool-2026-10-19', expires_at: '2026-10-19T06:15:00+08:00' };
+    assert.equal(gate(policy(), new Date('2026-10-19T06:11:59+08:00'), true, batchPermit), null);
+    assert.equal(gate(policy(), new Date('2026-10-19T06:12:00+08:00'), true, batchPermit), 'test_permit_expired');
     assert.equal(due(store, new Date('2026-10-19T06:15:00+08:00')).compose, true);
     assert.equal(due(store, new Date('2026-10-19T06:30:00+08:00')).deliver, true);
     assert.equal(due(store, new Date(EXPIRY)).enrich, false);
@@ -169,6 +194,12 @@ test('offline end-to-end collection, assessment, cached composition and frozen a
     }) as typeof fetch;
     const health = await collect(store, 4, fetcher); assert.equal(health.sources.filter((s: Row) => s.ok).length, 1);
     assert.equal(store.one('SELECT COUNT(*) n FROM articles')!.n, 20);
+    // Fix observation time independently of the calendar date on the CI host.
+    for (const row of store.all('SELECT id,fingerprint,data FROM articles')) {
+      const record = JSON.parse(row.data); record.fetched_at = '2026-10-19T05:59:00+08:00';
+      store.run('UPDATE articles SET data=? WHERE id=? AND fingerprint=?', pyjson(record), row.id, row.fingerprint);
+    }
+    store.run('UPDATE observations SET observed_at=?', '2026-10-19T05:59:00+08:00');
     assess(store, new Date('2026-10-19T05:59:00+08:00'));
     const jobs = store.all('SELECT * FROM jobs WHERE key<>?', cacheKey(a, policy())); assert.equal(jobs.length, 20);
     for (const job of jobs) store.run("UPDATE jobs SET status='pending_human_review',result=? WHERE key=?", pyjson({ ...result, generated_at: '2026-10-19T06:10:00+08:00' }), job.key);

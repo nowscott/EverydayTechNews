@@ -85,7 +85,9 @@ function repairKnown(store: Store, job: Row, p: Row) {
 export async function enrich(store: Store) {
   const config = trial(store.root); if (!active(config) || !config.model_enabled) return { status: 'trial_or_model_disabled_or_expired', calls: 0 };
   const p = policy(); p.daily_budget_cny = Math.min(p.daily_budget_cny, config.daily_budget_cny);
-  const permit = { mode: 'internal_test_anytime', issue_id: 'test-pool-' + config.start, expires_at: config.expires_at };
+  let batchDeadline = at(day(), '06:15:00'); if (Date.now() >= batchDeadline.getTime()) batchDeadline = new Date(batchDeadline.getTime() + 86400000);
+  // A batch admitted at 06:10 must stop admitting requests at 06:12 even if it runs long.
+  const permit = { mode: 'internal_test_anytime', issue_id: 'test-pool-' + config.start, expires_at: stamp(new Date(Math.min(batchDeadline.getTime(), Date.parse(config.expires_at)))) };
   const [cutoff, floor] = writingWindow(); const [eligible] = candidates(store, cutoff, Number(preferences().new_versions_per_day), floor);
   const keys = new Set(eligible.map(a => cacheKey(a, p))); const attempted = attemptedVersions(store); let invoked = 0; const statuses: Row[] = [];
   const jobs = store.all('SELECT * FROM jobs WHERE result IS NULL').sort((a, b) => (JSON.parse(b.article).ranking?.score ?? 0) - (JSON.parse(a.article).ranking?.score ?? 0));
@@ -147,7 +149,7 @@ export async function launchSample(store: Store) {
   if (!existsSync(path)) {
     const cutoff = stamp(); const [chosen, rejected] = candidates(store, cutoff, Number(preferences().new_versions_per_day)); queue(store, chosen, p);
     const spec = { id: 'sample-ts-launch-' + day(), mode: 'current_24h_sample', pool_edition: true, articles: chosen, rejected, collection_cutoff: cutoff,
-      generation_cutoff: stamp(new Date(Math.min(Date.now() + 30 * 60000, Date.parse(EXPIRY), Date.parse(p.valid_until)))), created_at: stamp(), source_health: status(store).sources };
+      generation_cutoff: stamp(new Date(Math.min(Date.parse(cutoff) + 30 * 60000, Date.parse(EXPIRY), Date.parse(p.valid_until)))), created_at: stamp(), source_health: status(store).sources };
     atomic(path, store.shrink(spec)); store.checkpoint();
   }
   const spec = store.expand(read(path)); const out = store.root + '/issues/' + spec.id + '/edition.json'; if (existsSync(out)) return read(out);

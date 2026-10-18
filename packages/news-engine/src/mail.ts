@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { Store, files } from './store.ts';
-import { atomic, read, digest, RECIPIENT, EXPIRY, trial, stamp, type Row } from './core.ts';
+import { atomic, read, digest, RECIPIENT, EXPIRY, trial, stamp, active, day, localParts, type Row } from './core.ts';
 import { validate, codepoints } from './model.ts';
 export const escape = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' })[c]!);
 const write = (p: string, value: string) => writeFileSync(p, value, { mode: 0o600 });
@@ -72,6 +72,10 @@ export async function sendOnce(store: Store, issueId: string, deps: { transport?
   const receipt: Row = { issue: issueId, recipient: RECIPIENT, subject, message_id: `<premium-test-${fingerprint.slice(0, 32)}@${sender.split('@')[1]}>`, status: 'sending', started_at: stamp(now), model_content_generated: edition.articles.length > 0, engine: 'typescript' };
   const path = store.root + '/deliveries/' + fingerprint + '.json'; const save = () => { atomic(path, receipt); store.checkpoint(); };
   save(); // Claim is remotely durable before creating an SMTP connection.
+  const sendingTime = deps.now?.() ?? new Date(); const sendingParts = localParts(sendingTime);
+  if (sendingTime.getTime() >= Date.parse(EXPIRY) || (issueId.startsWith('test-') && (!active(config, sendingTime) || issueId !== 'test-' + day(sendingTime) || sendingParts.hour !== 6 || sendingParts.minute < 30))) {
+    receipt.status = 'not_sent_outside_window'; save(); return receipt;
+  }
   const transport = deps.transport ?? nodemailer.createTransport({ host: server, port: 465, secure: true, auth: { user: sender, pass: password }, pool: false,
     connectionTimeout: 30000, greetingTimeout: 30000, socketTimeout: 30000, logger: false, debug: false });
   try {
