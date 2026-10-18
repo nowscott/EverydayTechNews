@@ -55,7 +55,7 @@ const [selected, rejected] = choose(articles, '2026-10-18T12:00:00+08:00', confi
 
 输入必须已完成采集、时效筛选、正文可用性判断和事件去重；本模块**不替代** `brief.select` 或 `pool.candidates`。评分会计算旧新闻衰减，但不会独立执行24小时排除规则，也不判定证据是否过期。文章必须包含 `id/title/text/source/published_at`，可携带 `content_status/topic` 及其他字段。`choose` 返回文章副本，不修改输入；Python 原实现会修改输入，这是有意的接口差异，序列化输出保持一致。
 
-评分版本保持 `editorial-4.3`。`evaluate` 返回评分结构；`choose` 返回 `[selected, rejected]`，含配置、评分明细、兴趣、信号、选择顺序和排除原因。未指定 `target` 或指定零时使用配置的 `edition_maximum`，与 Python 一致。截止时间为必填，日期要求带时区，最多六位小数秒；非法输入报错，不读取本机时区或当前时间。
+当前评分版本为 `editorial-4.4`（补充英文编译器、解析器、固件等技术词），与Python参考保持一致。`evaluate` 返回评分结构；`choose` 返回 `[selected, rejected]`，含配置、评分明细、兴趣、信号、选择顺序和排除原因。未指定 `target` 或指定零时使用配置的 `edition_maximum`，与 Python 一致。截止时间为必填，日期要求带时区，最多六位小数秒；非法输入报错，不读取本机时区或当前时间。
 
 ## JSON 命令入口
 
