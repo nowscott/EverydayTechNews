@@ -209,6 +209,17 @@ class PoolTests(unittest.TestCase):
             self.assertEqual(pool.deliver(self.s)['status'],'frozen_content_changed_do_not_send')
     def test_original_url_keeps_semantic_query_but_drops_tracking(self):
         self.assertEqual(b.canonical('https://news.ycombinator.com/item?id=123&utm_source=test#top'),'https://news.ycombinator.com/item?id=123')
+    def test_updates_need_named_review_and_actual_new_fact_evidence(self):
+        a=article();self.insert(a);old=dict(a,content_fingerprint='old-version')
+        approval=self.root/'durable/update-approvals'/(a['content_fingerprint']+'.json')
+        with patch.object(pool,'sent_articles',return_value=[old]):
+            atomic(approval,{})
+            chosen,rejected=pool.candidates(self.s,CLOCK)
+            self.assertEqual(chosen,[]);self.assertIn('update_delta_pending_review',[r['reason'] for r in rejected])
+            atomic(approval,dict(fingerprint=a['content_fingerprint'],reviewed_by='internal reviewer',reviewed_at=CLOCK.isoformat(),new_facts=[dict(fact='公司计划测试芯片',evidence='公司计划在中国测试芯片')]))
+            chosen,_=pool.candidates(self.s,CLOCK)
+            self.assertEqual(len(chosen),1)
+            self.assertTrue(chosen[0]['confirmed_update_facts'])
 
 
 if __name__=='__main__':unittest.main()

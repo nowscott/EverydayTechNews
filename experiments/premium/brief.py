@@ -292,6 +292,7 @@ def cache_key(a,p):
     prompt=POOL_PROMPT if a.get('output_schema')=='dual-1' else PROMPT
     parts=[a['url'],a['title'],a['published_at'],a['content_fingerprint'],p['model'],p['model_version'],p['prompt_version'],digest(prompt)]
     if a.get('output_schema'):parts.append(a['output_schema'])
+    if a.get('confirmed_update_facts'):parts.append(digest(json.dumps(a['confirmed_update_facts'],sort_keys=True,ensure_ascii=False)))
     if a.get('prior_versions'):parts.append(digest(json.dumps(a['prior_versions'],sort_keys=True,ensure_ascii=False)))
     return digest(json.dumps(parts,ensure_ascii=False))
 
@@ -387,6 +388,9 @@ def paid_request(db,key,a,p,test_permit=None,checkpoint=None):
     if a.get('prior_versions'):
         evidence['prior_versions_untrusted']=a['prior_versions']
         evidence['editorial_task']='更新报道：只选当前正文比旧版本新增且有证据的事实，不能确认增量则报告不足；旧发布时间不代表新事件时间。'
+        if a.get('confirmed_update_facts'):
+            evidence['human_reviewed_new_facts']=a['confirmed_update_facts']
+            evidence['editorial_task']+='只对human_reviewed_new_facts中经人工确认的增量写作，仍须逐字证据；这不是事实正确保证。'
     prompt=POOL_PROMPT if a.get('output_schema')=='dual-1' else PROMPT
     body=dict(model=p['model'],thinking={'type':'disabled'},max_tokens=1800,response_format={'type':'json_object'},messages=[dict(role='system',content=prompt),dict(role='user',content=json.dumps(evidence,ensure_ascii=False))])
     # UTF-8 bytes + framing is a conservative input token upper bound; never truncate evidence.

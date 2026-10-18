@@ -88,8 +88,17 @@ def candidates(store,cutoff,target=32):
     approved=[]
     for a in chosen:
         approval=store.root/'durable/update-approvals'/(a['content_fingerprint']+'.json')
-        if a.get('update_review_required') and not approval.exists():
-            rejected.append(dict(id=a['id'],reason='update_delta_pending_review',prior_versions=a['prior_versions']));continue
+        if a.get('update_review_required'):
+            try:
+                record=json.loads(approval.read_text())
+                facts=record['new_facts']
+                valid=(record['fingerprint']==a['content_fingerprint'] and record['reviewed_by'] and record['reviewed_at']
+                       and isinstance(facts,list) and facts and all(isinstance(f,dict) and f.get('fact') and isinstance(f.get('evidence'),str)
+                           and len(f['evidence'])>=8 and f['evidence'] in a['text'] for f in facts))
+            except (OSError,ValueError,KeyError,TypeError):valid=False
+            if not valid:
+                rejected.append(dict(id=a['id'],reason='update_delta_pending_review',prior_versions=a['prior_versions']));continue
+            a['confirmed_update_facts']=facts
         approved.append(a)
     return approved,reasons+rejected
 
