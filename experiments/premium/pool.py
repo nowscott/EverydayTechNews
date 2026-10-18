@@ -67,9 +67,11 @@ def sent_articles(store):
     return used
 
 
-def candidates(store,cutoff,target=32):
+def candidates(store,cutoff,target=32,publication_floor=None):
     articles=[];reasons=[];prior=sent_articles(store)
     for a in rows(store,cutoff):
+        if publication_floor and datetime.fromisoformat(a['published_at'])<publication_floor:
+            reasons.append(dict(id=a['id'],reason='expires_before_next_edition'));continue
         if a.get('evidence_expired_or_missing'):
             reasons.append(dict(id=a['id'],reason='evidence_expired_or_missing'));continue
         if not a.get('original_article_published_at') and a.get('published_time_kind') in ['hn_submission','atom_update_not_publication','discovery_time_not_publication']:
@@ -103,9 +105,16 @@ def candidates(store,cutoff,target=32):
     return approved,reasons+rejected
 
 
+def writing_window(current):
+    end=current.replace(hour=6,minute=0,second=0,microsecond=0)
+    if current>=end+timedelta(minutes=15):end+=timedelta(days=1)
+    return min(current,end),end-timedelta(hours=24)
+
+
 def assess(store,cutoff=None):
     cutoff=cutoff or b.now();config=preferences();p=b.load_policy()
-    selected,rejected=candidates(store,cutoff,config['new_versions_per_day'])
+    inputs,floor=writing_window(cutoff)
+    selected,rejected=candidates(store,inputs,config['new_versions_per_day'],floor)
     for a in selected:
         key=b.cache_key(a,p);a['job_key']=key;a['queued_at']=b.stamp()
         a['generation_policy']=dict(p)
@@ -126,7 +135,8 @@ def enrich(store):
     blocked=b.gate(p,b.now(),True,permit)
     if blocked:return dict(status=blocked,calls=0)
     if not os.environ.get('DEEPSEEK_API_KEY'):return dict(status='missing_api_key',calls=0)
-    candidates_now,_=candidates(store,b.now(),preferences()['new_versions_per_day'])
+    inputs,floor=writing_window(b.now())
+    candidates_now,_=candidates(store,inputs,preferences()['new_versions_per_day'],floor)
     eligible={b.cache_key(a,p) for a in candidates_now}
     current_day=b.now().date().isoformat()
     attempted={r[0] for r in store.db.execute('SELECT DISTINCT job FROM calls WHERE day=?',(current_day,))}
@@ -151,6 +161,38 @@ def enrich(store):
         statuses.append(dict(job=job['key'],status=blocked or store.db.execute('SELECT status FROM jobs WHERE key=?',(job['key'],)).fetchone()[0]))
         if blocked in ['budget_exhausted','missing_api_key','official_rules_unconfirmed','rules_expired_or_future','test_permit_expired']:break
     store.checkpoint();return dict(status='processed_or_pending',calls=invoked,jobs=statuses)
+
+
+def verify_api(store):
+    """Explicit one-article acceptance test, separate from the seven-day trial.
+
+    The first invocation fixes the job and a 30-minute expiry. Reruns cannot
+    extend authorization or select a new article, and reuse completed results.
+    """
+    if not store.sync_git:raise ValueError('acceptance_requires_authoritative_private_git')
+    path=store.root/'durable/acceptance.json';p=b.load_policy()
+    if not path.exists():
+        chosen,_=candidates(store,b.now(),1)
+        if not chosen:return dict(status='no_eligible_acceptance_article')
+        article=chosen[0];key=b.cache_key(article,p)
+        with store.db:store.db.execute('INSERT OR IGNORE INTO jobs(key,article,status) VALUES (?,?,?)',(key,json.dumps(article,ensure_ascii=False),'queued'))
+        atomic(path,dict(mode='internal_test_anytime',issue_id='test-api-acceptance-'+b.now().date().isoformat(),
+            job_key=key,expires_at=min(b.now()+timedelta(minutes=30),datetime.fromisoformat(p['valid_until'])).isoformat(),
+            purpose='Explicit user-authorized API verification; one article, no email, never counts as trial day'))
+        store.checkpoint()
+    permit=json.loads(path.read_text());job=store.db.execute('SELECT * FROM jobs WHERE key=?',(permit['job_key'],)).fetchone()
+    if not job:return dict(status='acceptance_job_missing')
+    if job['status']=='failed_validation_review' and job['attempts']<p['max_attempts']:
+        known=store.db.execute("SELECT id FROM calls WHERE job=? AND status='invalid_response' AND cost IS NOT NULL",(job['key'],)).fetchone()
+        if known:
+            with store.db:store.db.execute("UPDATE jobs SET status='queued' WHERE key=?",(job['key'],))
+    before=store.db.execute('SELECT COUNT(*) FROM calls').fetchone()[0]
+    blocked=b.paid_request(store.db,job['key'],json.loads(job['article']),p,permit,checkpoint=store.checkpoint)
+    row=store.db.execute('SELECT status,result FROM jobs WHERE key=?',(job['key'],)).fetchone()
+    result=dict(status=blocked or row['status'],new_calls=store.db.execute('SELECT COUNT(*) FROM calls').fetchone()[0]-before,
+                job_key=job['key'],article={k:json.loads(job['article']).get(k) for k in ['id','title','url','source_name','published_at','fetched_at','content_fingerprint']},output=json.loads(row['result']) if row['result'] else None,
+                is_trial_day=False,mail_sent=False,accounting=status(store)['calls'])
+    atomic(store.root/'durable/api-verification.json',result);store.checkpoint();return result
 
 
 def reconcile(store):
@@ -342,7 +384,7 @@ def preview_legacy(store):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command',choices=['init','collect','assess','enrich','compose','deliver','reconcile','status','report','import-legacy','preview-legacy','archive','restore-artifact','ack-artifact'])
+    parser.add_argument('command',choices=['init','collect','assess','enrich','verify-api','compose','deliver','reconcile','status','report','import-legacy','preview-legacy','archive','restore-artifact','ack-artifact'])
     parser.add_argument('--data',type=Path,default=Path('premium_data/pool'))
     parser.add_argument('--legacy',type=Path)
     parser.add_argument('--sync-git',action='store_true',help='Persist private Git checkpoints before external side effects')
@@ -358,6 +400,7 @@ def main():
             result=b.collect(store.db,store.root);store.checkpoint();assess(store)
         elif args.command=='assess':result=assess(store)
         elif args.command=='enrich':result=enrich(store)
+        elif args.command=='verify-api':result=verify_api(store)
         elif args.command=='compose':result=compose(store)
         elif args.command=='deliver':result=deliver(store)
         elif args.command=='reconcile':result=reconcile(store)

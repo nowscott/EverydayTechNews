@@ -75,7 +75,7 @@ class PoolTests(unittest.TestCase):
         self.s.db.close()
         with self.assertRaisesRegex(ValueError,'integrity'):self.s=Store(self.root)
     def test_rescoring_is_independent_and_does_not_duplicate_jobs(self):
-        self.insert(article());pool.assess(self.s);pool.assess(self.s)
+        self.insert(article());pool.assess(self.s,CLOCK.replace(hour=5,minute=55));pool.assess(self.s,CLOCK.replace(hour=5,minute=55))
         self.assertEqual(self.s.db.execute('SELECT COUNT(*) FROM jobs').fetchone()[0],1)
         self.assertEqual(self.s.db.execute('SELECT COUNT(*) FROM issues').fetchone()[0],0)
     def test_dual_output_schema_changes_cache_without_relabelling_legacy(self):
@@ -220,6 +220,23 @@ class PoolTests(unittest.TestCase):
             chosen,_=pool.candidates(self.s,CLOCK)
             self.assertEqual(len(chosen),1)
             self.assertTrue(chosen[0]['confirmed_update_facts'])
+    def test_rolling_writing_targets_next_edition_and_catchup_uses_fixed_cutoff(self):
+        inputs,floor=pool.writing_window(CLOCK.replace(hour=0))
+        self.assertEqual(floor.isoformat(),'2026-10-17T06:00:00+08:00')
+        inputs,floor=pool.writing_window(CLOCK.replace(minute=10))
+        self.assertEqual(inputs.isoformat(),'2026-10-18T06:00:00+08:00')
+        inputs,floor=pool.writing_window(CLOCK)
+        self.assertEqual(floor.isoformat(),'2026-10-18T06:00:00+08:00')
+    def test_api_acceptance_has_fixed_expiry_and_never_sends_or_reauthorizes(self):
+        self.insert(article());self.s.sync_git=True
+        with patch.object(self.s,'checkpoint'),patch.dict(os.environ,{'DEEPSEEK_API_KEY':''}),patch.object(b,'verify_rules',return_value=True),patch.object(b.requests,'post') as request:
+            first=pool.verify_api(self.s)
+            self.assertEqual(first['status'],'missing_api_key')
+            authorization=(self.root/'durable/acceptance.json').read_text()
+            with patch.object(b,'now',return_value=CLOCK+timedelta(minutes=31)):
+                second=pool.verify_api(self.s)
+            self.assertEqual(second['status'],'test_permit_expired')
+            self.assertEqual(authorization,(self.root/'durable/acceptance.json').read_text());request.assert_not_called()
 
 
 if __name__=='__main__':unittest.main()
