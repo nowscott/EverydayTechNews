@@ -11,7 +11,7 @@
 
 ## 上线状态
 
-完整TS引擎已在私有仓库部署；首个引擎版本为e19bc024，定时任务的当前版本固定为60f08c111d4b766a33a8a3cff455d75ce22a4e61。随后公开仓库的文档提交不改变私有引擎固定版本。
+完整TS引擎已在私有仓库部署；首个引擎版本为e19bc024，定时任务的当前版本固定为711fcc9e19e0683bddc656f8b3bf279970c5a959。随后公开仓库的文档提交不改变私有引擎固定版本。
 
 - [GitHub TS对照及故障测试](https://github.com/nowscott/EverydayTechNews/actions/runs/39122090385)与[Python回归](https://github.com/nowscott/EverydayTechNews/actions/runs/39122090324)通过。本地27项TS测试全部通过；CI不携带私有样本，跳过2项本地真实证据测试，其余通过。
 - 切换前最新私有状态副本：63次调用、129个任务、83个新格式缓存键全部相符，缺失证据为0。旧Python任务已结束，暂停新调度后才切换，切换记录保存在私有durable/migrations中。
@@ -70,3 +70,13 @@
 - GitHub实际采集98个HN唯一ID、97条投稿、3条可用正文（两条Show HN投稿及一条较旧发布方文章），HN采集1.695秒，访问HTTP 200、详情失败0。下一期写作窗口最终有1条Show HN进入候选，不能把投稿量、正文数量和入选量混为一谈。
 - 本轮下一期候选16篇，7个领域；累计库版本695条，明确排除关键词20、金额标题51条。这里是候选分析，不是已生成或已发16篇；最终组稿仍执行4条/领域和重点2条/领域上限。
 - 调用91次、估算0.29182388元、未知预留0及7条投递记录保持不变，归档缺失0；本轮未执行模型POST或SMTP，没有为了新规则另外发送诊断。
+
+## 2026-10-19 首日未投递调查与修正
+
+- 高级版是Actions定时唤起任务，不是常驻进程。真实执行记录在05:01之后直接到07:06，06:00～07:00没有任务启动；原due只在06点组稿及投递，因而没有test-2026-10-19期刊或SMTP尝试。任务“success”不代表发送成功。[05点任务](https://github.com/nowscott/EverydayTechNews-data/actions/runs/39165934289)、[07点任务](https://github.com/nowscott/EverydayTechNews-data/actions/runs/39175092143)。
+- GitHub官方说明schedule可能延迟，负载高时任务可能丢弃；从现有记录能确认没有晨间运行，无法从公开调度日志进一步证明某一次具体请求是延迟还是被丢弃。参考[官方schedule文档](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)。
+- 同时修复代码缺陷：定时enrich错误复用人工验收anytime许可，并在06:15之后把截止滚到翌日，致使00点及07点后仍可调用模型。现在due与直接enrich均经过唯一gate，只能05:00～06:12发起新请求，付费前后重新核验；test-pool类型禁止取得anytime许可。历史费用不删除或改写。
+- 晨间新增上海05:02～06:57每5分钟的触发机会；这只是降低漏触发概率，不是准点保证。晚到任务可以冻结06:00采集/06:15生成截止前的证据，但07:00后不自动发信；缺少SMTP接受的当天持续记为scheduler_missed_delivery_deadline，Actions摘要及warning显式提示。
+- [35项TS测试CI与Python回归](https://github.com/nowscott/EverydayTechNews/actions/runs/39188025672)通过，另一个回归运行[39188025692](https://github.com/nowscott/EverydayTechNews/actions/runs/39188025692)通过。新增00点、04:59、06:12、07:06、09点和23点直接调用定时写作零网络/零付费，以及迟到冻结但不投递的回归。
+- [修正后真实常规运行](https://github.com/nowscott/EverydayTechNews-data/actions/runs/39188103653)在白天通过，计划enrich=false、deliver=false；冻结今天7条原截止前合格稿为诊断，仅归档并记录漏发，SMTP未执行。今日仍27次调用、估算0.08160424元、未知预留0，投递记录仍7条。没有新增付费或邮件，没有把迟到冻结算成成功出刊。
+- 当前引擎711fcc9e19e0683bddc656f8b3bf279970c5a959，调度恢复。当天正常出刊完成0次，原试刊到期日仍10月26日00:00，不自动补一天；独立可靠调度尚未部署，不能承诺只靠GitHub cron就必达06:30。
