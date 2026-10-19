@@ -3,7 +3,7 @@ import { Store, files } from './store.ts';
 import { atomic, read, pyjson, digest, policy, trial, active, stamp, day, localParts, at, EXPIRY, type Row } from './core.ts';
 import { preferences, VERSION } from './ranking.ts';
 import { duplicate, select } from './editor.ts';
-import { cacheKey, paidRequest, validate, codepoints, inspectRules } from './model.ts';
+import { cacheKey, paidRequest, validate, codepoints, inspectRules, gate } from './model.ts';
 import { fetchSource, mapLimit, SOURCES } from './sources.ts';
 import { limitDomains, analyzeDomain, titleExclusion } from './editorial-policy.ts';
 import { freezeIssue, sendOnce } from './mail.ts';
@@ -93,11 +93,11 @@ function repairKnown(store: Store, job: Row, p: Row) {
 export async function enrich(store: Store) {
   const config = trial(store.root); if (!active(config) || !config.model_enabled) return { status: 'trial_or_model_disabled_or_expired', calls: 0 };
   const p = policy(); p.daily_budget_cny = Math.min(p.daily_budget_cny, config.daily_budget_cny);
-  let batchDeadline = at(day(), '06:15:00'); if (Date.now() >= batchDeadline.getTime()) batchDeadline = new Date(batchDeadline.getTime() + 86400000);
-  // A batch admitted at 06:10 must stop admitting requests at 06:12 even if it runs long.
-  const permit = { mode: 'internal_test_anytime', issue_id: 'test-pool-' + config.start, expires_at: stamp(new Date(Math.min(batchDeadline.getTime(), Date.parse(config.expires_at)))) };
+  const blockedByTime = gate(p, new Date(), true);
+  if (blockedByTime) return { status: blockedByTime, calls: 0 };
+  const deadline = stamp(at(day(), '06:15:00')); // Scheduled requests never use an anytime test permit.
   const [cutoff, floor] = writingWindow(); const [eligible] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER, floor);
-  const ready = recordsReady(store, eligible, permit.expires_at, []);
+  const ready = recordsReady(store, eligible, deadline, []);
   if (ready.length >= Number(preferences().edition_maximum)) return { status: 'ready_pool_sufficient', ready: ready.length, calls: 0 };
   const keys = new Set(eligible.map(a => cacheKey(a, p))); const attempted = attemptedVersions(store); let invoked = 0; const statuses: Row[] = [];
   const jobs = store.all('SELECT * FROM jobs WHERE result IS NULL').sort((a, b) => (JSON.parse(b.article).ranking?.score ?? 0) - (JSON.parse(a.article).ranking?.score ?? 0));
@@ -105,10 +105,10 @@ export async function enrich(store: Store) {
     if (invoked >= Number(preferences().batch_size)) break; if (!keys.has(job.key)) continue;
     if (!attempted.has(job.key) && attempted.size >= Number(preferences().new_versions_per_day)) break;
     const a = eligible.find(a => cacheKey(a, p) === job.key)!; if (!a.text || a.evidence_expired_or_missing) continue; repairKnown(store, job, p);
-    const completed = recordsReady(store, eligible, permit.expires_at, [], false);
+    const completed = recordsReady(store, eligible, deadline, [], false);
     if (completed.filter(r => r.article.domain === analyzeDomain(a).primary).length >= Number((preferences().domain_policy as Row).maximum_per_domain)) continue;
     const before = store.one('SELECT COUNT(*) n FROM calls')!.n;
-    const blocked = await paidRequest(store, job.key, a, p, permit); const added = store.one('SELECT COUNT(*) n FROM calls')!.n - before;
+    const blocked = await paidRequest(store, job.key, a, p); const added = store.one('SELECT COUNT(*) n FROM calls')!.n - before;
     invoked += added; if (added) attempted.add(job.key); statuses.push({ job: job.key, status: blocked ?? store.one('SELECT status FROM jobs WHERE key=?', job.key)!.status });
     if (blocked && ['budget_exhausted', 'missing_api_key', 'official_rules_unconfirmed', 'rules_expired_or_future', 'test_permit_expired', 'trial_expired'].includes(blocked)) break;
   }
@@ -223,12 +223,13 @@ export async function deliver(store: Store, sample = false, now = new Date(), re
   if (!existsSync(store.root + '/issues/' + id + '/edition.json')) return { status: 'edition_missing_do_not_send' };
   return sendOnce(store, id);
 }
-export function reportTrial(store: Store) {
+export function reportTrial(store: Store, now = new Date()) {
   const t = trial(store.root); const receipts = files(store.root + '/deliveries').map(read); const days = [];
   for (let i = 0; i < t.days; i++) {
     const date = day(new Date(at(t.start, '00:00:00').getTime() + i * 86400000)); const id = 'test-' + date;
     const path = store.root + '/issues/' + id + '/edition.json'; const issue = existsSync(path) ? read(path) : null; const delivery = receipts.filter(r => r.issue === id).map(r => r.status);
-    days.push({ day: date, status: issue?.kind ?? 'missing', reason: !issue && (date < day() || date === day() && localParts().hour >= 7) ? 'scheduler_missed_delivery_deadline' : null,
+    const overdue = date < day(now) || date === day(now) && localParts(now).hour >= 7;
+    days.push({ day: date, status: issue?.kind ?? 'missing', reason: overdue && !delivery.includes('smtp_accepted') ? 'scheduler_missed_delivery_deadline' : null,
       generated: issue?.articles.length ?? 0, delivery, human_review: 'not_started', normal_edition: !!issue && issue.kind === 'newsletter' && delivery.includes('smtp_accepted') });
   }
   const result = { days, completed_normal_editions: days.filter(d => d.normal_edition).length, accounting: status(store).calls, human_fact_review: 'not_completed', bill_paid: 'not_verified', engine: 'typescript' };
@@ -239,6 +240,6 @@ export function due(store: Store, now = new Date()) {
   const path = store.root + '/source-health.json'; const observed = existsSync(path) ? read(path).at : null;
   let collect = !observed || now.getTime() - Date.parse(observed) >= 1800000;
   if (hour === 5 && minute >= 55 && (!observed || Number(observed.slice(14, 16)) < 50)) collect = true;
-  return { compose: enabled && morning && minute >= 15 && !existsSync(store.root + '/issues/test-' + day(now) + '/edition.json'),
-    deliver: enabled && morning && minute >= 30, collect: collect && !(morning && minute >= 15), enrich: enabled && t.model_enabled && !(morning && minute >= 12), maintain: true };
+  return { compose: enabled && now >= at(day(now), '06:15:00') && !existsSync(store.root + '/issues/test-' + day(now) + '/edition.json'),
+    deliver: enabled && morning && minute >= 30, collect: collect && !(morning && minute >= 15), enrich: enabled && t.model_enabled && gate(policy(), now, true) === null, maintain: true };
 }

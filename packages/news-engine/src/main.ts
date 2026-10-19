@@ -56,7 +56,14 @@ try {
         else if (!maintenance && verify) console.log(JSON.stringify({ stage: 'api_verification', result: await verifyApi(store) }));
         else if (!maintenance && plan.enrich) console.log(JSON.stringify({ stage: 'enrichment', result: await enrich(store) }));
       } finally {
-        reportTrial(store); store.archive(process.env.GITHUB_ACTIONS === 'true' ? day() : undefined);
+        const report = reportTrial(store);
+        const missed = report.days.find(d => d.day === day() && d.reason === 'scheduler_missed_delivery_deadline');
+        if (missed) {
+          console.log(JSON.stringify({ stage: 'schedule_warning', day: missed.day, reason: missed.reason, delivery: missed.delivery, automatic_late_send: false }));
+          if (process.env.GITHUB_ACTIONS === 'true') console.log('::warning::Premium daily delivery deadline missed; this workflow success is not proof of email delivery. No automatic late send.');
+        }
+        if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Premium daily delivery\n\n${report.days.map(d => `- ${d.day}: ${d.status}; SMTP=${d.delivery.join(',') || 'not_attempted'}${d.reason ? '; ' + d.reason : ''}`).join('\n')}\n`);
+        store.archive(process.env.GITHUB_ACTIONS === 'true' ? day() : undefined);
         if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `archive_ready=true\nartifact_name=pool-evidence-${day()}-${process.env.GITHUB_RUN_ID}\n`);
         console.log(JSON.stringify({ stage: 'final', result: status(store) }));
       }

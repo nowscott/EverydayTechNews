@@ -47,6 +47,7 @@ export function gate(p: Row, now: Date, verified: boolean, permit?: Row): string
   if (p.timezone !== 'Asia/Shanghai' || p.window_start !== '05:00' || p.window_end !== '06:15') return 'window_conflict';
   if (p.stop_new_before_seconds < p.request_deadline_seconds + 60 || p.request_deadline_seconds > 90) return 'unsafe_margin';
   if (permit) {
+    if (String(permit.issue_id).startsWith('test-pool-')) return 'scheduled_job_cannot_use_anytime_permit';
     if (permit.mode !== 'internal_test_anytime' || !/^(sample-|test-)/.test(permit.issue_id ?? '') || !Number.isFinite(Date.parse(permit.expires_at))) return 'invalid_test_permit';
     if (now.getTime() >= Math.min(Date.parse(permit.expires_at), Date.parse(EXPIRY)) - p.stop_new_before_seconds * 1000) return 'test_permit_expired';
     return null;

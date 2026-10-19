@@ -6,7 +6,7 @@ import * as tar from 'tar';
 import { Store, extractEvidence } from '../src/store.ts';
 import { atomic, policy, digest, pyjson, EXPIRY, RECIPIENT, stamp, type Row } from '../src/core.ts';
 import { paidRequest, cacheKey, gate, validate, verifyRules } from '../src/model.ts';
-import { candidates, compose, due, reconcile, collect, assess, writingWindow, reportTrial, launchSample, attemptedVersions } from '../src/pool.ts';
+import { candidates, compose, due, reconcile, collect, assess, writingWindow, reportTrial, launchSample, attemptedVersions, enrich } from '../src/pool.ts';
 import { preferences } from '../src/ranking.ts';
 import { buildEmail, freezeIssue, sendOnce } from '../src/mail.ts';
 import { mapLimit } from '../src/sources.ts';
@@ -164,8 +164,9 @@ test('schedule honors Shanghai cutoffs, trial expiry, writing floor and no late 
   try {
     assert.equal(due(store, new Date('2026-10-19T06:12:00+08:00')).enrich, false);
     const batchPermit = { mode: 'internal_test_anytime', issue_id: 'test-pool-2026-10-19', expires_at: '2026-10-19T06:15:00+08:00' };
-    assert.equal(gate(policy(), new Date('2026-10-19T06:11:59+08:00'), true, batchPermit), null);
-    assert.equal(gate(policy(), new Date('2026-10-19T06:12:00+08:00'), true, batchPermit), 'test_permit_expired');
+    assert.equal(gate(policy(), new Date('2026-10-19T06:11:59+08:00'), true), null);
+    assert.equal(gate(policy(), new Date('2026-10-19T06:11:59+08:00'), true, batchPermit), 'scheduled_job_cannot_use_anytime_permit');
+    assert.equal(gate(policy(), new Date('2026-10-19T06:12:00+08:00'), true), 'outside_window_or_margin');
     assert.equal(due(store, new Date('2026-10-19T06:15:00+08:00')).compose, true);
     assert.equal(due(store, new Date('2026-10-19T06:30:00+08:00')).deliver, true);
     assert.equal(due(store, new Date(EXPIRY)).enrich, false);
@@ -298,5 +299,31 @@ test('shared title exclusions stop legacy queued articles before pricing and pai
       assert.equal(result, title.startsWith('华为') ? 'shared_filter_keyword' : 'shared_filter_price');
     }
     assert.equal(network, 0); assert.equal(store.one('SELECT COUNT(*) n FROM calls')!.n, 0);
+  } finally { close(); }
+});
+
+test('scheduled writer never calls pricing or model outside 0500-0612 even when invoked directly', async t => {
+  const { store, close } = setup(); let requests = 0;
+  try {
+    t.mock.method(globalThis, 'fetch', (async () => { requests++; throw new Error('network must not run'); }) as typeof fetch);
+    for (const time of ['00:36:00', '04:59:59', '06:12:00', '07:06:52', '09:10:00', '23:00:00']) {
+      const now = new Date('2026-10-19T' + time + '+08:00'); t.mock.timers.enable({ apis: ['Date'], now: now.getTime() });
+      assert.equal(due(store, now).enrich, false, time);
+      assert.equal((await enrich(store)).status, 'outside_window_or_margin', time);
+      t.mock.timers.reset();
+    }
+    assert.equal(requests, 0); assert.equal(store.one('SELECT COUNT(*) n FROM calls')!.n, 0);
+    assert.equal(due(store, new Date('2026-10-19T05:00:00+08:00')).enrich, true);
+  } finally { t.mock.timers.reset(); close(); }
+});
+test('a late cron may freeze evidence but never requests a late SMTP send; report preserves missed delivery', () => {
+  const { store, close } = setup();
+  try {
+    const late = new Date('2026-10-19T07:06:00+08:00'); const plan = due(store, late);
+    assert.equal(plan.compose, true); assert.equal(plan.deliver, false); assert.equal(plan.enrich, false);
+    const issue = compose(store, late); assert.equal(issue.id, 'test-2026-10-19');
+    const report = reportTrial(store, late); const today = report.days.find(d => d.day === '2026-10-19')!;
+    assert.equal(today.reason, 'scheduler_missed_delivery_deadline'); assert.deepEqual(today.delivery, []);
+    assert.equal(report.completed_normal_editions, 0);
   } finally { close(); }
 });
