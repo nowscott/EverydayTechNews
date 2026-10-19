@@ -71,6 +71,7 @@ jobs:
           SENDING_ACCOUNT: ${{ secrets.SENDING_ACCOUNT }}
           SENDING_PASSWORD: ${{ secrets.SENDING_PASSWORD }}
           SERVER: ${{ secrets.SERVER }}
+          PREMIUM_PRODUCTION_ENABLED: ${{ vars.PREMIUM_PRODUCTION_ENABLED }}
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
           APP_BASE_URL: https://mailist.nowscott.top

@@ -10,6 +10,10 @@ on:
         description: 'Single-article TS API verification; no mail'
         type: boolean
         default: false
+      verify_quality:
+        description: 'Bounded AI quality acceptance, synthetic pairs only; no SMTP'
+        type: boolean
+        default: false
       fresh_sample:
         description: 'One frozen current-24h TS launch sample to the allowlisted inbox'
         type: boolean
@@ -20,21 +24,23 @@ on:
         options: [initial, serif, serif-retry, makeup]
         default: initial
   schedule:
-    - cron: '15,25,45,55 * * * *'
-    # Extra wakeups improve opportunities; GitHub cron still cannot guarantee a start.
-    - cron: '2-57/5 21,22 * * *'
-    - cron: '0 23 * * *'
+    # UTC equivalents of Shanghai 04:07 / recovery 04:37,05:07,06:37,07:37,08:37.
+    - cron: '7 20,21 * * *'
+    - cron: '37 20,22,23,0 * * *'
+    # Maintenance deliberately stays outside Shanghai 04:00–09:00.
+    - cron: '15 1-19 * * *'
 permissions:
   contents: write
   actions: write
+  issues: write
 concurrency:
   group: premium-private-state
   cancel-in-progress: false
 jobs:
   pool:
-    if: github.repository == 'nowscott/EverydayTechNews-data' && github.event.repository.private == true && (vars.PREMIUM_ENABLED == 'true' || (github.event_name == 'workflow_dispatch' && (inputs.maintenance_only || inputs.verify_api || inputs.fresh_sample)))
+    if: github.repository == 'nowscott/EverydayTechNews-data' && github.event.repository.private == true && (vars.PREMIUM_ENABLED == 'true' || (github.event_name == 'workflow_dispatch' && (inputs.maintenance_only || inputs.verify_api || inputs.verify_quality || inputs.fresh_sample)))
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 350
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -55,6 +61,15 @@ jobs:
           cache-dependency-path: engine/packages/news-engine/package-lock.json
       - name: Install locked runtime dependencies
         run: npm ci --prefix engine/packages/news-engine --omit=dev --ignore-scripts --no-audit --no-fund
+      - name: Expose artifact runtime to staged archive uploader
+        uses: actions/github-script@v8
+        with:
+          script: |
+            for (const key of ['ACTIONS_RUNTIME_TOKEN', 'ACTIONS_RESULTS_URL', 'ACTIONS_RUNTIME_URL']) {
+              if (!process.env[key]) throw new Error('Missing artifact runtime ' + key);
+              if (key === 'ACTIONS_RUNTIME_TOKEN') core.setSecret(process.env[key]);
+              core.exportVariable(key, process.env[key]);
+            }
       - name: Configure private state author
         working-directory: state
         run: |
@@ -63,6 +78,9 @@ jobs:
       - name: TypeScript restore, maintenance and due tasks
         id: engine
         env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          NOTION_DATA_SOURCE_ID: ${{ secrets.NOTION_DATA_SOURCE_ID }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           SENDING_ACCOUNT: ${{ secrets.PREMIUM_SMTP_ACCOUNT }}
           SENDING_PASSWORD: ${{ secrets.PREMIUM_SMTP_PASSWORD }}
@@ -70,10 +88,11 @@ jobs:
           MAINTENANCE: ${{ github.event_name == 'workflow_dispatch' && inputs.maintenance_only }}
           LAUNCH: ${{ github.event_name == 'workflow_dispatch' && inputs.fresh_sample }}
           SAMPLE_REVISION: ${{ inputs.sample_revision || 'initial' }}
+          VERIFY_QUALITY: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_quality }}
           VERIFY_API: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_api }}
         run: >-
           node engine/packages/news-engine/src/main.ts run --data state --sync-git
-          --maintenance-only "$MAINTENANCE" --launch "$LAUNCH" --verify-api "$VERIFY_API" --sample-revision "$SAMPLE_REVISION"
+          --maintenance-only "$MAINTENANCE" --launch "$LAUNCH" --verify-api "$VERIFY_API" --verify-quality "$VERIFY_QUALITY" --sample-revision "$SAMPLE_REVISION"
       - name: Store fulltext and raw responses for 90 days
         id: archive
         if: always() && steps.engine.outputs.archive_ready == 'true'

@@ -1,6 +1,6 @@
 {
   "name": "@everyday-tech-news/news-engine",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "exports": "./src/ranking.ts",
@@ -19,6 +19,7 @@
     "typescript": "~6.0.3"
   },
   "dependencies": {
+    "@actions/artifact": "6.3.1",
     "cheerio": "1.2.0",
     "fast-xml-parser": "5.11.2",
     "nodemailer": "10.1.3",

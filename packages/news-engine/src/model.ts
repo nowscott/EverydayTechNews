@@ -4,13 +4,15 @@ import { digest, pyjson, stamp, day, localParts, at, EXPIRY, type Row } from './
 import { complete, whitespace } from './sources.ts';
 import { titleExclusion } from './editorial-policy.ts';
 import { Store } from './store.ts';
+import { REVIEW_PROMPT, WRITING_SUFFIX, reviewKey, validateReview } from './quality.ts';
 export const codepoints = (s: string) => Array.from(s).length;
 function tariff(clock: Date) {
   const { hour } = localParts(clock); const weekday = new Date(clock.getTime() + 8 * 3600000).getUTCDay();
   return weekday >= 1 && weekday <= 5 && ((hour >= 9 && hour < 12) || (hour >= 14 && hour < 18)) ? 2 : 1;
 }
 export function cacheKey(a: Row, p: Row): string {
-  const prompt = a.output_schema === 'dual-1' ? POOL_PROMPT : PROMPT;
+  if (a.task_kind === 'review') return reviewKey(a, a.review_draft, p);
+  const prompt = (a.output_schema === 'dual-1' ? POOL_PROMPT : PROMPT) + (p.prompt_version === 'premium-pool-3' ? WRITING_SUFFIX : '');
   const parts = [a.url, a.title, a.published_at, a.content_fingerprint, p.model, p.model_version, p.prompt_version, digest(prompt)];
   if (a.output_schema) parts.push(a.output_schema);
   if (a.confirmed_update_facts?.length) parts.push(digest(pyjson(a.confirmed_update_facts, true)));
@@ -112,8 +114,10 @@ export async function paidRequest(store: Store, key: string, a: Row, p: Row, per
     evidence.prior_versions_untrusted = a.prior_versions; evidence.editorial_task = '更新报道：只选当前正文比旧版本新增且有证据的事实，不能确认增量则报告不足；旧发布时间不代表新事件时间。';
     if (a.confirmed_update_facts?.length) { evidence.human_reviewed_new_facts = a.confirmed_update_facts; evidence.editorial_task += '只对human_reviewed_new_facts中经人工确认的增量写作，仍须逐字证据；这不是事实正确保证。'; }
   }
-  const prompt = a.output_schema === 'dual-1' ? POOL_PROMPT : PROMPT;
-  const body = { model: p.model, thinking: { type: 'disabled' }, max_tokens: 1800, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: prompt }, { role: 'user', content: pyjson(evidence) }] };
+  if (a.task_kind === 'review') Object.assign(evidence, { draft: a.review_draft, fields: a.review_fields, prior_evidence: a.prior_evidence ?? [], update_review_required: !!a.update_review_required });
+  else if (a.revision_feedback) evidence.revision_feedback = a.revision_feedback;
+  const prompt = a.task_kind === 'review' ? REVIEW_PROMPT : (a.output_schema === 'dual-1' ? POOL_PROMPT : PROMPT) + (p.prompt_version === 'premium-pool-3' ? WRITING_SUFFIX : '');
+  const body = { model: p.model, thinking: { type: 'disabled' }, temperature: 0, max_tokens: 1800, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: prompt }, { role: 'user', content: pyjson(evidence) }] };
   const clock = now(); const multiplier = tariff(clock);
   const reserve = ((Buffer.byteLength(pyjson(body)) + 512) * p.input_miss_per_million + 1800 * p.output_per_million) / 1e6 * (permit ? Math.max(multiplier, 2) : multiplier);
   const spent = store.one('SELECT COALESCE(SUM(COALESCE(cost,reserved)),0) total FROM calls WHERE day=?', day(clock))!.total;
@@ -143,13 +147,13 @@ export async function paidRequest(store: Store, key: string, a: Row, p: Row, per
       const estimated = cost(raw.usage, p, multiplier);
       store.run("UPDATE calls SET cost=?,usage=?,status='response_received' WHERE id=?", estimated, pyjson(raw.usage), callId);
       if (raw.choices?.[0]?.finish_reason !== 'stop') throw new Error('incomplete response');
-      const result = validate(JSON.parse(raw.choices[0].message.content), a);
+      const result = a.task_kind === 'review' ? validateReview(JSON.parse(raw.choices[0].message.content), a) : validate(JSON.parse(raw.choices[0].message.content), a);
       result.generated_at = stamp(now()); result.generation_metadata = { model: p.model, model_version: p.model_version, prompt_version: p.prompt_version, prompt_sha256: digest(prompt), output_schema: a.output_schema ?? 'legacy-1' };
       result.request_strategy = job.attempts === 0 ? 'base' : 'length-and-evidence-repair-1';
-      store.run("UPDATE jobs SET result=?,status='pending_human_review' WHERE key=?", pyjson(result), key);
+      store.run("UPDATE jobs SET result=?,status='pending_ai_review' WHERE key=?", pyjson(result), key);
     }
   } catch {
-    if (received) {
+    if (received && store.one('SELECT cost FROM calls WHERE id=?', callId)?.cost != null) {
       store.run("UPDATE responses SET validation_error='response_validation_failed' WHERE call_id=?", callId);
       store.run("UPDATE calls SET status='invalid_response' WHERE id=?", callId); store.run("UPDATE jobs SET status='failed_validation_review' WHERE key=?", key);
     } else {

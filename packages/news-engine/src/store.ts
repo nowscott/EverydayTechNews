@@ -164,10 +164,10 @@ export function restoreArtifacts(root: string) {
     extractEvidence(root, cache + '/evidence.tar.gz'); rmSync(cache, { recursive: true, force: true });
   }
 }
-export function acknowledgeArtifact(store: Store) {
+export function acknowledgeArtifact(store: Store, uploadedName?: string) {
   const root = store.root; const today = day(); const days = existsSync(root + '/archive-manifests/days.json') ? read(root + '/archive-manifests/days.json') : {};
   const pointer = root + '/archive-manifests/latest.json'; const previous = existsSync(pointer) ? read(pointer) : {};
-  const name = `pool-evidence-${today}-${process.env.GITHUB_RUN_ID}`;
+  const name = uploadedName ?? `pool-evidence-${today}-${process.env.GITHUB_RUN_ID}`;
   days[today] = { run_id: process.env.GITHUB_RUN_ID, artifact_name: name, at: stamp() };
   atomic(root + '/archive-manifests/days.json', days); atomic(pointer, { kind: 'daily_buckets', retention_days: 90, at: stamp() }); store.checkpoint();
   const repo = process.env.GITHUB_REPOSITORY!;

@@ -43,7 +43,7 @@ function actual(c: Row): any {
 }
 test('full source, editing, hash, model validation and price contracts match Python', () => {
   const a = { ...article(), url: 'https://example.org/model', content_fingerprint: digest(body), text: body, source_name: 'GitHub', fetched_at: fetched, output_schema: 'dual-1' };
-  const p = policy(); const valid = { title: '人工智能模型测试', summary: '公司计划在中国测试这一人工智能模型。', short_summary: '新模型正在测试，尚未独立验证。', why: '', points: ['一', '二', '三', '四'], uncertainties: [], claims: [{ claim: '模型测试', evidence: '公司计划在中国测试这一人工智能模型' }] };
+  const p = { ...policy(), prompt_version: 'premium-pool-2' }; const valid = { title: '人工智能模型测试', summary: '公司计划在中国测试这一人工智能模型。', short_summary: '新模型正在测试，尚未独立验证。', why: '', points: ['一', '二', '三', '四'], uncertainties: [], claims: [{ claim: '模型测试', evidence: '公司计划在中国测试这一人工智能模型' }] };
   const cases: Row[] = [
     ...['<p>A <strong>B</strong> C<br>第二行</p>', '<script>bad</script><p>保留 &amp; 中文&nbsp; 内容</p><img src="x">', '<p>Read the full article</p><div>正常内容</div>', '<!--comment--><div>A<span>B</span>C</div>', '<p>京东商品链接</p><p class="advertisement">广告</p><footer>footer</footer>', 'A\u001cB\u0085C\ufeffD'].map(text => ({ op: 'clean', text })),
     ...['https://EXAMPLE.org/a///?z=2&z=1&utm_x=a&a=hello+world&x=~*#frag', 'https://example.org/中文?b=%E4%B8%AD&a=', 'https://example.org:443/a/../b?q=1'].map(url => ({ op: 'canonical', url })),

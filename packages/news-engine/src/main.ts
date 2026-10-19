@@ -1,3 +1,5 @@
+import { verifyQuality } from './quality-acceptance.ts';
+import { morningTime, runMorning, publishMorningReport } from './morning.ts';
 import { appendFileSync, mkdirSync, existsSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -7,12 +9,12 @@ import { collect, assess, enrich, compose, deliver, launchSample, verifyApi, rec
 
 const args = process.argv.slice(2); const operation = args.shift(); const flags: Row = {};
 for (let i = 0; i < args.length; i += 2) {
-  if (!['--data', '--sync-git', '--collect-workers', '--maintenance-only', '--launch', '--verify-api', '--sample-revision'].includes(args[i])) throw new Error('unknown_argument');
+  if (!['--data', '--sync-git', '--collect-workers', '--maintenance-only', '--launch', '--verify-api', '--verify-quality', '--sample-revision'].includes(args[i])) throw new Error('unknown_argument');
   if (args[i] === '--sync-git') { flags.syncGit = true; i--; continue; }
   if (!args[i + 1] || args[i + 1].startsWith('--')) throw new Error('missing_argument');
   flags[args[i].slice(2)] = args[i + 1];
 }
-for (const key of ['maintenance-only', 'launch', 'verify-api']) if (flags[key] !== undefined && !['true', 'false'].includes(flags[key])) throw new Error('invalid_boolean');
+for (const key of ['maintenance-only', 'launch', 'verify-api', 'verify-quality']) if (flags[key] !== undefined && !['true', 'false'].includes(flags[key])) throw new Error('invalid_boolean');
 if (flags['sample-revision'] !== undefined && !['initial', 'serif', 'serif-retry', 'makeup'].includes(flags['sample-revision'])) throw new Error('invalid_sample_revision');
 const root = resolve(flags.data ?? 'premium_data/pool'); mkdirSync(root, { recursive: true });
 const allowed = ['init', 'run', 'collect', 'assess', 'enrich', 'verify-api', 'launch-sample', 'fresh-sample', 'send-sample', 'compose', 'deliver', 'reconcile', 'status', 'report', 'archive', 'restore-artifact', 'ack-artifact'];
@@ -43,10 +45,13 @@ try {
     } else if (operation === 'run') {
       try {
         reconcile(store); const plan = due(store); const maintenance = flags['maintenance-only'] !== 'false';
-        const launch = flags.launch === 'true'; const verify = flags['verify-api'] === 'true';
+        const launch = flags.launch === 'true'; const quality = flags['verify-quality'] === 'true'; const verify = flags['verify-api'] === 'true' || quality;
         if (launch && verify) throw new Error('choose_one_acceptance_mode');
         console.log(JSON.stringify({ stage: 'due', maintenance, plan, engine: 'typescript' }));
-        const composing = !maintenance && !launch && !verify && plan.compose;
+        if (!maintenance && !launch && !verify && morningTime(new Date())) {
+          await runMorning(store);
+        } else {
+        const composing = !maintenance && !launch && !verify && plan.compose && new Date().getTime() < Date.parse(day() + 'T09:00:00+08:00');
         if (composing) await collect(store, Number(flags['collect-workers'] ?? 4));
         if (composing) compose(store);
         if (!maintenance && !launch && !verify && plan.deliver) console.log(JSON.stringify({ stage: 'delivery', receipt: await deliver(store) }));
@@ -55,14 +60,20 @@ try {
           const issue = await launchSample(store, flags['sample-revision']);
           console.log(JSON.stringify(issue.kind ? { stage: 'launch_delivery', receipt: await deliver(store, true, new Date(), flags['sample-revision']) } : { stage: 'launch_blocked', result: issue }));
         }
-        else if (!maintenance && verify) console.log(JSON.stringify({ stage: 'api_verification', result: await verifyApi(store) }));
+        else if (!maintenance && verify) {
+          const result = quality ? await verifyQuality(store) : await verifyApi(store);
+          console.log(JSON.stringify({ stage: quality ? 'quality_verification' : 'api_verification', result }));
+          if (quality && result.status !== 'passed') throw new Error('quality_acceptance_not_passed');
+        }
         else if (!maintenance && plan.enrich) console.log(JSON.stringify({ stage: 'enrichment', result: await enrich(store) }));
+        }
       } finally {
+        publishMorningReport(store);
         const report = reportTrial(store);
         const missed = report.days.find(d => d.day === day() && d.reason === 'scheduler_missed_delivery_deadline');
         if (missed) {
           console.log(JSON.stringify({ stage: 'schedule_warning', day: missed.day, reason: missed.reason, delivery: missed.delivery, automatic_late_send: false }));
-          if (process.env.GITHUB_ACTIONS === 'true') console.log('::warning::Premium daily delivery deadline missed; this workflow success is not proof of email delivery. No automatic late send.');
+          if (process.env.GITHUB_ACTIONS === 'true') console.log('::warning::Premium daily delivery deadline missed; this workflow success is not proof of email delivery. No automatic send after 09:00.');
         }
         if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Premium daily delivery\n\n${report.days.map(d => `- ${d.day}: ${d.status}; SMTP=${d.delivery.join(',') || 'not_attempted'}${d.reason ? '; ' + d.reason : ''}`).join('\n')}\n`);
         store.archive(process.env.GITHUB_ACTIONS === 'true' ? day() : undefined);

@@ -10,12 +10,20 @@ import { candidates, compose, due, reconcile, collect, assess, writingWindow, re
 import { preferences } from '../src/ranking.ts';
 import { buildEmail, freezeIssue, sendOnce } from '../src/mail.ts';
 import { mapLimit } from '../src/sources.ts';
+import { reviewKey, displayFields } from '../src/quality.ts';
 import { article } from './fixtures.ts';
 
 const domainTitles = ['AI模型发布', '开源编译器重大更新', 'NVIDIA 芯片发布', '火箭重大突破', '机器人重大升级'];
 const text = '公司计划在中国测试这一人工智能模型，尚未独立验证。'.repeat(20);
-const a = { ...article(), source_name: 'GitHub', url: 'https://example.org/test', text, description_clean: text, content_fingerprint: digest(text), fetched_at: '2026-10-18T04:30:00+08:00', original_article_published_at: '2026-10-18T04:00:00+08:00', output_schema: 'dual-1' };
+const a: Row = { ...article(), source_name: 'GitHub', url: 'https://example.org/test', text, description_clean: text, content_fingerprint: digest(text), fetched_at: '2026-10-18T04:30:00+08:00', original_article_published_at: '2026-10-18T04:00:00+08:00', output_schema: 'dual-1' };
 const result = { title: '新模型测试', summary: '公司计划在中国测试这一人工智能模型。', short_summary: '公司测试模型，尚未独立验证。', points: [], why: '', uncertainties: [], claims: [{ claim: '模型测试', evidence: '公司计划在中国测试这一人工智能模型' }], generated_at: '2026-10-18T06:00:00+08:00' };
+function approved(input: Row, draft: Row = structuredClone(result)): Row {
+  const copy = structuredClone(draft);
+  copy.ai_review = { key: reviewKey(input, copy, policy()), reviewed_at: copy.generated_at, result: {
+    verdict: 'pass', update_has_new_facts: false,
+    checks: Object.entries(displayFields(copy)).map(([field, value]) => ({ field, pass: true, reason: 'synthetic supported field', evidence: value ? '公司计划在中国测试这一人工智能模型' : '' })) } };
+  return copy;
+}
 const now = () => new Date('2026-10-18T12:00:00+08:00');
 const permit = { mode: 'internal_test_anytime', issue_id: 'sample-ts-unit', expires_at: '2026-10-18T12:30:00+08:00' };
 function setup() {
@@ -36,7 +44,7 @@ test('paid call persists reservation before POST and reuses validated cache', as
       return goodResponse();
     }) as typeof fetch;
     await paidRequest(store, key, a, p, permit, { now, fetcher, verify: async () => true, token: 'test-token' });
-    assert.equal(store.one('SELECT status FROM jobs WHERE key=?', key)!.status, 'pending_human_review');
+    assert.equal(store.one('SELECT status FROM jobs WHERE key=?', key)!.status, 'pending_ai_review');
     assert.equal(await paidRequest(store, key, a, p, permit, { now, fetcher }), 'cached'); assert.equal(calls, 1);
   } finally { close(); }
 });
@@ -117,22 +125,23 @@ test('dedupe history and missing update approvals block unchanged and unreviewed
     atomic(root + '/issues/old/edition.json', { kind: 'newsletter', articles: [old] });
     const updated = { ...a, content_fingerprint: digest(text + '更新'), text: text + '更新' };
     store.run('DELETE FROM articles'); store.run('INSERT INTO articles VALUES (?,?,?)', a.id, 'v2', pyjson(updated));
-    assert.equal(candidates(store, stamp(now()))[1].at(-1)!.reason, 'update_delta_pending_review');
+    assert.equal(candidates(store, stamp(now()))[1].at(-1)!.reason, 'update_prior_evidence_missing');
   } finally { close(); }
 });
 test('single recipient, frozen hashes, sending claim, duplicate attempt and QUIT error handling', async () => {
   const { store, root, close } = setup(); const before = { sender: process.env.SENDING_ACCOUNT, password: process.env.SENDING_PASSWORD, server: process.env.SERVER };
   process.env.SENDING_ACCOUNT = 'sender@example.org'; process.env.SENDING_PASSWORD = 'test'; process.env.SERVER = 'smtp.example.org'; let sent = 0;
   try {
-    const issue = { id: 'sample-mail-unit', kind: 'newsletter', mode: 'current_24h_sample', pool_edition: true, collection_cutoff: stamp(now()), generation_cutoff: permit.expires_at, articles: [a], rejected: [], source_health: null };
-    freezeIssue(store, issue, [{ article: a, result: structuredClone(result), calls: [] }]);
+    a.job_key = cacheKey(a, policy()); store.run("UPDATE jobs SET result=?,status='ai_approved' WHERE key=?", pyjson(approved(a)), a.job_key);
+    const issue = { quality_policy: 'fidelity-1', id: 'sample-mail-unit', kind: 'newsletter', mode: 'current_24h_sample', pool_edition: true, collection_cutoff: stamp(now()), generation_cutoff: permit.expires_at, articles: [a], rejected: [], source_health: null };
+    freezeIssue(store, issue, [{ article: a, result: approved(a), calls: [] }]);
     const transport = { sendMail: async (message: Row) => { sent++; assert.equal(message.to, RECIPIENT); assert.deepEqual(message.envelope.to, [RECIPIENT]); assert.equal(message.cc, undefined); assert.equal(message.bcc, undefined);
       assert.equal(JSON.parse(readFileSync(root + '/durable/state.json', 'utf8')).schema_version, 1); assert.ok(existsSync(root + '/deliveries')); return { accepted: [RECIPIENT] }; }, close: () => { throw new Error('QUIT disconnected'); } };
-    assert.equal((await sendOnce(store, issue.id, { transport, now })).status, 'smtp_accepted');
-    assert.equal((await sendOnce(store, issue.id, { transport, now })).reused, true); assert.equal(sent, 1);
-    atomic(root + '/test-delivery-config.json', { allowed_recipient: 'other@example.org' }); await assert.rejects(() => sendOnce(store, issue.id, { transport, now }), /recipient/);
+    assert.equal((await sendOnce(store, issue.id, { transport, now, authorize: async () => true })).status, 'smtp_accepted');
+    assert.equal((await sendOnce(store, issue.id, { transport, now, authorize: async () => true })).reused, true); assert.equal(sent, 1);
+    atomic(root + '/test-delivery-config.json', { allowed_recipient: 'other@example.org' }); await assert.rejects(() => sendOnce(store, issue.id, { transport, now, authorize: async () => true }), /recipient/);
     atomic(root + '/test-delivery-config.json', { allowed_recipient: RECIPIENT }); writeFileSync(root + '/issues/' + issue.id + '/email.txt', 'changed');
-    await assert.rejects(() => sendOnce(store, issue.id, { transport, now }), /frozen_content_changed/);
+    await assert.rejects(() => sendOnce(store, issue.id, { transport, now, authorize: async () => true }), /frozen_content_changed/);
   } finally {
     for (const [key, value] of [['SENDING_ACCOUNT', before.sender], ['SENDING_PASSWORD', before.password], ['SERVER', before.server]]) { if (value === undefined) delete process.env[key!]; else process.env[key!] = value; } close();
   }
@@ -144,19 +153,19 @@ test('unknown SMTP result persists and is never automatically resent', async () 
     const issue = { id: 'sample-mail-unknown', kind: 'diagnostic', mode: 'current_24h_sample', pool_edition: true, collection_cutoff: stamp(now()), generation_cutoff: permit.expires_at, articles: [], rejected: [], source_health: null };
     freezeIssue(store, issue, []);
     const transport = { sendMail: async () => { sent++; throw Object.assign(new Error('disconnected'), { command: 'DATA' }); }, close: () => {} };
-    assert.equal((await sendOnce(store, issue.id, { transport, now })).status, 'unknown_do_not_retry');
-    assert.equal((await sendOnce(store, issue.id, { transport, now })).reused, true); assert.equal(sent, 1);
+    assert.equal((await sendOnce(store, issue.id, { transport, now, authorize: async () => true })).status, 'unknown_do_not_retry');
+    assert.equal((await sendOnce(store, issue.id, { transport, now, authorize: async () => true })).reused, true); assert.equal(sent, 1);
   } finally { process.env = env; close(); }
 });
-test('SMTP rechecks the 07:00 cutoff after the durable sending claim', async () => {
-  const { store, close } = setup(); const env = { ...process.env }; let current = new Date('2026-10-19T06:59:59+08:00'); let sent = 0;
+test('SMTP rechecks the 09:00 cutoff after the durable sending claim', async () => {
+  const { store, close } = setup(); const env = { ...process.env }; let current = new Date('2026-10-19T08:59:59+08:00'); let sent = 0;
   try {
     process.env.SENDING_ACCOUNT = 'sender@example.org'; process.env.SENDING_PASSWORD = 'test'; process.env.SERVER = 'smtp.example.org';
     const issue = { id: 'test-2026-10-19', kind: 'diagnostic', mode: 'daily_24h', pool_edition: true, collection_cutoff: '2026-10-19T06:00:00+08:00', generation_cutoff: '2026-10-19T06:15:00+08:00', articles: [], rejected: [], source_health: null };
     freezeIssue(store, issue, []); const checkpoint = store.checkpoint.bind(store);
-    store.checkpoint = () => { checkpoint(); current = new Date('2026-10-19T07:00:00+08:00'); };
+    store.checkpoint = () => { checkpoint(); current = new Date('2026-10-19T09:00:00+08:00'); };
     const transport = { sendMail: async () => { sent++; return { accepted: [RECIPIENT] }; }, close: () => {} };
-    assert.equal((await sendOnce(store, issue.id, { transport, now: () => current })).status, 'not_sent_outside_window'); assert.equal(sent, 0);
+    assert.equal((await sendOnce(store, issue.id, { transport, now: () => current, authorize: async () => true })).status, 'not_sent_outside_window'); assert.equal(sent, 0);
   } finally { process.env = env; close(); }
 });
 test('schedule honors Shanghai cutoffs, trial expiry, writing floor and no late deliveries', () => {
@@ -208,7 +217,7 @@ test('offline end-to-end collection, assessment, cached composition and frozen a
     store.run('UPDATE observations SET observed_at=?', '2026-10-19T05:59:00+08:00');
     assess(store, new Date('2026-10-19T05:59:00+08:00'));
     const jobs = store.all('SELECT * FROM jobs WHERE key<>?', cacheKey(a, policy())); assert.equal(jobs.length, 20);
-    for (const job of jobs) store.run("UPDATE jobs SET status='pending_human_review',result=? WHERE key=?", pyjson({ ...result, generated_at: '2026-10-19T06:10:00+08:00' }), job.key);
+    for (const job of jobs) store.run("UPDATE jobs SET status='pending_human_review',result=? WHERE key=?", pyjson(approved(JSON.parse(job.article), { ...result, generated_at: '2026-10-19T06:10:00+08:00' })), job.key);
     const frozen = compose(store, new Date('2026-10-19T06:15:00+08:00'));
     assert.equal(frozen.kind, 'newsletter'); assert.equal(frozen.articles.length, 20);
     const html = readFileSync(root + '/issues/' + frozen.id + '/email.html', 'utf8');
@@ -255,14 +264,18 @@ test('100-version limit allows cached pool reuse and admits only remaining new v
           const unique = Array.from({ length: 30 }, (_, j) => String.fromCodePoint(0x4e00 + i * 31 + j)).join('');
           const input = { ...a, id: `cached-${i}`, title: domainTitles[i % 5] + ' ' + unique, url: 'https://example.org/cached/' + i, text: text + unique, content_fingerprint: digest(text + unique) };
           const key = cacheKey(input, p); store.run('INSERT INTO articles VALUES (?,?,?)', input.id, 'version', pyjson(input));
-          if (cached) store.run('INSERT INTO jobs(key,article,status,result) VALUES (?,?,?,?)', key, pyjson(input), 'pending_human_review', pyjson(result));
+          if (cached) store.run('INSERT INTO jobs(key,article,status,result) VALUES (?,?,?,?)', key, pyjson(input), 'ai_approved', pyjson(approved(input)));
         }
         const prices = `<table><tr><th>模型</th><th>deepseek-flash</th><th>other</th></tr><tr><td>base</td></tr><tr><td>base</td></tr><tr><td>version</td><td>${p.model_version}</td></tr><tr><td>空闲时段</td><td>0.02元</td><td>1元</td></tr><tr><td>空闲时段</td><td>1元</td><td>2元</td></tr><tr><td>空闲时段</td><td>4元</td><td>8元</td></tr></table><p>北京时间周一至周五（不含中国法定节假日）9:00 - 12:00、14:00 - 18:00 为高峰时段；其余时段，包括周末及中国法定节假日全天均为空闲时段。</p>`;
         const fetchMock = t.mock.method(globalThis, 'fetch', (async (_url: any, options: any) => {
-          if (options?.method === 'POST') { posts++; return goodResponse(); } return new Response(prices);
+          if (options?.method === 'POST') {
+            posts++; const request = JSON.parse(options.body); const evidence = JSON.parse(request.messages[1].content);
+            if (evidence.draft) return new Response(JSON.stringify({ usage: { prompt_tokens: 100, completion_tokens: 100 }, choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(approved({ ...a, text: evidence.text }, evidence.draft).ai_review.result) } }] }));
+            return goodResponse();
+          } return new Response(prices);
         }) as typeof fetch);
         const issue = await launchSample(store, 'serif'); fetchMock.mock.restore();
-        assert.equal(issue.articles.length, cached ? 20 : 1); assert.equal(posts, cached ? 0 : 1);
+        assert.equal(issue.articles.length, cached ? 20 : 1); assert.equal(posts, cached ? 0 : 2);
         assert.equal(attemptedVersions(store, '2026-10-18').size, 100);
         const html = readFileSync(store.root + '/issues/' + issue.id + '/email.html', 'utf8');
         if (cached) { assert.ok(html.includes('Songti SC')); assert.ok(html.includes('morning-4-pool-ts-serif')); }
@@ -319,7 +332,7 @@ test('scheduled writer never calls pricing or model outside 0500-0612 even when 
 test('a late cron may freeze evidence but never requests a late SMTP send; report preserves missed delivery', () => {
   const { store, close } = setup();
   try {
-    const late = new Date('2026-10-19T07:06:00+08:00'); const plan = due(store, late);
+    const late = new Date('2026-10-19T09:06:00+08:00'); const plan = due(store, late);
     assert.equal(plan.compose, true); assert.equal(plan.deliver, false); assert.equal(plan.enrich, false);
     const issue = compose(store, late); assert.equal(issue.id, 'test-2026-10-19');
     const report = reportTrial(store, late); const today = report.days.find(d => d.day === '2026-10-19')!;
@@ -332,7 +345,7 @@ test('rolling 24h pool includes the whole preceding day without an early next-is
   const { store, close } = setup();
   try {
     const cutoff = '2026-10-19T06:20:00+08:00';
-    const input = { ...a, published_at: '2026-10-18T06:20:00+08:00', original_article_published_at: '2026-10-18T06:20:00+08:00', fetched_at: '2026-10-19T06:19:00+08:00' };
+    const input: Row = { ...a, published_at: '2026-10-18T06:20:00+08:00', original_article_published_at: '2026-10-18T06:20:00+08:00', fetched_at: '2026-10-19T06:19:00+08:00' };
     store.run('INSERT INTO articles VALUES (?,?,?)', input.id, 'v1', pyjson(input));
     assert.equal(candidates(store, cutoff)[0].length, 1);
     assert.equal(candidates(store, '2026-10-19T06:20:01+08:00')[1].at(-1)?.reason, 'old_news');
@@ -342,7 +355,7 @@ test('rolling 24h pool includes the whole preceding day without an early next-is
 test('previous-day samples are reusable, but same-day samples and ordinary issues retain sent dedupe', () => {
   const { store, root, close } = setup();
   try {
-    const input = { ...a, published_at: '2026-10-18T12:00:00+08:00', original_article_published_at: '2026-10-18T12:00:00+08:00', fetched_at: '2026-10-18T13:00:00+08:00' };
+    const input: Row = { ...a, published_at: '2026-10-18T12:00:00+08:00', original_article_published_at: '2026-10-18T12:00:00+08:00', fetched_at: '2026-10-18T13:00:00+08:00' };
     store.run('INSERT INTO articles VALUES (?,?,?)', input.id, 'v1', pyjson(input));
     const prior = 'sample-authorized-reuse';
     atomic(root + '/issues/' + prior + '/edition.json', { kind: 'newsletter', collection_cutoff: '2026-10-18T19:00:00+08:00', articles: [input] });

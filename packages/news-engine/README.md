@@ -1,5 +1,7 @@
 # News engine · TypeScript 高级订阅引擎
 
+当前v0.3.0运行规则以[OPERATIONS.md](OPERATIONS.md)为准：04:07提前启动并持续推进，独立AI验收，06:30–09:00投递，Notion高级订阅筛选，内测仍只发指定邮箱。下方旧版调度与人工待审说明仅供迁移背景；当前流程无需人工审稿。
+
 高级订阅的完整处理链路，Node.js 24 可直接运行 `.ts`。评分子模块保持零运行时第三方依赖；完整链路使用固定版本的 fast-xml-parser、Cheerio、Nodemailer 和 tar。Python 保留为离线对照与兼容参考，普通订阅仍运行原有实现。
 
 ## 完整内测入口
