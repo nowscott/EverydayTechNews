@@ -2,10 +2,11 @@ import { RECIPIENT, type Row } from './core.ts';
 const API = 'https://api.notion.com/v1';
 export async function notionRequest(path: string, env: Row = process.env, fetcher: typeof fetch = fetch, init: RequestInit = {}): Promise<Row> {
   if (!env.NOTION_API_KEY) throw new Error('notion_configuration_missing');
-  const response = await fetcher(API + path, { ...init, signal: AbortSignal.timeout(30000), headers: {
-    Authorization: `Bearer ${env.NOTION_API_KEY}`, 'Notion-Version': '2026-03-11', 'Content-Type': 'application/json' } });
+  let response: Response;
+  try { response = await fetcher(API + path, { ...init, signal: AbortSignal.timeout(30000), headers: {
+    Authorization: `Bearer ${env.NOTION_API_KEY}`, 'Notion-Version': '2026-03-11', 'Content-Type': 'application/json' } }); } catch { throw new Error('notion_network_failure'); }
   if (!response.ok) throw new Error('notion_http_' + response.status);
-  return await response.json() as Row;
+  try { return await response.json() as Row; } catch { throw new Error('notion_invalid_response'); }
 }
 export async function dataSource(env: Row = process.env, fetcher: typeof fetch = fetch): Promise<string> {
   if (env.NOTION_DATA_SOURCE_ID) return env.NOTION_DATA_SOURCE_ID;

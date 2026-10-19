@@ -50,6 +50,7 @@ export function publishMorningReport(store: Store, now = new Date()) {
   const repo = process.env.GITHUB_REPOSITORY!;
   if (repo !== 'nowscott/EverydayTechNews-data') throw new Error('alert_requires_private_repository');
   const title = 'Premium morning exception ' + day(now);
+  try {
   const ids = command(['gh', 'issue', 'list', '--repo', repo, '--state', 'all', '--search', '"' + title + '" in:title', '--json', 'number,title']);
   const existing = JSON.parse(ids).find((v: Row) => v.title === title);
   const bodyPath = store.root + '/.cache/morning-alert.md';
@@ -58,6 +59,7 @@ export function publishMorningReport(store: Store, now = new Date()) {
   writeFileSync(bodyPath, `Morning outcome: ${today.status}\nDelivery: ${today.delivery.join(', ') || 'not_attempted'}\nReason: ${today.reason ?? 'insufficient_content_or_uncertain_delivery'}\nRun: https://github.com/${repo}/actions/runs/${process.env.GITHUB_RUN_ID}\n`);
   command(existing ? ['gh', 'issue', 'edit', String(existing.number), '--repo', repo, '--body-file', bodyPath]
     : ['gh', 'issue', 'create', '--repo', repo, '--title', title, '--body-file', bodyPath]);
+  } catch { console.log('::warning::Private morning alert could not be updated; durable report remains saved.'); }
 }
 export async function runMorning(store: Store) {
   phase(store, 'restore_completed'); archiveStage(store);
