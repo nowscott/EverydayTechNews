@@ -26,3 +26,13 @@
 - 91.108.56.119:443 与 149.154.171.5:443 经 SOCKS5 返回连接成功；日志显示命中 Telegram IP-CIDR 并走香港节点。
 - Telegram 网页、X 返回 200，Google 连通性端点返回 204。
 - ChatGPT 返回带 Cloudflare 验证的 403。规则已命中 AI 服务，不能将此状态描述为手机已恢复；iPhone App 实际验证待用户方便时进行。
+
+## DNS 后续修正（21:37）
+
+版本 `proxy-dns-20261019-2`。手机复测证明只修 Telegram IP 分流仍不足：其余海外连接仍有大量不含域名的原始 IP，X 的地址被默认直连。核心 DNS 查询同时将 www.google.com 返回为异常地址，x.com 查询一度失败。此前“飞牛 HTTP 代理可访问”不能替代真实手机端 DNS 路径验证。
+
+把默认境外解析改为经海外服务组的 HTTPS DNS；国内/私网与节点域名单独使用国内 HTTPS DNS，节点解析独立以避免代理解析循环。保留 fake-IP 模式、局域网监听、IPv6 开关、TUN 和既有 Telegram/地区规则。可审计 DNS 片段见 [proxy-policy.dns.json](proxy-policy.dns.json)，语义依据 [mihomo DNS 文档](https://wiki.metacubex.one/config/dns/)。
+
+私有备份目录：`/vol3/1000/Docker/opensurge-local-20261019/config/dnsfix-backup-20261019-213713`。持久 profile 为 `HomeLite-dnsfix-20261019-213713.yaml`，原配置及选择均有备份。配置验证通过后使用认证 API payload 热重载，回填原选择；未修改路由器 DHCP 或 NAS 系统 resolver。
+
+验证：核心 DNS API 对 www.google.com、google.com、x.com 均查询成功；LAN 的 192.168.31.10:53 对 Google、X、百度均返回正常的 fake-IP 映射（198.18 网段是本配置预期行为）。手机后续需要明确使用 NAS DNS，而非只把 IPv4 网关指向 NAS；本次指导仅修改这台手机，整屋 DHCP DNS 待确认客户端效果后另行调整。手机端最终结果以用户复测及对应连接日志为准。

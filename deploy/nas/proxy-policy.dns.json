@@ -1,0 +1,16 @@
+{
+  "version": "proxy-dns-20261019-2",
+  "references": ["https://wiki.metacubex.one/config/dns/"],
+  "dns": {
+    "default-nameserver": ["223.5.5.5", "119.29.29.29"],
+    "nameserver": ["https://1.1.1.1/dns-query#🌍 海外服务", "https://8.8.8.8/dns-query#🌍 海外服务"],
+    "proxy-server-nameserver": ["https://dns.alidns.com/dns-query#DIRECT", "https://doh.pub/dns-query#DIRECT"],
+    "nameserver-policy": {
+      "rule-set:cn": ["https://dns.alidns.com/dns-query#DIRECT", "https://doh.pub/dns-query#DIRECT"],
+      "rule-set:private": ["https://dns.alidns.com/dns-query#DIRECT", "https://doh.pub/dns-query#DIRECT"]
+    },
+    "direct-nameserver": ["https://dns.alidns.com/dns-query#DIRECT", "https://doh.pub/dns-query#DIRECT"]
+  },
+  "client_dns_requirement": "Use the NAS LAN DNS listener to retain fake-IP domain mapping; setting only the IPv4 gateway is insufficient.",
+  "preserve_gateway_tun_ipv6_and_existing_rules": true
+}
