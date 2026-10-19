@@ -90,11 +90,11 @@ class Controller:
         self.logs = self.root / 'logs'
         self.logs.mkdir(parents=True, exist_ok=True)
 
-    def command(self, args, cwd=None, capture=True, env=None):
+    def command(self, args, cwd=None, capture=True, env=None, timeout=1800):
         # Child output stays in the NAS private log; exceptions never print env/credentials.
         with open(self.logs / 'commands.log', 'a') as log:
             result = subprocess.run(args, cwd=cwd, env=env, text=True,
-                                    stdout=subprocess.PIPE if capture else log, stderr=log, timeout=1800)
+                                    stdout=subprocess.PIPE if capture else log, stderr=log, timeout=timeout)
         if result.returncode: raise RuntimeError('command_failed:' + args[0])
         return result.stdout.strip() if capture else ''
 
@@ -246,7 +246,7 @@ class Controller:
             return self.command(['docker', 'compose', '--env-file', self.config['env_file'],
                  '-f', str(source / ('deploy/nas/compose.managed.yaml' if not current.get('legacy') else 'compose.managed.yaml')),
                  '-f', str(source / ('deploy/nas/compose.proxy.yaml' if not current.get('legacy') else 'compose.proxy.yaml')), 'run', '--rm',
-                 '--name', 'etn-premium-scheduled', 'premium', 'run'], env=env, capture=False)
+                 '--name', 'etn-premium-scheduled', 'premium', 'run'], env=env, capture=False, timeout=None)
 
     def rollback(self, tag):
         with lock(self.root / 'update.lock'):

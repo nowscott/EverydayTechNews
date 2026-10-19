@@ -122,6 +122,18 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual(self.c.state()['blocked'], {})
         self.assertEqual(self.c.state()['active'], self.old)
 
+    def test_news_runner_has_no_short_control_command_timeout(self):
+        def command(args, **kwargs):
+            if args[:3] == ['git', 'rev-parse', 'HEAD']: return self.old['sha']
+            if args[0] == 'git': return ''
+            self.assertEqual(args[0:2], ['docker', 'compose'])
+            self.assertIsNone(kwargs['timeout'])
+            self.assertEqual(kwargs['env']['NAS_IMAGE'], self.old['image'])
+            return ''
+        with patch.object(self.c, 'command', side_effect=command) as run:
+            self.c.run()
+        self.assertEqual(run.call_count, 3)
+
     def test_release_must_pass_main_ci(self):
         def command(args, **_):
             if 'rev-parse' in args: return 'b' * 40

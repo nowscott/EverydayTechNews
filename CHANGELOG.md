@@ -223,3 +223,9 @@
 - Balance publishers, replace the inaccessible Tesla IR source with verified media article bodies, and migrate legacy drafts to automatic AI review.
 - Add Git Release based NAS deployment, pinned image provenance, offline state checks, automatic updates outside the morning window, and code-only rollback.
 - Keep private credentials and live billing/delivery state outside Git; retain the existing trial, spending and recipient boundaries.
+
+## News engine 0.4.1 — 2026-10-19
+
+- Fix the managed Compose tmpfs list so Docker can start the runtime container.
+- Let morning news jobs retain the scheduler lock for their full engine-managed lifetime instead of the controller's 30-minute utility timeout.
+- Exercise managed container startup in CI and support explicit, checked controller upgrades with backups.
