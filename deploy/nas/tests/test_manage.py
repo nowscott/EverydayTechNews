@@ -122,6 +122,39 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual(self.c.state()['blocked'], {})
         self.assertEqual(self.c.state()['active'], self.old)
 
+    def test_news_runner_has_no_short_control_command_timeout(self):
+        def command(args, **kwargs):
+            if args[:3] == ['git', 'rev-parse', 'HEAD']: return self.old['sha']
+            if args[0] == 'git': return ''
+            self.assertEqual(args[0:2], ['docker', 'compose'])
+            self.assertIsNone(kwargs['timeout'])
+            self.assertEqual(kwargs['env']['NAS_IMAGE'], self.old['image'])
+            return ''
+        with patch.object(self.c, 'command', side_effect=command) as run:
+            self.c.run()
+        self.assertEqual(run.call_count, 3)
+
+    def test_failed_runtime_release_is_excluded_from_rollback_history(self):
+        state = self.c.state()
+        state['history'][0]['runtime_failed'] = True
+        state['blocked'][self.old['tag']] = 'runtime_startup_invalid'
+        m.atomic(self.c.state_path, state)
+        with self.assertRaisesRegex(RuntimeError, 'quarantined'): self.c.rollback(self.old['tag'])
+        with patch.object(m, 'protected', return_value=False), patch.object(self.c, 'validate'), patch.object(self.c, 'prune'):
+            self.c.activate(self.new)
+        self.assertEqual([h['tag'] for h in self.c.state()['history']], [self.new['tag']])
+
+    def test_startup_uses_empty_credentials_and_disabled_network(self):
+        def command(args, **kwargs):
+            self.assertEqual(args[:2], ['docker', 'compose'])
+            self.assertEqual(Path(kwargs['env']['NAS_ENV_FILE']).read_text(), '')
+            self.assertEqual(kwargs['env']['NAS_IMAGE'], self.new['image'])
+            overlay = Path(args[args.index('run') - 1])
+            self.assertIn('network_mode: none', overlay.read_text())
+            self.assertEqual(args[-4:], ['--entrypoint', 'node', 'premium', '--version'])
+            return 'v24'
+        with patch.object(self.c, 'command', side_effect=command): self.c.startup(self.new, self.data)
+
     def test_release_must_pass_main_ci(self):
         def command(args, **_):
             if 'rev-parse' in args: return 'b' * 40

@@ -6,7 +6,7 @@
 
 1. 在 `codex/` 分支修改源码，同时更新引擎 package.json、package-lock.json、deploy/nas/release.json 与 CHANGELOG。
 2. PR 检查通过后合入 main。等待 main 对应提交的 `TypeScript engine parity and recovery` 工作流通过（包含 Python/Node 测试、类型检查、部署测试和 Docker 构建）。
-3. 在这个已通过的 main 提交创建 `news-engine-vX.Y.Z` 标签和正式 GitHub Release。不要移动已发布标签。草稿、预发布、普通推送和其他组件标签不会部署。
+3. 在这个已通过的 main 提交创建 `news-engine-vX.Y.Z` 标签和正式 GitHub Release（命令使用 `gh release create <标签> --target <提交> --latest=false`，保留原项目 v2.x 的 Latest 标记）。不要移动已发布标签。草稿、预发布、普通推送和其他组件标签不会部署。
 4. NAS 每 15 分钟检查一次；04:00–09:00 上海时间仅报告待更新。新版本构建后等待运行任务结束，备份私有状态，在无网络、无密钥的容器中验证副本，确认账本不变后切换。
 
 `release.json` 的 `state_schema` 必须与当前 durable 状态一致；`automatic_deployment` 必须为 true，`controller_protocol` 必须为 1。需要不兼容迁移时设为 false，安排单独迁移，不能绕过检查自动更新。
@@ -32,3 +32,5 @@ python3 <管理目录>/manage.py --root <管理目录> rollback news-engine-v0.4
 控制器和离线验证器在首次安装时固定复制到管理目录，后续源码更新不能静默替换它们；控制器协议升级须单独验证和安装。不要手工修改已发布 worktree。失败详情在 logs/commands.log、logs/deployments.jsonl，计划任务输出在 scheduler.log/updater.log。
 
 回退与更新均使用和原调度相同的锁，另外锁定状态；新闻任务不会与切换重叠。新旧镜像都须能读取候选验证后的状态，费用、冻结期刊和 SMTP 记录必须保持一致。首次部署与更新验证不会调用模型或发送邮件。原内测邮箱、预算、试用到期和生产关闭设置继续生效。
+
+控制器需要升级时，从新的正式标签执行安装器并加 `--upgrade-controller`（legacy/root 与首次安装相同）。安装器先独立验证该标签的 main 提交、检查和兼容协议，再锁定更新与调度，备份旧控制器后替换，随后部署并重新安装计划任务。此步骤不由普通自动更新静默执行。晨间新闻任务沿用引擎自己的最长运行边界，控制器不在 30 分钟时终止任务或释放调度锁。

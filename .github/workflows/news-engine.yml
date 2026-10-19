@@ -52,3 +52,10 @@ jobs:
 
       - run: python -m unittest discover -s ../../deploy/nas/tests -v
       - run: docker build -f ../../deploy/nas/Dockerfile ../.. -t news-engine-ci
+      - name: Start managed container without news credentials
+        env:
+          NAS_IMAGE: news-engine-ci
+          NAS_ENV_FILE: ${{ github.workspace }}/deploy/nas/.env.example
+        run: |
+          export NAS_DATA_DIR=$(mktemp -d)
+          docker compose -f ../../deploy/nas/compose.managed.yaml -f ../../deploy/nas/compose.proxy.yaml run --rm --entrypoint node premium --version

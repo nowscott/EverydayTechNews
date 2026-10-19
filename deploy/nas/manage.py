@@ -90,11 +90,11 @@ class Controller:
         self.logs = self.root / 'logs'
         self.logs.mkdir(parents=True, exist_ok=True)
 
-    def command(self, args, cwd=None, capture=True, env=None):
+    def command(self, args, cwd=None, capture=True, env=None, timeout=1800):
         # Child output stays in the NAS private log; exceptions never print env/credentials.
         with open(self.logs / 'commands.log', 'a') as log:
             result = subprocess.run(args, cwd=cwd, env=env, text=True,
-                                    stdout=subprocess.PIPE if capture else log, stderr=log, timeout=1800)
+                                    stdout=subprocess.PIPE if capture else log, stderr=log, timeout=timeout)
         if result.returncode: raise RuntimeError('command_failed:' + args[0])
         return result.stdout.strip() if capture else ''
 
@@ -150,7 +150,20 @@ class Controller:
         return {'tag': tag, 'sha': sha, 'source': str(directory), 'image': info['Id'], 'image_tag': image,
                 'schema': 1, 'deployed_at': dt.datetime.now(SHANGHAI).isoformat()}
 
+    def startup(self, candidate, snapshot):
+        source = Path(candidate['source']) / 'deploy/nas' if not candidate.get('legacy') else self.root
+        with tempfile.TemporaryDirectory(prefix='startup-', dir=self.root) as temp:
+            empty = Path(temp) / 'empty.env'; empty.write_text('')
+            network = Path(temp) / 'network.yaml'
+            network.write_text('services:\n  premium:\n    network_mode: none\n')
+            env = {**os.environ, 'NAS_IMAGE': candidate['image'], 'NAS_ENV_FILE': str(empty),
+                   'NAS_DATA_DIR': str(snapshot), 'NAS_UID': str(os.getuid()), 'NAS_GID': str(os.getgid())}
+            self.command(['docker', 'compose', '--env-file', str(empty),
+                          '-f', str(source / 'compose.managed.yaml'), '-f', str(source / 'compose.proxy.yaml'),
+                          '-f', str(network), 'run', '--rm', '--entrypoint', 'node', 'premium', '--version'], env=env)
+
     def validate(self, candidate, snapshot):
+        self.startup(candidate, snapshot)
         self.command(['docker', 'run', '--rm', '--network', 'none', '--read-only', '--cap-drop', 'ALL',
                       '--security-opt', 'no-new-privileges:true', '--user', str(os.getuid()) + ':' + str(os.getgid()),
                       '--tmpfs', '/tmp:rw,size=128m,mode=1777', '-v', str(snapshot) + ':/data',
@@ -176,13 +189,15 @@ class Controller:
                     self.validate(candidate, snapshot)
                     # Rollback must remain able to read the next checkpoint too.
                     previous = state.get('active')
+                    if previous and previous.get('runtime_failed'):
+                        previous = next((h for h in state['history'] if not h.get('runtime_failed')), None)
                     if previous:
                         self.validate(previous, snapshot)
                 if before != ledger(self.data): raise RuntimeError('live_ledger_changed_during_validation')
                 if protected(): return self.event('deferred_morning_window', pending=candidate['tag'])
                 candidate = {**candidate, 'checks': 'offline_state_and_ledger_passed', 'backup': str(backup),
                              'deployed_at': dt.datetime.now(SHANGHAI).isoformat()}
-                history = [candidate] + [h for h in state['history'] if h['image'] != candidate['image']]
+                history = [candidate] + [h for h in state['history'] if h['image'] != candidate['image'] and not h.get('runtime_failed')]
                 state.update(active=candidate, history=history[:3],
                              high_water=list(max(tuple(state['high_water']), version(candidate['tag']) or (0, 0, 0))))
                 atomic(self.state_path, state)  # Single source of truth for every new scheduler invocation.
@@ -246,11 +261,13 @@ class Controller:
             return self.command(['docker', 'compose', '--env-file', self.config['env_file'],
                  '-f', str(source / ('deploy/nas/compose.managed.yaml' if not current.get('legacy') else 'compose.managed.yaml')),
                  '-f', str(source / ('deploy/nas/compose.proxy.yaml' if not current.get('legacy') else 'compose.proxy.yaml')), 'run', '--rm',
-                 '--name', 'etn-premium-scheduled', 'premium', 'run'], env=env, capture=False)
+                 '--name', 'etn-premium-scheduled', 'premium', 'run'], env=env, capture=False, timeout=None)
 
     def rollback(self, tag):
         with lock(self.root / 'update.lock'):
             state = self.state()
+            if tag in state['blocked']:
+                raise RuntimeError('release_is_quarantined')
             candidate = next((h for h in state['history'] if h['tag'] == tag), None)
             if not candidate: raise RuntimeError('version_not_retained')
             return self.activate(candidate, rollback=True)
