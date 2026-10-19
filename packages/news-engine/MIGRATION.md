@@ -11,7 +11,7 @@
 
 ## 上线状态
 
-完整TS引擎已在私有仓库部署；首个引擎版本为e19bc024，定时任务的当前版本固定为6338a14925c8bd803c721a5d0a86b36e821e6fad。随后公开仓库的文档提交不改变私有引擎固定版本。
+完整TS引擎已在私有仓库部署；首个引擎版本为e19bc024，定时任务的当前版本固定为fd86cf7f03ee4367376971fbfc60342bafb490d6。随后公开仓库的文档提交不改变私有引擎固定版本。
 
 - [GitHub TS对照及故障测试](https://github.com/nowscott/EverydayTechNews/actions/runs/39122090385)与[Python回归](https://github.com/nowscott/EverydayTechNews/actions/runs/39122090324)通过。本地27项TS测试全部通过；CI不携带私有样本，跳过2项本地真实证据测试，其余通过。
 - 切换前最新私有状态副本：63次调用、129个任务、83个新格式缓存键全部相符，缺失证据为0。旧Python任务已结束，暂停新调度后才切换，切换记录保存在私有durable/migrations中。
@@ -89,3 +89,12 @@
 - 本地37项TS测试与类型检查通过；[最新TS CI](https://github.com/nowscott/EverydayTechNews/actions/runs/39188577065)及[Python CI](https://github.com/nowscott/EverydayTechNews/actions/runs/39188577105)通过。新增完整24小时边界、午夜不提前切换窗口、昨日样稿可复用、同日样稿和普通日报保持去重的对照。
 - [真实仅维护验证](https://github.com/nowscott/EverydayTechNews-data/actions/runs/39188684665)通过：上海10:10滚动窗口内65篇合格候选，其中12篇曾出现在此前样稿。候选数量不代表全部已有概括或全部将发送；最终组稿继续限额。
 - 今日仍27次调用、估算0.08160424元、未知预留0，总投递仍7条、归档缺失0，本轮零模型POST/SMTP。引擎6338a14925c8bd803c721a5d0a86b36e821e6fad，定时恢复，试刊期限和唯一收件人不变。
+
+## 2026-10-19 用户授权人工补发完成
+
+- 用户明确要求“继续把今天的补发一下吧”，使用独立sample-ts-makeup-2026-10-19期号，保留原test-2026-10-19的7篇冻结诊断和漏发状态；仅本次人工有限授权，不改变定时05:00～06:12写作和07:00后禁自动发送规则。
+- [补发CI](https://github.com/nowscott/EverydayTechNews/actions/runs/39189494743)及[另一个回归运行](https://github.com/nowscott/EverydayTechNews/actions/runs/39189494750)通过，本地38项TS测试和类型检查通过，Python回归133项通过。新增独立日期期号、补发报告与原漏发状态并存的验证。
+- [真实补发运行](https://github.com/nowscott/EverydayTechNews-data/actions/runs/39189587282)成功：冻结上海10:22:06的滚动24小时候选，复用16篇概括、新增4篇，含格式修复共6次请求，新增估算0.03848088元。20篇（5重点＋15短讯）、8个领域，每领域最多4条，前5条重点AI仅2条。
+- 来源IT之家18、MacRumors1、Hacker News1，仍明显偏IT之家，不宣称均衡覆盖。全部原始及模型中文标题通过共享过滤，冻结HTML哈希一致；归档及确认成功。初稿未逐条人工事实审阅。
+- 唯一收件人nowscott@qq.com，主题【测试·补发】科技早报｜2026-10-19｜20条；SMTP于10:23:02上海时间接受，QQ实际收件尚未确认。独立Message-ID及sending/accepted记录长期保留，重复运行不会重发。
+- 今日累计33次请求、估算0.12008512元、未知预留0；旧账本未重置。原正常按时出刊仍记0次，manual_makeup_delivery单独记smtp_accepted。内测调度恢复，固定引擎fd86cf7f03ee4367376971fbfc60342bafb490d6，试刊不延期。

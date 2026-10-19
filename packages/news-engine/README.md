@@ -19,6 +19,8 @@ node packages/news-engine/src/main.ts status --data /tmp/premium-offline
 
 昨天样稿中的文章只要仍在滚动24小时内，允许在后续日报再次入选，并复用原概括；同一天的重复测试、正常日报之间仍保持已发去重。已冻结期刊和账本不覆盖，扩大范围不等于自动补发逾时邮件。
 
+`--launch true --sample-revision makeup`仅供明确人工授权的当日补发：独立每日冻结期号、最多30分钟生成授权、唯一测试收件人；不覆盖原漏发期刊，不作为定时任务绕过07:00截止的通道。报告分别保留原定时投递和manual_makeup_delivery状态。
+
 状态格式继续为schema_version=1，SQLite可重建；提示词、哈希、缓存和账本不重置。未知费用、未知SMTP结果、Git推送失败均不会自动重放外部动作。任何回退都必须保留TS之后的新账本与发送记录。
 
 ## 定时运行的边界
