@@ -46,9 +46,11 @@ try {
         const launch = flags.launch === 'true'; const verify = flags['verify-api'] === 'true';
         if (launch && verify) throw new Error('choose_one_acceptance_mode');
         console.log(JSON.stringify({ stage: 'due', maintenance, plan, engine: 'typescript' }));
-        if (!maintenance && !launch && !verify && plan.compose) compose(store);
+        const composing = !maintenance && !launch && !verify && plan.compose;
+        if (composing) await collect(store, Number(flags['collect-workers'] ?? 4));
+        if (composing) compose(store);
         if (!maintenance && !launch && !verify && plan.deliver) console.log(JSON.stringify({ stage: 'delivery', receipt: await deliver(store) }));
-        if (plan.collect || maintenance || launch || verify) await collect(store, Number(flags['collect-workers'] ?? 4));
+        if (!composing && (plan.collect || maintenance || launch || verify)) await collect(store, Number(flags['collect-workers'] ?? 4));
         if (!maintenance && launch) {
           const issue = await launchSample(store, flags['sample-revision']);
           console.log(JSON.stringify(issue.kind ? { stage: 'launch_delivery', receipt: await deliver(store, true, new Date(), flags['sample-revision']) } : { stage: 'launch_blocked', result: issue }));

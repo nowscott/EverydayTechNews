@@ -17,8 +17,11 @@ export function candidates(store: Store, cutoff: string, target = Number.MAX_SAF
     const path = store.root + '/issues/' + r.issue + '/edition.json';
     if (!existsSync(path)) return [];
     const edition = read(path);
-    // A diagnostic does not display its article drafts, so it must not consume them.
-    return edition.kind === 'diagnostic' ? [] : edition.articles;
+    // Diagnostics consume no articles. Previous-day samples may seed the next trial issue.
+    if (edition.kind === 'diagnostic') return [];
+    if (preferences().reuse_previous_day_samples && r.issue.startsWith('sample-') && edition.collection_cutoff
+      && day(new Date(edition.collection_cutoff)) < day(new Date(cutoff))) return [];
+    return edition.articles;
   });
   const articles: Row[] = []; const reasons: Row[] = [];
   for (const a of rows(store, cutoff)) {
@@ -52,8 +55,7 @@ export function candidates(store: Store, cutoff: string, target = Number.MAX_SAF
   return [approved, [...reasons, ...rejected]];
 }
 export function writingWindow(now = new Date()): [string, string] {
-  let end = at(day(now), '06:00:00'); if (now.getTime() >= end.getTime() + 15 * 60000) end = new Date(end.getTime() + 86400000);
-  return [stamp(new Date(Math.min(now.getTime(), end.getTime()))), stamp(new Date(end.getTime() - 86400000))];
+  return [stamp(now), stamp(new Date(now.getTime() - 86400000))];
 }
 export function attemptedVersions(store: Store, date = day()): Set<string> {
   return new Set(store.all('SELECT DISTINCT c.job,j.article FROM calls c LEFT JOIN jobs j ON j.key=c.job WHERE c.day=?', date)
@@ -147,11 +149,11 @@ function recordsReady(store: Store, articles: Row[], deadline: string, rejected:
 }
 export function compose(store: Store, now = new Date()) {
   const config = trial(store.root); if (!active(config, now)) return { status: 'trial_disabled_or_expired' };
-  const cutoff = stamp(at(day(now), '06:00:00')); const deadline = stamp(at(day(now), '06:15:00'));
+  const cutoff = stamp(now); const deadline = stamp(at(day(now), '06:15:00'));
   if (now.getTime() < Date.parse(deadline)) return { status: 'generation_deadline_not_reached' };
   const id = 'test-' + day(now); const path = store.root + '/issues/' + id + '/edition.json'; if (existsSync(path)) return read(path);
   const [chosen, rejected] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER); const records = recordsReady(store, chosen, deadline, rejected);
-  const issue = { id, pool_edition: true, mode: 'daily_24h', collection_cutoff: cutoff, generation_cutoff: deadline, frozen_at: stamp(now), articles: records.map(r => r.article), rejected,
+  const issue = { id, pool_edition: true, mode: 'daily_24h', selection_window: 'rolling_24h', collection_window_start: writingWindow(now)[1], reuse_previous_day_samples: !!preferences().reuse_previous_day_samples, collection_cutoff: cutoff, generation_cutoff: deadline, frozen_at: stamp(now), articles: records.map(r => r.article), rejected,
     source_health: status(store).sources, shortfall: Math.max(0, Number(preferences().edition_minimum) - records.length), editorial_policy: preferences().domain_policy, human_review: 'not_started', kind: records.length >= Number(preferences().edition_minimum) ? 'newsletter' : 'diagnostic', sendable_count: 0, engine: 'typescript' };
   return freezeIssue(store, issue, records);
 }

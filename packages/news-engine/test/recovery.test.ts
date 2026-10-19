@@ -171,7 +171,7 @@ test('schedule honors Shanghai cutoffs, trial expiry, writing floor and no late 
     assert.equal(due(store, new Date('2026-10-19T06:30:00+08:00')).deliver, true);
     assert.equal(due(store, new Date(EXPIRY)).enrich, false);
     assert.equal(compose(store, new Date('2026-10-19T06:14:59+08:00')).status, 'generation_deadline_not_reached');
-    assert.equal(writingWindow(new Date('2026-10-19T00:01:00+08:00'))[1], '2026-10-18T06:00:00+08:00');
+    assert.equal(writingWindow(new Date('2026-10-19T00:01:00+08:00'))[1], '2026-10-18T00:01:00+08:00');
     assert.equal(reportTrial(store).days.length, 7);
   } finally { close(); }
 });
@@ -325,5 +325,32 @@ test('a late cron may freeze evidence but never requests a late SMTP send; repor
     const report = reportTrial(store, late); const today = report.days.find(d => d.day === '2026-10-19')!;
     assert.equal(today.reason, 'scheduler_missed_delivery_deadline'); assert.deepEqual(today.delivery, []);
     assert.equal(report.completed_normal_editions, 0);
+  } finally { close(); }
+});
+
+test('rolling 24h pool includes the whole preceding day without an early next-issue floor', () => {
+  const { store, close } = setup();
+  try {
+    const cutoff = '2026-10-19T06:20:00+08:00';
+    const input = { ...a, published_at: '2026-10-18T06:20:00+08:00', original_article_published_at: '2026-10-18T06:20:00+08:00', fetched_at: '2026-10-19T06:19:00+08:00' };
+    store.run('INSERT INTO articles VALUES (?,?,?)', input.id, 'v1', pyjson(input));
+    assert.equal(candidates(store, cutoff)[0].length, 1);
+    assert.equal(candidates(store, '2026-10-19T06:20:01+08:00')[1].at(-1)?.reason, 'old_news');
+    assert.equal(writingWindow(new Date('2026-10-19T00:01:00+08:00'))[1], '2026-10-18T00:01:00+08:00');
+  } finally { close(); }
+});
+test('previous-day samples are reusable, but same-day samples and ordinary issues retain sent dedupe', () => {
+  const { store, root, close } = setup();
+  try {
+    const input = { ...a, published_at: '2026-10-18T12:00:00+08:00', original_article_published_at: '2026-10-18T12:00:00+08:00', fetched_at: '2026-10-18T13:00:00+08:00' };
+    store.run('INSERT INTO articles VALUES (?,?,?)', input.id, 'v1', pyjson(input));
+    const prior = 'sample-authorized-reuse';
+    atomic(root + '/issues/' + prior + '/edition.json', { kind: 'newsletter', collection_cutoff: '2026-10-18T19:00:00+08:00', articles: [input] });
+    atomic(root + '/deliveries/reuse.json', { issue: prior, recipient: RECIPIENT, status: 'smtp_accepted' });
+    assert.equal(candidates(store, '2026-10-19T06:20:00+08:00')[0].length, 1);
+    assert.equal(candidates(store, '2026-10-18T20:00:00+08:00')[1][0].reason, 'already_sent_unchanged');
+    atomic(root + '/issues/test-2026-10-18/edition.json', { kind: 'newsletter', collection_cutoff: '2026-10-18T19:00:00+08:00', articles: [input] });
+    atomic(root + '/deliveries/ordinary.json', { issue: 'test-2026-10-18', recipient: RECIPIENT, status: 'smtp_accepted' });
+    assert.equal(candidates(store, '2026-10-19T06:20:00+08:00')[1][0].reason, 'already_sent_unchanged');
   } finally { close(); }
 });

@@ -27,5 +27,7 @@
     "version": "domains-1",
     "maximum_per_domain": 4,
     "maximum_leads_per_domain": 2
-  }
+  },
+  "selection_window": "rolling_24h",
+  "reuse_previous_day_samples": true
 }
