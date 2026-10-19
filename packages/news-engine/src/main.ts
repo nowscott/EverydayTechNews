@@ -13,7 +13,7 @@ for (let i = 0; i < args.length; i += 2) {
   flags[args[i].slice(2)] = args[i + 1];
 }
 for (const key of ['maintenance-only', 'launch', 'verify-api']) if (flags[key] !== undefined && !['true', 'false'].includes(flags[key])) throw new Error('invalid_boolean');
-if (flags['sample-revision'] !== undefined && !['initial', 'serif', 'serif-retry'].includes(flags['sample-revision'])) throw new Error('invalid_sample_revision');
+if (flags['sample-revision'] !== undefined && !['initial', 'serif', 'serif-retry', 'makeup'].includes(flags['sample-revision'])) throw new Error('invalid_sample_revision');
 const root = resolve(flags.data ?? 'premium_data/pool'); mkdirSync(root, { recursive: true });
 const allowed = ['init', 'run', 'collect', 'assess', 'enrich', 'verify-api', 'launch-sample', 'fresh-sample', 'send-sample', 'compose', 'deliver', 'reconcile', 'status', 'report', 'archive', 'restore-artifact', 'ack-artifact'];
 if (!operation || !allowed.includes(operation)) throw new Error('unknown_command');

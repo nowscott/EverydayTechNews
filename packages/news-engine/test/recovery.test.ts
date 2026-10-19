@@ -6,7 +6,7 @@ import * as tar from 'tar';
 import { Store, extractEvidence } from '../src/store.ts';
 import { atomic, policy, digest, pyjson, EXPIRY, RECIPIENT, stamp, type Row } from '../src/core.ts';
 import { paidRequest, cacheKey, gate, validate, verifyRules } from '../src/model.ts';
-import { candidates, compose, due, reconcile, collect, assess, writingWindow, reportTrial, launchSample, attemptedVersions, enrich } from '../src/pool.ts';
+import { candidates, compose, due, reconcile, collect, assess, writingWindow, reportTrial, launchSample, attemptedVersions, enrich, samplePath } from '../src/pool.ts';
 import { preferences } from '../src/ranking.ts';
 import { buildEmail, freezeIssue, sendOnce } from '../src/mail.ts';
 import { mapLimit } from '../src/sources.ts';
@@ -352,5 +352,22 @@ test('previous-day samples are reusable, but same-day samples and ordinary issue
     atomic(root + '/issues/test-2026-10-18/edition.json', { kind: 'newsletter', collection_cutoff: '2026-10-18T19:00:00+08:00', articles: [input] });
     atomic(root + '/deliveries/ordinary.json', { issue: 'test-2026-10-18', recipient: RECIPIENT, status: 'smtp_accepted' });
     assert.equal(candidates(store, '2026-10-19T06:20:00+08:00')[1][0].reason, 'already_sent_unchanged');
+  } finally { close(); }
+});
+
+
+test('manual makeup has its own daily identity and leaves the scheduled issue intact', () => {
+  const { store, root, close } = setup();
+  try {
+    atomic(root + '/issues/test-2026-10-19/edition.json', { kind: 'diagnostic', articles: [] });
+    atomic(root + '/deliveries/makeup.json', { issue: 'sample-ts-makeup-2026-10-19', recipient: RECIPIENT, status: 'smtp_accepted' });
+    const report = reportTrial(store, new Date('2026-10-19T12:00:00+08:00'));
+    assert.equal(report.days[0].reason, 'scheduler_missed_delivery_deadline');
+    assert.deepEqual(report.days[0].manual_makeup_delivery, ['smtp_accepted']);
+    assert.equal(report.completed_normal_editions, 0);
+    assert.match(samplePath(root, 'makeup'), /ts-launch-makeup-\d{4}-\d{2}-\d{2}\.json$/);
+    assert.notEqual(samplePath(root, 'makeup'), samplePath(root, 'serif'));
+    const [html, plain] = buildEmail({ collection_cutoff: '2026-10-19T12:00:00+08:00', mode: 'manual_makeup_24h' }, []);
+    assert.ok(html.includes('今日补发')); assert.ok(plain.includes('人工授权补发'));
   } finally { close(); }
 });

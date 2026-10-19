@@ -157,9 +157,10 @@ export function compose(store: Store, now = new Date()) {
     source_health: status(store).sources, shortfall: Math.max(0, Number(preferences().edition_minimum) - records.length), editorial_policy: preferences().domain_policy, human_review: 'not_started', kind: records.length >= Number(preferences().edition_minimum) ? 'newsletter' : 'diagnostic', sendable_count: 0, engine: 'typescript' };
   return freezeIssue(store, issue, records);
 }
-export type SampleRevision = 'initial' | 'serif' | 'serif-retry';
+export type SampleRevision = 'initial' | 'serif' | 'serif-retry' | 'makeup';
 export function samplePath(root: string, revision: SampleRevision = 'initial') {
-  if (!['initial', 'serif', 'serif-retry'].includes(revision)) throw new Error('invalid_sample_revision');
+  if (!['initial', 'serif', 'serif-retry', 'makeup'].includes(revision)) throw new Error('invalid_sample_revision');
+  if (revision === 'makeup') return root + '/durable/ts-launch-makeup-' + day() + '.json';
   return root + (revision === 'initial' ? '/durable/ts-launch.json' : '/durable/ts-launch-' + revision + '.json');
 }
 export async function launchSample(store: Store, revision: SampleRevision = 'initial') {
@@ -170,7 +171,7 @@ export async function launchSample(store: Store, revision: SampleRevision = 'ini
     const check = await inspectRules(p); console.log(JSON.stringify({ stage: 'launch_pricing_preflight', ...check }));
     if (!check.verified) return { status: 'official_rules_unconfirmed', pricing: check };
     const cutoff = stamp(); const [chosen, rejected] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER); queue(store, chosen, p);
-    const spec = { id: (revision === 'initial' ? 'sample-ts-launch-' : 'sample-ts-' + revision + '-') + day(), mode: 'current_24h_sample', pool_edition: true, articles: chosen, rejected, collection_cutoff: cutoff,
+    const spec = { id: (revision === 'initial' ? 'sample-ts-launch-' : 'sample-ts-' + revision + '-') + day(), mode: revision === 'makeup' ? 'manual_makeup_24h' : 'current_24h_sample', makeup_for: revision === 'makeup' ? 'test-' + day() : null, pool_edition: true, articles: chosen, rejected, collection_cutoff: cutoff,
       generation_cutoff: stamp(new Date(Math.min(Date.parse(cutoff) + 30 * 60000, Date.parse(EXPIRY), Date.parse(p.valid_until)))), created_at: stamp(), source_health: status(store).sources };
     atomic(path, store.shrink(spec)); store.checkpoint();
   }
@@ -232,7 +233,7 @@ export function reportTrial(store: Store, now = new Date()) {
     const path = store.root + '/issues/' + id + '/edition.json'; const issue = existsSync(path) ? read(path) : null; const delivery = receipts.filter(r => r.issue === id).map(r => r.status);
     const overdue = date < day(now) || date === day(now) && localParts(now).hour >= 7;
     days.push({ day: date, status: issue?.kind ?? 'missing', reason: overdue && !delivery.includes('smtp_accepted') ? 'scheduler_missed_delivery_deadline' : null,
-      generated: issue?.articles.length ?? 0, delivery, human_review: 'not_started', normal_edition: !!issue && issue.kind === 'newsletter' && delivery.includes('smtp_accepted') });
+      generated: issue?.articles.length ?? 0, delivery, manual_makeup_delivery: receipts.filter(r => r.issue === 'sample-ts-makeup-' + date).map(r => r.status), human_review: 'not_started', normal_edition: !!issue && issue.kind === 'newsletter' && delivery.includes('smtp_accepted') });
   }
   const result = { days, completed_normal_editions: days.filter(d => d.normal_edition).length, accounting: status(store).calls, human_fact_review: 'not_completed', bill_paid: 'not_verified', engine: 'typescript' };
   atomic(store.root + '/trial-report.json', result); store.checkpoint(); return result;
