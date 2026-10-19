@@ -9,7 +9,8 @@ export async function reviewDraft(store: Store, job: Row, a: Row, p: Row, permit
   try { validate(draft, a); } catch { return 'invalid_cached_draft'; }
   if (isApproved(a, draft, p)) return 'ai_approved';
   const key = reviewKey(a, draft, p);
-  const input = { ...a, output_schema: 'review-1', task_kind: 'review', review_draft: draft, review_fields: Object.keys(displayFields(draft)) };
+  const independentDraft = Object.fromEntries(['title', 'summary', 'short_summary', 'points', 'why'].map(k => [k, draft[k]]));
+  const input = { ...a, output_schema: 'review-1', task_kind: 'review', review_draft: independentDraft, review_fields: Object.keys(displayFields(draft)) };
   store.run('INSERT OR IGNORE INTO jobs(key,article,status) VALUES (?,?,?)', key, pyjson(input), 'queued');
   const blocked = await paidRequest(store, key, input, p, permit, deps);
   const review = store.one('SELECT * FROM jobs WHERE key=?', key)!;
