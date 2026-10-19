@@ -1,5 +1,5 @@
 import { verifyQuality } from './quality-acceptance.ts';
-import { morningTime, runMorning, publishMorningReport } from './morning.ts';
+import { morningTime, runMorning, publishMorningReport, archiveStage } from './morning.ts';
 import { appendFileSync, mkdirSync, existsSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -63,9 +63,11 @@ try {
         else if (!maintenance && verify) {
           const result = quality ? await verifyQuality(store) : await verifyApi(store);
           console.log(JSON.stringify({ stage: quality ? 'quality_verification' : 'api_verification', result }));
+          archiveStage(store);
           if (quality && result.status !== 'passed') throw new Error('quality_acceptance_not_passed');
         }
         else if (!maintenance && plan.enrich) console.log(JSON.stringify({ stage: 'enrichment', result: await enrich(store) }));
+        if (maintenance) archiveStage(store);
         }
       } finally {
         publishMorningReport(store);
