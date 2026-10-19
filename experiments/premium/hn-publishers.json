@@ -1,0 +1,19 @@
+{
+  "version": "hn-publishers-1",
+  "scan_top": 60,
+  "scan_new": 40,
+  "maximum_body_fetches": 12,
+  "publishers": {
+    "www.anthropic.com": {"paths": ["/research/", "/news/", "/engineering/"], "selector": "article"},
+    "openai.com": {"paths": ["/index/", "/research/"], "selector": "article, main"},
+    "api-docs.deepseek.com": {"paths": ["/"], "selector": "article"},
+    "github.blog": {"paths": ["/"], "selector": "article"},
+    "blog.cloudflare.com": {"paths": ["/"], "selector": "article"},
+    "blogs.nvidia.com": {"paths": ["/"], "selector": "article"},
+    "www.nasa.gov": {"paths": ["/"], "selector": "article"},
+    "www.apple.com": {"paths": ["/newsroom/"], "selector": ".article-body, article"},
+    "t3.at": {"paths": ["/blog/"], "selector": "article:has(h1)"},
+    "leodemoura.github.io": {"paths": ["/blog/"], "selector": "article"},
+    "alinush.github.io": {"paths": ["/"], "selector": "article"}
+  }
+}

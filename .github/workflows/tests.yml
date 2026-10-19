@@ -6,12 +6,16 @@ on:
       - main
     paths:
       - 'src/**'
+      - 'experiments/premium/**'
+      - 'config/news-filter.json'
       - 'tests/**'
       - 'requirements.txt'
       - '.github/workflows/tests.yml'
   pull_request:
     paths:
       - 'src/**'
+      - 'experiments/premium/**'
+      - 'config/news-filter.json'
       - 'tests/**'
       - 'requirements.txt'
 

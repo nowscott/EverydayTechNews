@@ -1,19 +1,13 @@
 """新闻过滤工具模块"""
 
 import re
+import json
+from pathlib import Path
 
 
-FILTER_KEYWORDS = (
-    '广告', '赞助', '福利', '优惠', '好价', '促销', '大促',
-    '发车', '闭眼囤', '手慢无', '探新低', '神价', '秒杀',
-    'IT早报', '华为', '鸿蒙', '昆仑',
-    'huawei', 'harmonyos', 'openharmony', 'emui',
-    '海思', '麒麟', 'kirin', '昇腾', 'ascend', '鲲鹏', 'kunpeng',
-    '乾崑', '问界', '智界', '享界', '尊界', '尚界',
-    '星闪', 'nearlink', 'hicar', 'hms for car', 'hms core',
-    'appgallery', 'hilink', 'pura', 'matebook', 'matepad',
-    'freebuds', 'watch gt', 'watchgt', '小艺',
-)
+_RULES = json.loads((Path(__file__).resolve().parents[1] / "config/news-filter.json").read_text(encoding="utf-8"))
+FILTER_KEYWORDS = tuple(_RULES["keywords"])
+CURRENCY_PATTERNS = tuple(_RULES["currency_patterns"])
 
 
 def should_filter_news(title):
@@ -33,76 +27,7 @@ def should_filter_news(title):
 
     # 使用正则表达式更精确地匹配金额表达
     # 匹配数字+货币单位的模式，但排除大额数字（亿及以上）和文件大小单位
-    currency_patterns = [
-        r'\d+\s*元',           # 数字+元
-        r'\d+\s*万元',         # 数字+万元
-        # r'\d+\s*亿元',       # 注释掉亿元，保留包含亿的新闻
-        r'\d+\s*千元',         # 数字+千元
-        r'\d+\s*美元',         # 数字+美元
-        r'\d+\s*万美元',       # 数字+万美元
-        r'\d+\s*亿美元',       # 数字+亿美元
-        r'\d+\s*千美元',       # 数字+千美元
-        r'\$\s*\d+',          # $+数字
-        r'\d+\s*日元',         # 数字+日元
-        r'\d+\s*万日元',       # 数字+万日元
-        r'\d+\s*亿日元',       # 数字+亿日元
-        r'\d+\s*千日元',       # 数字+千日元
-        r'¥\s*\d+',           # ¥+数字
-        r'\d+\s*欧元',         # 数字+欧元
-        r'\d+\s*万欧元',       # 数字+万欧元
-        r'\d+\s*亿欧元',       # 数字+亿欧元
-        r'\d+\s*千欧元',       # 数字+千欧元
-        r'€\s*\d+',           # €+数字
-        r'\d+\s*英镑',         # 数字+英镑
-        r'\d+\s*万英镑',       # 数字+万英镑
-        r'\d+\s*亿英镑',       # 数字+亿英镑
-        r'\d+\s*千英镑',       # 数字+千英镑
-        r'£\s*\d+',           # £+数字
-        r'\d+\s*韩元',         # 数字+韩元
-        r'\d+\s*万韩元',       # 数字+万韩元
-        r'\d+\s*亿韩元',       # 数字+亿韩元
-        r'\d+\s*千韩元',       # 数字+千韩元
-        r'₩\s*\d+',           # ₩+数字
-        r'HK\$\s*\d+',        # HK$+数字
-        r'NT\$\s*\d+',        # NT$+数字
-        r'A\$\s*\d+',         # A$+数字
-        r'C\$\s*\d+',         # C$+数字
-        r'S\$\s*\d+',         # S$+数字
-        r'R\$\s*\d+',         # R$+数字
-        r'MX\$\s*\d+',        # MX$+数字
-        r'\d+\s*卢比',         # 数字+卢比
-        r'\d+\s*万卢比',       # 数字+万卢比
-        r'\d+\s*亿卢比',       # 数字+亿卢比
-        r'₹\s*\d+',           # ₹+数字
-        r'\d+\s*卢布',         # 数字+卢布
-        r'\d+\s*万卢布',       # 数字+万卢布
-        r'\d+\s*亿卢布',       # 数字+亿卢布
-        r'₽\s*\d+',           # ₽+数字
-        r'\d+\s*雷亚尔',       # 数字+雷亚尔
-        r'\d+\s*万雷亚尔',     # 数字+万雷亚尔
-        r'\d+\s*比索',         # 数字+比索
-        r'\d+\s*万比索',       # 数字+万比索
-        r'\d+\s*里拉',         # 数字+里拉
-        r'\d+\s*万里拉',       # 数字+万里拉
-        r'₺\s*\d+',           # ₺+数字
-        r'\d+\s*兰特',         # 数字+兰特
-        r'\d+\s*万兰特',       # 数字+万兰特
-        r'\d+\s*泰铢',         # 数字+泰铢
-        r'\d+\s*万泰铢',       # 数字+万泰铢
-        r'฿\s*\d+',           # ฿+数字
-        r'\d+\s*林吉特',       # 数字+林吉特
-        r'\d+\s*万林吉特',     # 数字+万林吉特
-        r'RM\s*\d+',          # RM+数字
-        r'\d+\s*印尼盾',       # 数字+印尼盾
-        r'\d+\s*万印尼盾',     # 数字+万印尼盾
-        r'Rp\s*\d+',          # Rp+数字
-        r'\d+\s*菲律宾比索',   # 数字+菲律宾比索
-        r'\d+\s*万菲律宾比索', # 数字+万菲律宾比索
-        r'₱\s*\d+',           # ₱+数字
-        r'\d+\s*越南盾',       # 数字+越南盾
-        r'\d+\s*万越南盾',     # 数字+万越南盾
-        r'₫\s*\d+',           # ₫+数字
-    ]
+    currency_patterns = CURRENCY_PATTERNS
 
     # 检查是否包含真正的金额表达
     has_currency = any(re.search(pattern, title) for pattern in currency_patterns)

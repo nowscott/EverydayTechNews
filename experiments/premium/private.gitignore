@@ -1,0 +1,9 @@
+state.sqlite3*
+*.lock
+*.tmp
+.cache/
+transient/
+feeds/
+.env*
+__pycache__/
+source-health.json

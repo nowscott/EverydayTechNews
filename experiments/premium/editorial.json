@@ -1,0 +1,33 @@
+{
+  "version": "interests-1",
+  "interest_weights": {
+    "AI": 12,
+    "Apple": 12,
+    "NVIDIA": 12,
+    "Tesla": 12,
+    "SpaceX": 12
+  },
+  "edition_minimum": 15,
+  "edition_maximum": 20,
+  "lead_count": 5,
+  "new_versions_per_day": 100,
+  "processing_limit_mode": "daily_versions_and_budget",
+  "batch_size": 4,
+  "broad_topics": [
+    "芯片",
+    "开发工具",
+    "软件更新",
+    "安全",
+    "机器人",
+    "智能汽车",
+    "商业航天",
+    "其他科技"
+  ],
+  "domain_policy": {
+    "version": "domains-1",
+    "maximum_per_domain": 4,
+    "maximum_leads_per_domain": 2
+  },
+  "selection_window": "rolling_24h",
+  "reuse_previous_day_samples": true
+}

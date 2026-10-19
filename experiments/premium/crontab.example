@@ -1,0 +1,7 @@
+# NOT INSTALLED. Alternative local scheduler; do not install alongside private Actions.
+# UTC host: previous-day21:00=Shanghai05:00;22:15=06:15;22:30=06:30.
+# Initialize pool and finite trial first. Secrets come from a private external wrapper.
+# tick reconciles collection/AI/compose/delivery due work; each stage keeps its own state.
+15,25,45,55 * * * * cd /ABSOLUTE/EverydayTechNews && /ABSOLUTE/private-env-wrapper .venv/bin/python experiments/premium/run_trial.py tick >> premium_data/scheduler.log 2>&1
+5,10,30 22 * * * cd /ABSOLUTE/EverydayTechNews && /ABSOLUTE/private-env-wrapper .venv/bin/python experiments/premium/run_trial.py tick >> premium_data/scheduler.log 2>&1
+0 23 * * * cd /ABSOLUTE/EverydayTechNews && .venv/bin/python experiments/premium/run_trial.py report >> premium_data/scheduler.log 2>&1

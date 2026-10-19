@@ -1,3 +1,4 @@
+import os
 import requests
 
 
@@ -73,6 +74,8 @@ def fetch_notion_users(api_key, database_id):
             status, status_property_name, status_property_type = _extract_status(
                 properties
             )
+            if os.getenv("PREMIUM_PRODUCTION_ENABLED", "false").lower() == "true" and properties.get("高级订阅", {}).get("checkbox") is True:
+                continue
             if status != "正常":
                 continue
 
