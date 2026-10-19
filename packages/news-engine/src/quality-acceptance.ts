@@ -31,7 +31,9 @@ export async function verifyQuality(store: Store): Promise<Row> {
     const draft = { title: shown, summary: shown, short_summary: shown, points: [], why: '', uncertainties: [], claims: [{ claim: shown, evidence: c.original }], generated_at: stamp() };
     const key = digest('quality-acceptance-' + id + '-' + spec.issue_id);
     store.run('INSERT OR IGNORE INTO jobs(key,article,status,result) VALUES (?,?,?,?)', key, pyjson({ ...a, task_kind: 'acceptance_fixture', output_schema: 'fixture-1' }), 'pending_ai_review', pyjson(draft));
-    const outcome = await reviewDraft(store, store.one('SELECT * FROM jobs WHERE key=?', key)!, a, p, spec);
+    const frozenJob = store.one('SELECT * FROM jobs WHERE key=?', key)!;
+    const frozenArticle = { ...JSON.parse(frozenJob.article), output_schema: 'dual-1' };
+    const outcome = await reviewDraft(store, frozenJob, frozenArticle, p, spec);
     if (!['ai_approved', 'ai_rejected'].includes(outcome)) { spec.blocked = outcome; atomic(path, spec); store.checkpoint(); return { status: 'blocked', reason: outcome, completed: spec.results.length }; }
     spec.results.push({ id, expected: valid ? 'ai_approved' : 'ai_rejected', actual: outcome, passed: outcome === (valid ? 'ai_approved' : 'ai_rejected') });
     atomic(path, spec); store.checkpoint();

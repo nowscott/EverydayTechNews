@@ -45,6 +45,7 @@ test('independent review uses separate prompt and same pre-POST budget ledger; e
     const deps = { now, token: 'test', verify: async () => true, fetcher: (async (_: any, options: any) => {
       requests++; const body = JSON.parse(options.body); assert.ok(body.messages[0].content.includes('独立科技新闻审稿员'));
       const input = JSON.parse(body.messages[1].content); assert.deepEqual(input.fields, Object.keys(displayFields(draft)));
+      assert.equal(input.draft.ai_review, undefined); assert.equal(input.draft.claims, undefined);
       assert.equal(store.all('SELECT * FROM calls').at(-1)?.status, 'reserved'); return response(good());
     }) as typeof fetch };
     const job = store.one('SELECT * FROM jobs WHERE key=?', key)!;
