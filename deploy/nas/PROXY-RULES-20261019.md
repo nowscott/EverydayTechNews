@@ -40,3 +40,13 @@
 用户随后确认：手机 DNS 手动仅使用 NAS 并重连后，Google 与 X 均可访问。对应手机连接已包含正确域名，X 主站、API、图片和视频命中海外服务规则并有数据返回。这验证了客户端 DNS 路径是本次故障的关键环节；ChatGPT 网页与 App 继续单独验收，不因 Google/X 恢复而提前宣称通过。
 
 最终手机验收：用户进一步确认 ChatGPT 网页和 App 均正常。Telegram、X、Google、ChatGPT 的本轮手机端验证全部通过。
+
+## 切换官方规则（21:48）
+
+版本 `proxy-metacubex-20261019-3`，策略快照见 [proxy-policy.metacubex.json](proxy-policy.metacubex.json)。核对实际 URL 后确认旧规则来自第三方 gogyt/Mihomo，经 gh-proxy.com 下载；现已将全部来源换为 MetaCubeX/meta-rules-dat 官方 meta 分支的 MRS 文件，不再经第三方转发。26 个规则集每天检查更新，经现有海外组获取；首次切换已预先下载缓存并记录 SHA-256。规则下载失败时可使用已有本地缓存。
+
+新增 Telegram、Twitter、OpenAI、境外域名分类及 Telegram/Twitter IP 规则。Telegram 静态地址快照由官方可更新 IP 集替代。国内和私网直连，海外分类走代理，末尾改为 MATCH 海外服务，避免未分类境外 IP 再次落入直连。兜底可能增加既有代理套餐流量；没有增加付费服务。先按已有国内规则分流，不宣称任何社区规则能完全覆盖所有网站。
+
+配置校验通过；26 个活动规则集均有条目，运行末尾规则确认是海外服务。热重载前后 DNS、TUN、订阅提供者、分组配置和选择一致。海外组仍选香港，AI 组仍选新加坡。Google 连通性端点 204，X、Telegram 网页、GitHub API、百度均 200；两个 Telegram 原始 IP 的 SOCKS5 TCP 握手成功。ChatGPT 的自动 HTTP 探测仍为 Cloudflare 验证 403，不能据此判定手机 App 故障；本次切换后手机端待复测，前一版手机网页与 App 已由用户确认正常。
+
+宿主备份：`/vol3/1000/Docker/opensurge-local-20261019/config/officialrules-backup-20261019-214822`。活动 profile：`MetaCubeX-managed-20261019-214822.yaml`。回退沿用上文的 config/runtime payload/选择恢复流程；备份仅留 NAS。未改变手机或路由器 DNS 设置，客户端仍须使用 NAS DNS。该操作仅管理代理，不触发新闻生成、模型调用或邮件发送。
