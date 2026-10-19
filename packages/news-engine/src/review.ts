@@ -1,5 +1,5 @@
 import { Store } from './store.ts';
-import { stamp, pyjson, type Row } from './core.ts';
+import { pyjson, type Row } from './core.ts';
 import { paidRequest, validate, type PaidDependencies } from './model.ts';
 import { REVIEW_VERSION, reviewKey, displayFields, isApproved } from './quality.ts';
 

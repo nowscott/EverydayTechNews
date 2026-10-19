@@ -9,7 +9,7 @@ export function displayFields(draft: Row): Record<string, string> {
 }
 export function draftHash(draft: Row): string { return digest(pyjson(displayFields(draft), true)); }
 export function reviewKey(a: Row, draft: Row, p: Row): string {
-  return digest(pyjson([a.content_fingerprint, a.url, a.published_at, draftHash(draft), p.model, p.model_version, REVIEW_VERSION, digest(REVIEW_PROMPT), a.prior_evidence ?? []], true));
+  return digest(pyjson([a.content_fingerprint, a.url, a.published_at, draftHash(draft), p.model, p.model_version, REVIEW_VERSION, digest(REVIEW_PROMPT), (a.prior_evidence ?? []).map((old: Row) => ({ url: old.url, title: old.title, published_at: old.published_at, fingerprint: old.content_fingerprint, body_hash: digest(old.text ?? '') }))], true));
 }
 export function validateReview(value: any, a: Row): Row {
   const fields = displayFields(a.review_draft);
