@@ -144,6 +144,17 @@ class DeploymentTests(unittest.TestCase):
             self.c.activate(self.new)
         self.assertEqual([h['tag'] for h in self.c.state()['history']], [self.new['tag']])
 
+    def test_startup_uses_empty_credentials_and_disabled_network(self):
+        def command(args, **kwargs):
+            self.assertEqual(args[:2], ['docker', 'compose'])
+            self.assertEqual(Path(kwargs['env']['NAS_ENV_FILE']).read_text(), '')
+            self.assertEqual(kwargs['env']['NAS_IMAGE'], self.new['image'])
+            overlay = Path(args[args.index('run') - 1])
+            self.assertIn('network_mode: none', overlay.read_text())
+            self.assertEqual(args[-4:], ['--entrypoint', 'node', 'premium', '--version'])
+            return 'v24'
+        with patch.object(self.c, 'command', side_effect=command): self.c.startup(self.new, self.data)
+
     def test_release_must_pass_main_ci(self):
         def command(args, **_):
             if 'rev-parse' in args: return 'b' * 40

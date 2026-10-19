@@ -150,7 +150,20 @@ class Controller:
         return {'tag': tag, 'sha': sha, 'source': str(directory), 'image': info['Id'], 'image_tag': image,
                 'schema': 1, 'deployed_at': dt.datetime.now(SHANGHAI).isoformat()}
 
+    def startup(self, candidate, snapshot):
+        source = Path(candidate['source']) / 'deploy/nas' if not candidate.get('legacy') else self.root
+        with tempfile.TemporaryDirectory(prefix='startup-', dir=self.root) as temp:
+            empty = Path(temp) / 'empty.env'; empty.write_text('')
+            network = Path(temp) / 'network.yaml'
+            network.write_text('services:\n  premium:\n    network_mode: none\n')
+            env = {**os.environ, 'NAS_IMAGE': candidate['image'], 'NAS_ENV_FILE': str(empty),
+                   'NAS_DATA_DIR': str(snapshot), 'NAS_UID': str(os.getuid()), 'NAS_GID': str(os.getgid())}
+            self.command(['docker', 'compose', '--env-file', str(empty),
+                          '-f', str(source / 'compose.managed.yaml'), '-f', str(source / 'compose.proxy.yaml'),
+                          '-f', str(network), 'run', '--rm', '--entrypoint', 'node', 'premium', '--version'], env=env)
+
     def validate(self, candidate, snapshot):
+        self.startup(candidate, snapshot)
         self.command(['docker', 'run', '--rm', '--network', 'none', '--read-only', '--cap-drop', 'ALL',
                       '--security-opt', 'no-new-privileges:true', '--user', str(os.getuid()) + ':' + str(os.getgid()),
                       '--tmpfs', '/tmp:rw,size=128m,mode=1777', '-v', str(snapshot) + ':/data',
