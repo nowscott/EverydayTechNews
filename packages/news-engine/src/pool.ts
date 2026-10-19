@@ -264,10 +264,11 @@ export function reportTrial(store: Store, now = new Date()) {
     const accepted = receipts.find(r => (r.issue === id || r.issue.startsWith(id + '-r-')) && r.status === 'smtp_accepted');
     if (accepted && existsSync(store.root + '/issues/' + accepted.issue + '/edition.json')) issue = read(store.root + '/issues/' + accepted.issue + '/edition.json'); const delivery = receipts.filter(r => (r.issue === id || r.issue.startsWith(id + '-r-'))).map(r => r.status);
     const overdue = date < day(now) || date === day(now) && localParts(now).hour >= 9;
-    days.push({ day: date, status: issue?.kind ?? 'missing', reason: overdue && !delivery.includes('smtp_accepted') ? 'scheduler_missed_delivery_deadline' : null,
+    const outcome = issue?.kind === 'diagnostic' ? 'insufficient_content' : accepted ? (Date.parse(accepted.accepted_at) < at(date, '06:31:00').getTime() ? 'on_time' : 'delayed') : delivery.some(s => ['sending', 'unknown_do_not_retry'].includes(s)) ? 'delivery_unknown' : overdue ? 'missed' : 'pending';
+    days.push({ day: date, outcome, accepted_at: accepted?.accepted_at ?? null, delay_seconds: accepted?.accepted_at ? Math.max(0, Math.floor((Date.parse(accepted.accepted_at) - at(date, '06:30:00').getTime()) / 1000)) : null, status: issue?.kind ?? 'missing', reason: overdue && !delivery.includes('smtp_accepted') ? 'scheduler_missed_delivery_deadline' : null,
       generated: issue?.articles.length ?? 0, delivery, manual_makeup_delivery: receipts.filter(r => r.issue === 'sample-ts-makeup-' + date).map(r => r.status), ai_review: issue?.quality_policy === 'fidelity-1' ? 'passed_for_included_articles' : 'not_verified', normal_edition: !!issue && issue.quality_policy === 'fidelity-1' && issue.kind === 'newsletter' && delivery.includes('smtp_accepted') });
   }
-  const result = { days, completed_normal_editions: days.filter(d => d.normal_edition).length, accounting: status(store).calls, ai_review_outcomes: store.all("SELECT status,COUNT(*) count FROM jobs WHERE json_extract(article,'$.task_kind')='review' GROUP BY status"), quality_control: 'ai_fidelity_review', bill_paid: 'not_verified', engine: 'typescript' };
+  const result = { days, completed_normal_editions: days.filter(d => d.normal_edition).length, accounting: status(store).calls, ai_review_outcomes: store.all("SELECT status,COUNT(*) count FROM jobs WHERE json_extract(article,'$.task_kind')='review' AND json_extract(article,'$.url') NOT LIKE 'https://example.invalid/quality/%' GROUP BY status"), quality_control: 'ai_fidelity_review', bill_paid: 'not_verified', engine: 'typescript' };
   atomic(store.root + '/trial-report.json', result); store.checkpoint(); return result;
 }
 export function due(store: Store, now = new Date()) {
