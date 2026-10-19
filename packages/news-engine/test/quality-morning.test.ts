@@ -8,7 +8,7 @@ import { displayFields, validateReview, reviewKey, isApproved } from '../src/qua
 import { reviewDraft, prepareRevision } from '../src/review.ts';
 import { cacheKey, paidRequest } from '../src/model.ts';
 import { morningTick, morningTime } from '../src/morning.ts';
-import { due, refreshDeliveryIssue } from '../src/pool.ts';
+import { due, refreshDeliveryIssue, reportTrial } from '../src/pool.ts';
 import { freezeIssue, sendOnce } from '../src/mail.ts';
 import { premiumSubscribers, authorizedTestRecipient } from '../src/subscribers.ts';
 
@@ -154,5 +154,21 @@ test('morning transient Notion failure stays resumable; private-state failure re
     assert.deepEqual(await morningTick(store, clock, deps), { status: 'notion_delivery_blocked', terminal: false });
     deps.deliver = async () => { throw new Error('push_failed'); };
     await assert.rejects(() => morningTick(store, clock, deps), /push_failed/);
+  } finally { close(); }
+});
+
+test('daily report distinguishes on-time, delayed, insufficient and unknown outcomes', () => {
+  const { store, close } = setup();
+  try {
+    const id = 'test-2026-10-19';
+    atomic(store.root + '/issues/' + id + '/edition.json', { id, kind: 'newsletter', quality_policy: 'fidelity-1', articles: [] });
+    for (const [time, expected] of [['06:30:10', 'on_time'], ['08:30:00', 'delayed']]) {
+      atomic(store.root + '/deliveries/unit.json', { issue: id, status: 'smtp_accepted', accepted_at: '2026-10-19T' + time + '+08:00' });
+      assert.equal(reportTrial(store, new Date('2026-10-19T09:00:00+08:00')).days[0].outcome, expected);
+    }
+    atomic(store.root + '/deliveries/unit.json', { issue: id, status: 'unknown_do_not_retry' });
+    assert.equal(reportTrial(store, new Date('2026-10-19T09:00:00+08:00')).days[0].outcome, 'delivery_unknown');
+    atomic(store.root + '/issues/' + id + '/edition.json', { id, kind: 'diagnostic', articles: [] });
+    assert.equal(reportTrial(store, new Date('2026-10-19T09:00:00+08:00')).days[0].outcome, 'insufficient_content');
   } finally { close(); }
 });
