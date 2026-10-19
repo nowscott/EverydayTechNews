@@ -1,0 +1,293 @@
+{
+  "version": "proxy-metacubex-20261019-3",
+  "source": "https://github.com/MetaCubeX/meta-rules-dat",
+  "rule-providers": {
+    "private": {
+      "type": "http",
+      "behavior": "domain",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/private.mrs",
+      "path": "./rules/metacubex-managed/private.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "category-game-platforms-download": {
+      "type": "http",
+      "behavior": "domain",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/category-game-platforms-download.mrs",
+      "path": "./rules/metacubex-managed/category-game-platforms-download.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "category-games-cn": {
+      "type": "http",
+      "behavior": "domain",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/category-games-cn.mrs",
+      "path": "./rules/metacubex-managed/category-games-cn.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "apple@cn": {
+      "type": "http",
+      "behavior": "domain",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/apple@cn.mrs",
+      "path": "./rules/metacubex-managed/apple@cn.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "apple": {
+      "type": "http",
+      "behavior": "domain",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/apple.mrs",
+      "path": "./rules/metacubex-managed/apple.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "microsoft@cn": {
+      "type": "http",
+      "behavior": "domain",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/microsoft@cn.mrs",
+      "path": "./rules/metacubex-managed/microsoft@cn.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "microsoft": {
+      "type": "http",
+      "behavior": "domain",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/microsoft.mrs",
+      "path": "./rules/metacubex-managed/microsoft.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "category-ai-!cn": {
+      "type": "http",
+      "behavior": "domain",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/category-ai-!cn.mrs",
+      "path": "./rules/metacubex-managed/category-ai-!cn.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "google": {
+      "type": "http",
+      "behavior": "domain",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/google.mrs",
+      "path": "./rules/metacubex-managed/google.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "youtube": {
+      "type": "http",
+      "behavior": "domain",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/youtube.mrs",
+      "path": "./rules/metacubex-managed/youtube.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "github": {
+      "type": "http",
+      "behavior": "domain",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/github.mrs",
+      "path": "./rules/metacubex-managed/github.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "category-games": {
+      "type": "http",
+      "behavior": "domain",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/category-games.mrs",
+      "path": "./rules/metacubex-managed/category-games.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "category-communication": {
+      "type": "http",
+      "behavior": "domain",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/category-communication.mrs",
+      "path": "./rules/metacubex-managed/category-communication.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "category-social-media-!cn": {
+      "type": "http",
+      "behavior": "domain",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/category-social-media-!cn.mrs",
+      "path": "./rules/metacubex-managed/category-social-media-!cn.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "category-entertainment": {
+      "type": "http",
+      "behavior": "domain",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/category-entertainment.mrs",
+      "path": "./rules/metacubex-managed/category-entertainment.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "gfw": {
+      "type": "http",
+      "behavior": "domain",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/gfw.mrs",
+      "path": "./rules/metacubex-managed/gfw.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "cn": {
+      "type": "http",
+      "behavior": "domain",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/cn.mrs",
+      "path": "./rules/metacubex-managed/cn.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "private_IP": {
+      "type": "http",
+      "behavior": "ipcidr",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/private.mrs",
+      "path": "./rules/metacubex-managed/private_IP.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "google_IP": {
+      "type": "http",
+      "behavior": "ipcidr",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/google.mrs",
+      "path": "./rules/metacubex-managed/google_IP.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "cn_IP": {
+      "type": "http",
+      "behavior": "ipcidr",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/cn.mrs",
+      "path": "./rules/metacubex-managed/cn_IP.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "telegram": {
+      "type": "http",
+      "behavior": "domain",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/telegram.mrs",
+      "path": "./rules/metacubex-managed/telegram.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "twitter": {
+      "type": "http",
+      "behavior": "domain",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/twitter.mrs",
+      "path": "./rules/metacubex-managed/twitter.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "openai": {
+      "type": "http",
+      "behavior": "domain",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/openai.mrs",
+      "path": "./rules/metacubex-managed/openai.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "geolocation-!cn": {
+      "type": "http",
+      "behavior": "domain",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/geolocation-!cn.mrs",
+      "path": "./rules/metacubex-managed/geolocation-!cn.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "telegram_IP": {
+      "type": "http",
+      "behavior": "ipcidr",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/telegram.mrs",
+      "path": "./rules/metacubex-managed/telegram_IP.mrs",
+      "proxy": "🌍 海外服务"
+    },
+    "twitter_IP": {
+      "type": "http",
+      "behavior": "ipcidr",
+      "format": "mrs",
+      "interval": 86400,
+      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/twitter.mrs",
+      "path": "./rules/metacubex-managed/twitter_IP.mrs",
+      "proxy": "🌍 海外服务"
+    }
+  },
+  "rules": [
+    "DOMAIN-SUFFIX,local,DIRECT",
+    "IP-CIDR,192.168.31.0/24,DIRECT,no-resolve",
+    "RULE-SET,private,DIRECT",
+    "RULE-SET,private_IP,DIRECT,no-resolve",
+    "RULE-SET,category-game-platforms-download,DIRECT",
+    "RULE-SET,category-games-cn,DIRECT",
+    "RULE-SET,apple@cn,DIRECT",
+    "RULE-SET,microsoft@cn,DIRECT",
+    "RULE-SET,openai,🤖 AI 服务",
+    "RULE-SET,category-ai-!cn,🤖 AI 服务",
+    "RULE-SET,github,🧑‍💻 开发服务",
+    "DOMAIN-SUFFIX,npmjs.org,🧑‍💻 开发服务",
+    "DOMAIN-SUFFIX,npmjs.com,🧑‍💻 开发服务",
+    "DOMAIN-SUFFIX,githubusercontent.com,🧑‍💻 开发服务",
+    "DOMAIN-SUFFIX,githubassets.com,🧑‍💻 开发服务",
+    "DOMAIN-SUFFIX,ghcr.io,🧑‍💻 开发服务",
+    "DOMAIN-SUFFIX,docker.io,🧑‍💻 开发服务",
+    "DOMAIN-SUFFIX,docker.com,🧑‍💻 开发服务",
+    "DOMAIN-SUFFIX,quay.io,🧑‍💻 开发服务",
+    "DOMAIN-SUFFIX,pypi.org,🧑‍💻 开发服务",
+    "DOMAIN-SUFFIX,pythonhosted.org,🧑‍💻 开发服务",
+    "DOMAIN-SUFFIX,huggingface.co,🧑‍💻 开发服务",
+    "DOMAIN-SUFFIX,hf.co,🧑‍💻 开发服务",
+    "DOMAIN-SUFFIX,stackoverflow.com,🧑‍💻 开发服务",
+    "DOMAIN-SUFFIX,stackexchange.com,🧑‍💻 开发服务",
+    "DOMAIN-SUFFIX,cloudflare.com,🧑‍💻 开发服务",
+    "RULE-SET,telegram,🌍 海外服务",
+    "RULE-SET,twitter,🌍 海外服务",
+    "RULE-SET,telegram_IP,🌍 海外服务,no-resolve",
+    "RULE-SET,twitter_IP,🌍 海外服务,no-resolve",
+    "RULE-SET,google,🌍 海外服务",
+    "RULE-SET,youtube,🌍 海外服务",
+    "RULE-SET,google_IP,🌍 海外服务,no-resolve",
+    "RULE-SET,apple,🍎 Apple 服务",
+    "RULE-SET,category-games,🎮 游戏平台",
+    "RULE-SET,microsoft,DIRECT",
+    "RULE-SET,category-communication,🌍 海外服务",
+    "RULE-SET,category-social-media-!cn,🌍 海外服务",
+    "RULE-SET,category-entertainment,🌍 海外服务",
+    "RULE-SET,gfw,🌍 海外服务",
+    "RULE-SET,geolocation-!cn,🌍 海外服务",
+    "RULE-SET,cn,DIRECT",
+    "RULE-SET,cn_IP,DIRECT,no-resolve",
+    "MATCH,🌍 海外服务"
+  ],
+  "preserve": [
+    "dns",
+    "tun",
+    "proxy-providers",
+    "proxy-groups",
+    "selector choices"
+  ]
+}
