@@ -1,0 +1,17 @@
+**
+!packages/
+!packages/news-engine/
+!packages/news-engine/package.json
+!packages/news-engine/package-lock.json
+!packages/news-engine/src/
+!packages/news-engine/src/**
+!experiments/
+!experiments/premium/
+!experiments/premium/*.json
+!config/
+!config/news-filter.json
+!deploy/
+!deploy/nas/
+!deploy/nas/Dockerfile
+!deploy/nas/entrypoint.sh
+!deploy/nas/verify-state.ts

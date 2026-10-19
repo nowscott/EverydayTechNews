@@ -93,7 +93,7 @@ test('legacy state snapshot round-trips with matching jobs, costs, keys and bodi
     store.checkpoint(); store.db.close();
     const after = JSON.parse(readFileSync(temp + '/durable/state.json', 'utf8'));
     assert.deepEqual(after.tables.calls, before.tables.calls); assert.equal(count, before.tables.calls.length);
-    assert.deepEqual(after.tables.jobs.map((r: Row) => [r.key, r.status, r.attempts]), before.tables.jobs.map((r: Row) => [r.key, r.status, r.attempts]));
+    assert.deepEqual(after.tables.jobs.map((r: Row) => [r.key, r.status, r.attempts]), before.tables.jobs.map((r: Row) => [r.key, r.status === 'pending_human_review' ? (r.result ? 'pending_ai_review' : 'queued') : r.status, r.attempts]));
     const code = `import sys,json;sys.path.insert(0,${JSON.stringify(repo + 'experiments/premium')});from durable import Store;s=Store(sys.argv[1]);print(json.dumps(dict(calls=s.db.execute('SELECT COUNT(*) FROM calls').fetchone()[0],jobs=s.db.execute('SELECT COUNT(*) FROM jobs').fetchone()[0])));s.db.close()`;
     const result = spawnSync(python, ['-c', code, temp], { encoding: 'utf8' }); assert.equal(result.status, 0, result.stderr);
     assert.equal(JSON.parse(result.stdout).calls, count);

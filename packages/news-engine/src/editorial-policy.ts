@@ -27,25 +27,48 @@ export function analyzeDomain(a: Row): Row {
   for (const [name, pattern] of domains) if (search(pattern, a.title)) return { primary: name, version: 'domains-1', basis: 'title' };
   return { primary: '科技产业', version: 'domains-1', basis: 'fallback' };
 }
+export function publisherKey(a: Row): string | null {
+  let host: string;
+  try { host = new URL(a.url).hostname.toLowerCase().replace(/^www\./, ''); }
+  catch { return a.source ? 'source:' + a.source : null; }
+  return ['ithome.com', 'apple.com', 'nasa.gov', 'nvidia.com', 'microsoft.com', 'cloudflare.com', 'electrek.co']
+    .find(root => host === root || host.endsWith('.' + root)) ?? host;
+}
+export function publisherMaximum(a: Row): number {
+  const p = preferences().source_policy as Row;
+  return Number(p.overrides?.[publisherKey(a) ?? ''] ?? p.maximum_per_publisher);
+}
+export function publisherCapacityReached(a: Row, records: Row[]): boolean {
+  const key = publisherKey(a);
+  return !!key && records.filter(r => publisherKey(r.article ?? r) === key).length >= publisherMaximum(a);
+}
 export function limitDomains<T extends Row>(input: T[], rejected: Row[] = [], maximum = Number(preferences().edition_maximum)): T[] {
   const p = preferences().domain_policy as Row; const counts = new Map<string, number>(); const leads = new Map<string, number>(); const chosen: T[] = []; const deferred: T[] = [];
+  const sourcePolicy = preferences().source_policy as Row; const publishers = new Map<string, number>(); const publisherLeads = new Map<string, number>();
   const leadCount = Number(preferences().lead_count);
   for (const original of input) {
     const a = original.article ?? original; const domain = analyzeDomain(a); a.domain = domain.primary; a.domain_analysis = domain;
     const exclusion = titleExclusion(a.title) ?? (original.result?.title ? titleExclusion(original.result.title) : null);
     if (exclusion) { rejected.push({ id: a.id, ...exclusion }); continue; }
+    const publisher = publisherKey(a);
+    if (publisher && (publishers.get(publisher) ?? 0) >= publisherMaximum(a)) { rejected.push({ id: a.id, reason: 'publisher_capacity', publisher }); continue; }
     if ((counts.get(a.domain) ?? 0) >= p.maximum_per_domain) { rejected.push({ id: a.id, reason: 'domain_capacity', domain: a.domain }); continue; }
-    if (chosen.length < leadCount && (leads.get(a.domain) ?? 0) >= p.maximum_leads_per_domain) { deferred.push(original); continue; }
+    if (chosen.length < leadCount && ((leads.get(a.domain) ?? 0) >= p.maximum_leads_per_domain
+      || publisher && (publisherLeads.get(publisher) ?? 0) >= sourcePolicy.maximum_leads_per_publisher)) { deferred.push(original); continue; }
     if (chosen.length >= maximum) { rejected.push({ id: a.id, reason: 'edition_capacity', domain: a.domain }); continue; }
     chosen.push(original); counts.set(a.domain, (counts.get(a.domain) ?? 0) + 1);
+    if (publisher) publishers.set(publisher, (publishers.get(publisher) ?? 0) + 1);
     if (chosen.length <= leadCount) leads.set(a.domain, (leads.get(a.domain) ?? 0) + 1);
+    if (chosen.length <= leadCount && publisher) publisherLeads.set(publisher, (publisherLeads.get(publisher) ?? 0) + 1);
   }
   // If fewer than five distinct-enough leads exist, keep a short edition rather than silently exceeding the lead limit.
   if (chosen.length >= leadCount) for (const row of deferred) {
     const a = row.article ?? row;
-    if (chosen.length < maximum && (counts.get(a.domain) ?? 0) < p.maximum_per_domain) { chosen.push(row); counts.set(a.domain, (counts.get(a.domain) ?? 0) + 1); }
+    const publisher = publisherKey(a);
+    if (publisher && (publishers.get(publisher) ?? 0) >= publisherMaximum(a)) { rejected.push({ id: a.id, reason: 'publisher_capacity', publisher }); continue; }
+    if (chosen.length < maximum && (counts.get(a.domain) ?? 0) < p.maximum_per_domain) { chosen.push(row); counts.set(a.domain, (counts.get(a.domain) ?? 0) + 1); if (publisher) publishers.set(publisher, (publishers.get(publisher) ?? 0) + 1); }
     else rejected.push({ id: a.id, reason: chosen.length >= maximum ? 'edition_capacity' : 'domain_capacity', domain: a.domain });
   }
-  else for (const row of deferred) rejected.push({ id: (row.article ?? row).id, reason: 'lead_domain_capacity', domain: (row.article ?? row).domain });
+  else for (const row of deferred) rejected.push({ id: (row.article ?? row).id, reason: 'lead_diversity_capacity', domain: (row.article ?? row).domain, publisher: publisherKey(row.article ?? row) });
   return chosen;
 }

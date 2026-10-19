@@ -3,6 +3,8 @@ on:
   push:
     branches: [main]
     paths:
+      - 'deploy/nas/**'
+      - '.dockerignore'
       - 'packages/news-engine/**'
       - 'experiments/premium/ranking.py'
       - 'experiments/premium/editorial.json'
@@ -11,6 +13,8 @@ on:
       - '.github/workflows/news-engine.yml'
   pull_request:
     paths:
+      - 'deploy/nas/**'
+      - '.dockerignore'
       - 'packages/news-engine/**'
       - 'experiments/premium/ranking.py'
       - 'experiments/premium/editorial.json'
@@ -45,3 +49,6 @@ jobs:
       - run: npm test
         env:
           PYTHON: python
+
+      - run: python -m unittest discover -s ../../deploy/nas/tests -v
+      - run: docker build -f ../../deploy/nas/Dockerfile ../.. -t news-engine-ci

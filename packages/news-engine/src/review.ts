@@ -6,8 +6,14 @@ import { REVIEW_VERSION, reviewKey, displayFields, isApproved } from './quality.
 export async function reviewDraft(store: Store, job: Row, a: Row, p: Row, permit?: Row, deps: PaidDependencies = {}): Promise<string> {
   if (!job.result) return 'no_draft';
   const draft = JSON.parse(job.result);
-  try { validate(draft, a); } catch { return 'invalid_cached_draft'; }
-  if (isApproved(a, draft, p)) return 'ai_approved';
+  try { validate(draft, a); } catch {
+    store.run("UPDATE jobs SET status='discarded_invalid_draft' WHERE key=?", job.key);
+    store.checkpoint(); return 'invalid_cached_draft';
+  }
+  if (isApproved(a, draft, p)) {
+    store.run("UPDATE jobs SET status='ai_approved' WHERE key=?", job.key);
+    store.checkpoint(); return 'ai_approved';
+  }
   const key = reviewKey(a, draft, p);
   const independentDraft = Object.fromEntries(['title', 'summary', 'short_summary', 'points', 'why'].map(k => [k, draft[k]]));
   const input = { ...a, output_schema: 'review-1', task_kind: 'review', review_draft: independentDraft, review_fields: Object.keys(displayFields(draft)) };

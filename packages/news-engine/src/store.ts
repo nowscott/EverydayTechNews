@@ -13,9 +13,23 @@ export function files(root: string): string[] {
   });
 }
 export class Store {
+  localAuthority: boolean;
+  get authoritative(): boolean { return this.syncGit || this.localAuthority; }
   root: string; syncGit: boolean; db: DatabaseSync; objects: Row; missing: string[] = [];
-  constructor(root: string, syncGit = false) {
+  constructor(root: string, syncGit = false, localAuthority = false) {
     this.root = resolve(root); this.syncGit = syncGit; mkdirSync(this.root, { recursive: true });
+    this.localAuthority = localAuthority;
+    if (localAuthority) {
+      if (syncGit) throw new Error('choose_one_state_authority');
+      const marker = this.root + '/.nas-authority.json';
+      if (lstatSync(this.root).isSymbolicLink() || (lstatSync(this.root).mode & 0o077) !== 0
+        || !existsSync(marker) || !lstatSync(marker).isFile() || lstatSync(marker).isSymbolicLink()
+        || (lstatSync(marker).mode & 0o077) !== 0) throw new Error('private_nas_handover_required');
+      const handover = read(marker);
+      if (handover.schema_version !== 1 || handover.kind !== 'nas_private_checkpoint' || handover.previous_runner_stopped !== true
+        || !/^[a-f0-9]{40}$/.test(handover.source_commit ?? '') || !/^[a-f0-9]{64}$/.test(handover.source_state_sha256 ?? '')
+        || !existsSync(this.root + '/durable/state.json')) throw new Error('private_nas_handover_required');
+    }
     if (syncGit) {
       const repo = JSON.parse(command(['gh', 'repo', 'view', '--json', 'nameWithOwner,visibility'], this.root));
       if (repo.nameWithOwner !== 'nowscott/EverydayTechNews-data' || repo.visibility !== 'PRIVATE') throw new Error('only_designated_private_state_repository_allowed');
@@ -98,6 +112,9 @@ export class Store {
       }
     });
     const health = this.one("SELECT data FROM meta WHERE key='health'"); if (health) atomic(this.root + '/source-health.json', JSON.parse(health.data));
+    // Legacy Python drafts enter the same automatic review queue as new drafts.
+    // This migration never grants approval or changes the saved draft/evidence.
+    if (this.run("UPDATE jobs SET status=CASE WHEN result IS NULL THEN 'queued' ELSE 'pending_ai_review' END WHERE status='pending_human_review'").changes) this.checkpoint();
   }
   checkpoint() {
     const tables: Row = {};

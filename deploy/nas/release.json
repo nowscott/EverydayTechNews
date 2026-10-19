@@ -1,0 +1,7 @@
+{
+  "component": "news-engine",
+  "version": "0.4.0",
+  "state_schema": 1,
+  "automatic_deployment": true,
+  "controller_protocol": 1
+}

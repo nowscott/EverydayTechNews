@@ -5,7 +5,8 @@ import { preferences, VERSION } from './ranking.ts';
 import { duplicate, select } from './editor.ts';
 import { cacheKey, paidRequest, validate, inspectRules, gate } from './model.ts';
 import { fetchSource, mapLimit, SOURCES } from './sources.ts';
-import { limitDomains, analyzeDomain, titleExclusion } from './editorial-policy.ts';
+import { limitDomains, analyzeDomain, titleExclusion, publisherCapacityReached } from './editorial-policy.ts';
+import { ACTIVE_SOURCES } from './constants.ts';
 import { reviewDraft, prepareRevision } from './review.ts';
 import { isApproved } from './quality.ts';
 import { freezeIssue, sendOnce } from './mail.ts';
@@ -30,7 +31,8 @@ export function candidates(store: Store, cutoff: string, target = Number.MAX_SAF
     const exclusion = titleExclusion(a.title);
     if (exclusion) { reasons.push({ id: a.id, title: a.title, ...exclusion }); continue; }
     let reason: string | null = null;
-    if (floor && Date.parse(a.published_at) < Date.parse(floor)) reason = 'expires_before_next_edition';
+    if (['electrek_tesla', 'teslanorth_tesla'].includes(a.source) && a.content_origin !== 'media_article_html') reason = 'media_article_body_unverified';
+    else if (floor && Date.parse(a.published_at) < Date.parse(floor)) reason = 'expires_before_next_edition';
     else if (a.evidence_expired_or_missing) reason = 'evidence_expired_or_missing';
     else if (!a.original_article_published_at && ['hn_submission', 'atom_update_not_publication', 'discovery_time_not_publication'].includes(a.published_time_kind)) reason = 'article_publication_unconfirmed';
     if (reason) { reasons.push({ id: a.id, reason }); continue; }
@@ -83,7 +85,17 @@ export function assess(store: Store, now = new Date()) {
 export async function collect(store: Store, workers = 4, fetcher: typeof fetch = fetch) {
   if (!Number.isInteger(workers) || workers < 1 || workers > 4) throw new Error('collection_workers_must_be_1_to_4');
   const start = performance.now(); const cpu = process.cpuUsage();
-  const results = await mapLimit(Object.keys(SOURCES), workers, source => fetchSource(source, store.root, fetcher));
+  const previous = store.one("SELECT data FROM meta WHERE key='health'");
+  const oldHealth: Row[] = previous ? JSON.parse(previous.data).sources ?? [] : [];
+  const results = await mapLimit(ACTIVE_SOURCES, workers, async (source): Promise<{ rows: Row[]; health: Row }> => {
+    const old = oldHealth.find(r => r.source === source);
+    const attempted = Date.parse(old?.last_attempt_at ?? '');
+    if (old?.http_status === 429 && Number.isFinite(attempted) && Date.now() < attempted + 3600000) {
+      return { rows: [] as Row[], health: { ...old, skipped: true, cooldown_until: stamp(new Date(attempted + 3600000)), seconds: 0 } };
+    }
+    const result = await fetchSource(source, store.root, fetcher);
+    return { ...result, health: { ...result.health, last_attempt_at: stamp() } };
+  });
   store.tx(() => {
     for (const result of results) for (const a of result.rows) {
       store.run('INSERT INTO observations VALUES (?,?,?,?)', a.id, a.content_fingerprint, a.source_observed_at, a.feed_sha256);
@@ -110,6 +122,7 @@ export async function enrich(store: Store) {
   if (ready.length >= Number(preferences().edition_maximum)) return { status: 'ready_pool_sufficient', ready: ready.length, calls: 0 };
   let reviewCalls = 0;
   for (const a of eligible) {
+    if (publisherCapacityReached(a, recordsReady(store, eligible, deadline, [], false))) continue;
     const job = store.one('SELECT * FROM jobs WHERE key=?', cacheKey(a, p));
     if (!job?.result) continue;
     const before = store.one('SELECT COUNT(*) n FROM calls')!.n;
@@ -126,6 +139,8 @@ export async function enrich(store: Store) {
     if (!attempted.has(job.key) && attempted.size >= Number(preferences().new_versions_per_day)) continue;
     const candidate = eligible.find(a => cacheKey(a, p) === job.key)!; const a: Row = { ...candidate, revision_feedback: JSON.parse(job.article).revision_feedback }; if (!a.text || a.evidence_expired_or_missing) continue; repairKnown(store, job, p);
     const completed = recordsReady(store, eligible, deadline, [], false);
+    if (publisherCapacityReached(a, completed)) continue;
+    if (publisherDraftCapacityReached(store, a, eligible, deadline)) continue;
     if (completed.filter(r => r.article.domain === analyzeDomain(a).primary).length >= Number((preferences().domain_policy as Row).maximum_per_domain)) continue;
     const before = store.one('SELECT COUNT(*) n FROM calls')!.n;
     const blocked = await paidRequest(store, job.key, a, p); const added = store.one('SELECT COUNT(*) n FROM calls')!.n - before;
@@ -166,6 +181,18 @@ function recordsReady(store: Store, articles: Row[], deadline: string, rejected:
   }
   return restrictDomains ? limitDomains(records, rejected) : records;
 }
+function publisherDraftCapacityReached(store: Store, a: Row, articles: Row[], deadline: string): boolean {
+  const p = policy();
+  const drafts = articles.filter(candidate => {
+    const job = store.one('SELECT result,status FROM jobs WHERE key=?', cacheKey(candidate, p));
+    if (!job?.result || job.status === 'ai_rejected') return false;
+    const result = JSON.parse(job.result);
+    if (titleExclusion(candidate.title) || titleExclusion(result.title ?? '')) return false;
+    if (!result.generated_at || !Number.isFinite(Date.parse(result.generated_at)) || Date.parse(result.generated_at) > Date.parse(deadline)) return false;
+    try { validate(result, candidate); return true; } catch { return false; }
+  });
+  return publisherCapacityReached(a, drafts);
+}
 export function compose(store: Store, now = new Date()) {
   const config = trial(store.root); if (!active(config, now)) return { status: 'trial_disabled_or_expired' };
   const cutoff = stamp(now); const deadline = stamp(at(day(now), '06:15:00'));
@@ -173,7 +200,7 @@ export function compose(store: Store, now = new Date()) {
   const id = 'test-' + day(now); const path = store.root + '/issues/' + id + '/edition.json'; if (existsSync(path)) return read(path);
   const [chosen, rejected] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER); const records = recordsReady(store, chosen, deadline, rejected);
   const issue = { id, pool_edition: true, quality_policy: 'fidelity-1', mode: 'daily_24h', selection_window: 'rolling_24h', collection_window_start: writingWindow(now)[1], reuse_previous_day_samples: !!preferences().reuse_previous_day_samples, collection_cutoff: cutoff, generation_cutoff: deadline, frozen_at: stamp(now), articles: records.map(r => r.article), rejected,
-    source_health: status(store).sources, shortfall: Math.max(0, Number(preferences().edition_minimum) - records.length), editorial_policy: preferences().domain_policy, ai_review: 'passed', kind: records.length >= Number(preferences().edition_minimum) ? 'newsletter' : 'diagnostic', sendable_count: 0, engine: 'typescript' };
+    source_health: status(store).sources, shortfall: Math.max(0, Number(preferences().edition_minimum) - records.length), editorial_policy: preferences().domain_policy, source_policy: preferences().source_policy, ai_review: 'passed', kind: records.length >= Number(preferences().edition_minimum) ? 'newsletter' : 'diagnostic', sendable_count: 0, engine: 'typescript' };
   return freezeIssue(store, issue, records);
 }
 export type SampleRevision = 'initial' | 'serif' | 'serif-retry' | 'makeup';
@@ -183,7 +210,7 @@ export function samplePath(root: string, revision: SampleRevision = 'initial') {
   return root + (revision === 'initial' ? '/durable/ts-launch.json' : '/durable/ts-launch-' + revision + '.json');
 }
 export async function launchSample(store: Store, revision: SampleRevision = 'initial') {
-  if (!store.syncGit) throw new Error('launch_requires_authoritative_private_git');
+  if (!store.authoritative) throw new Error('launch_requires_authoritative_private_git');
   const t = trial(store.root); if (!t.enabled || !t.model_enabled || Date.now() >= Date.parse(EXPIRY)) return { status: 'trial_or_model_disabled_or_expired' };
   const path = samplePath(store.root, revision); const p = policy();
   if (!existsSync(path)) {
@@ -200,6 +227,8 @@ export async function launchSample(store: Store, revision: SampleRevision = 'ini
     // Reuse all valid accumulated drafts before paying for any missing ones.
     if (recordsReady(store, spec.articles, spec.generation_cutoff, []).length >= Number(preferences().edition_maximum)) break;
     const completed = recordsReady(store, spec.articles, spec.generation_cutoff, [], false);
+    if (publisherCapacityReached(a, completed)) continue;
+    if (!store.one('SELECT result FROM jobs WHERE key=?', a.job_key)?.result && publisherDraftCapacityReached(store, a, spec.articles, spec.generation_cutoff)) continue;
     if (completed.filter(r => r.article.domain === analyzeDomain(a).primary).length >= Number((preferences().domain_policy as Row).maximum_per_domain)) continue;
     let job = store.one('SELECT * FROM jobs WHERE key=?', a.job_key)!;
     while (!job.result && job.attempts < p.max_attempts) {
@@ -230,11 +259,11 @@ export async function launchSample(store: Store, revision: SampleRevision = 'ini
   }
   const records = recordsReady(store, spec.articles, spec.generation_cutoff, spec.rejected);
   const issue = { ...spec, quality_policy: 'fidelity-1', articles: records.map(r => r.article), shortfall: Math.max(0, Number(preferences().edition_minimum) - records.length),
-    editorial_policy: preferences().domain_policy, ai_review: 'passed', is_trial_day: false, kind: records.length >= Number(preferences().edition_minimum) ? 'newsletter' : 'diagnostic', engine: 'typescript' };
+    editorial_policy: preferences().domain_policy, source_policy: preferences().source_policy, ai_review: 'passed', is_trial_day: false, kind: records.length >= Number(preferences().edition_minimum) ? 'newsletter' : 'diagnostic', engine: 'typescript' };
   return freezeIssue(store, issue, records);
 }
 export async function verifyApi(store: Store) {
-  if (!store.syncGit) throw new Error('acceptance_requires_authoritative_private_git');
+  if (!store.authoritative) throw new Error('acceptance_requires_authoritative_private_git');
   const t = trial(store.root); if (!t.enabled || !t.model_enabled || Date.now() >= Date.parse(EXPIRY)) return { status: 'trial_or_model_disabled_or_expired' };
   const path = store.root + '/durable/ts-api-acceptance.json'; const p = policy();
   if (!existsSync(path)) {
@@ -271,10 +300,18 @@ export function reportTrial(store: Store, now = new Date()) {
   const result = { days, completed_normal_editions: days.filter(d => d.normal_edition).length, accounting: status(store).calls, ai_review_outcomes: store.all("SELECT status,COUNT(*) count FROM jobs WHERE json_extract(article,'$.task_kind')='review' AND json_extract(article,'$.url') NOT LIKE 'https://example.invalid/quality/%' GROUP BY status"), quality_control: 'ai_fidelity_review', bill_paid: 'not_verified', engine: 'typescript' };
   atomic(store.root + '/trial-report.json', result); store.checkpoint(); return result;
 }
+export function collectionIntervalMinutes(now: Date, profile = process.env.NEWS_COLLECTION_PROFILE): number {
+  const { hour, minute } = localParts(now);
+  return profile === 'nas_balanced' && hour >= 4 && (hour < 6 || hour === 6 && minute < 15) ? 15 : 30;
+}
 export function due(store: Store, now = new Date()) {
   const t = trial(store.root); const enabled = active(t, now); const { hour, minute } = localParts(now); const morning = hour >= 6 && hour < 9;
   const path = store.root + '/source-health.json'; const observed = existsSync(path) ? read(path).at : null;
   let collect = !observed || now.getTime() - Date.parse(observed) >= 1800000;
+  if (process.env.NEWS_COLLECTION_PROFILE === 'nas_balanced') {
+    const interval = collectionIntervalMinutes(now) * 60000;
+    collect = !observed || !Number.isFinite(Date.parse(observed)) || Math.floor(now.getTime() / interval) > Math.floor(Date.parse(observed) / interval);
+  }
   if (hour === 5 && minute >= 55 && (!observed || Number(observed.slice(14, 16)) < 50)) collect = true;
   return { compose: enabled && now >= at(day(now), '06:15:00') && !existsSync(store.root + '/issues/test-' + day(now) + '/edition.json'),
     deliver: enabled && morning && (hour > 6 || minute >= 30), collect: collect && !(hour >= 6 && (hour > 6 || minute >= 15) && hour < 9), enrich: enabled && t.model_enabled && gate(policy(), now, true) === null, maintain: true };

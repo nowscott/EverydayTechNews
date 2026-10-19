@@ -43,3 +43,7 @@ dist/
 .venv/
 /premium_data/
 /premium_probe/
+/deploy/nas/.env
+/deploy/nas/data/
+/deploy/nas/logs/
+/deploy/nas/.scheduler.lock

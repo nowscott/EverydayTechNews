@@ -216,3 +216,10 @@
 [2.1.0]: https://github.com/NowScott/EverydayTechNews/releases/tag/v2.1.0
 [2.0.0]: https://github.com/NowScott/EverydayTechNews/releases/tag/v2.0.0
 [1.0.0]: https://github.com/NowScott/EverydayTechNews/releases/tag/v1.0.0
+
+## News engine 0.4.0 — 2026-10-19
+
+- Move the premium internal trial to a private authoritative NAS checkpoint with Linux locking and independent Docker runtime.
+- Balance publishers, replace the inaccessible Tesla IR source with verified media article bodies, and migrate legacy drafts to automatic AI review.
+- Add Git Release based NAS deployment, pinned image provenance, offline state checks, automatic updates outside the morning window, and code-only rollback.
+- Keep private credentials and live billing/delivery state outside Git; retain the existing trial, spending and recipient boundaries.

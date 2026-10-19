@@ -57,6 +57,16 @@ export const SOURCES = {
     "https://ir.tesla.com/press",
     "ir.tesla.com"
   ],
+  "electrek_tesla": [
+    "Electrek · Tesla（媒体报道）",
+    "https://electrek.co/guides/tesla/feed/",
+    "electrek.co"
+  ],
+  "teslanorth_tesla": [
+    "Tesla North（媒体报道）",
+    "https://teslanorth.com/feed/",
+    "teslanorth.com"
+  ],
   "nasa": [
     "NASA 官方新闻",
     "https://www.nasa.gov/news-release/feed/",
@@ -83,6 +93,8 @@ export const SOURCES = {
     "arstechnica.com"
   ]
 } as const;
+// Keep the legacy identity for archived evidence/parity; do not poll the blocked IR page.
+export const ACTIVE_SOURCES = Object.keys(SOURCES).filter(source => source !== 'tesla');
 export const FEED_ITEM_LIMIT = 100 as const;
 export const DISCOVERY_ONLY_SOURCES = [
   "openai",

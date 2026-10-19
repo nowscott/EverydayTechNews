@@ -10,6 +10,8 @@ import { candidates, compose, due, reconcile, collect, assess, writingWindow, re
 import { preferences } from '../src/ranking.ts';
 import { buildEmail, freezeIssue, sendOnce } from '../src/mail.ts';
 import { mapLimit } from '../src/sources.ts';
+import { ACTIVE_SOURCES } from '../src/constants.ts';
+import { reviewDraft } from '../src/review.ts';
 import { reviewKey, displayFields } from '../src/quality.ts';
 import { article } from './fixtures.ts';
 
@@ -189,7 +191,7 @@ test('collector maintenance performs GET only, isolates source errors and bounds
   try {
     const fetcher = (async (_url: any, options: any) => { assert.notEqual(options?.method, 'POST'); active++; peak = Math.max(peak, active);
       await new Promise(r => setTimeout(r, 2)); active--; throw new Error('network unavailable'); }) as typeof fetch;
-    const report = await collect(store, 4, fetcher); assert.equal(report.sources.length, 16); assert.equal(report.sources.filter((s: Row) => s.ok).length, 0);
+    const report = await collect(store, 4, fetcher); assert.equal(report.sources.length, ACTIVE_SOURCES.length); assert.equal(report.sources.filter((s: Row) => s.ok).length, 0);
     assert.ok(peak <= 4 && peak > 1); assert.equal(store.one('SELECT COUNT(*) n FROM calls')!.n, 0);
     await assert.rejects(() => collect(store, 5, fetcher));
   } finally { close(); }
@@ -219,9 +221,10 @@ test('offline end-to-end collection, assessment, cached composition and frozen a
     const jobs = store.all('SELECT * FROM jobs WHERE key<>?', cacheKey(a, policy())); assert.equal(jobs.length, 20);
     for (const job of jobs) store.run("UPDATE jobs SET status='pending_human_review',result=? WHERE key=?", pyjson(approved(JSON.parse(job.article), { ...result, generated_at: '2026-10-19T06:10:00+08:00' })), job.key);
     const frozen = compose(store, new Date('2026-10-19T06:15:00+08:00'));
-    assert.equal(frozen.kind, 'newsletter'); assert.equal(frozen.articles.length, 20);
+    assert.equal(frozen.kind, 'diagnostic'); assert.equal(frozen.articles.length, 1);
+    assert.ok(frozen.rejected.some((r: Row) => r.reason === 'lead_diversity_capacity'));
     const html = readFileSync(root + '/issues/' + frozen.id + '/email.html', 'utf8');
-    assert.equal((html.match(/今日重点<\/span>/g) ?? []).length, 1); assert.equal((html.match(/精编短讯<\/span>/g) ?? []).length, 1);
+    assert.ok(html.includes('诊断')); assert.equal((html.match(/精编短讯<\/span>/g) ?? []).length, 0);
     assert.ok(!html.includes(text)); assert.equal(store.one('SELECT COUNT(*) n FROM calls')!.n, 0);
     const firstHash = frozen.html_sha256; assert.equal(compose(store, new Date('2026-10-19T06:20:00+08:00')).html_sha256, firstHash);
     const archive = store.archive(); assert.ok(existsSync(archive));
@@ -262,7 +265,7 @@ test('100-version limit allows cached pool reuse and admits only remaining new v
         }
         for (let i = 0; i < 20; i++) {
           const unique = Array.from({ length: 30 }, (_, j) => String.fromCodePoint(0x4e00 + i * 31 + j)).join('');
-          const input = { ...a, id: `cached-${i}`, title: domainTitles[i % 5] + ' ' + unique, url: 'https://example.org/cached/' + i, text: text + unique, content_fingerprint: digest(text + unique) };
+          const input = { ...a, id: `cached-${i}`, title: domainTitles[i % 5] + ' ' + unique, url: `https://publisher-${i % 7}.example/cached/${i}`, text: text + unique, content_fingerprint: digest(text + unique) };
           const key = cacheKey(input, p); store.run('INSERT INTO articles VALUES (?,?,?)', input.id, 'version', pyjson(input));
           if (cached) store.run('INSERT INTO jobs(key,article,status,result) VALUES (?,?,?,?)', key, pyjson(input), 'ai_approved', pyjson(approved(input)));
         }
@@ -282,6 +285,27 @@ test('100-version limit allows cached pool reuse and admits only remaining new v
       } finally { close(); }
     }
   } finally { if (originalToken === undefined) delete process.env.DEEPSEEK_API_KEY; else process.env.DEEPSEEK_API_KEY = originalToken; t.mock.timers.reset(); }
+});
+
+test('publisher capacity blocks additional paid work before pricing or model requests', async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: Date.parse('2026-10-19T05:10:00+08:00') });
+  const { store, p, close } = setup(); let requests = 0;
+  try {
+    store.syncGit = true; store.push = () => {};
+    for (let i = 0; i < 4; i++) {
+      const unique = Array.from({ length: 30 }, (_, j) => String.fromCodePoint(0x5000 + i * 31 + j)).join('');
+      const input = { ...a, id: `publisher-${i}`, source: 'ithome', title: domainTitles[i] + unique,
+        url: `https://www.ithome.com/news/${i}`, text: text + unique, content_fingerprint: digest(text + unique),
+        published_at: '2026-10-19T04:00:00+08:00', original_article_published_at: '2026-10-19T04:00:00+08:00', fetched_at: '2026-10-19T04:30:00+08:00' };
+      const key = cacheKey(input, p);
+      store.run('INSERT INTO articles VALUES (?,?,?)', input.id, 'version', pyjson(input));
+      store.run('INSERT INTO jobs(key,article,status,result) VALUES (?,?,?,?)', key, pyjson(input), i < 3 ? 'ai_approved' : 'queued',
+        i < 3 ? pyjson(approved(input, { ...result, generated_at: '2026-10-19T05:01:00+08:00' })) : null);
+    }
+    const mocked = t.mock.method(globalThis, 'fetch', (async () => { requests++; throw new Error('unexpected_request'); }) as typeof fetch);
+    const outcome = await enrich(store); mocked.mock.restore();
+    assert.equal(outcome.calls, 0); assert.equal(requests, 0);
+  } finally { close(); t.mock.timers.reset(); }
 });
 
 test('pricing preflight failure leaves retry sample unfrozen and makes no paid request', async t => {
@@ -382,5 +406,34 @@ test('manual makeup has its own daily identity and leaves the scheduled issue in
     assert.notEqual(samplePath(root, 'makeup'), samplePath(root, 'serif'));
     const [html, plain] = buildEmail({ collection_cutoff: '2026-10-19T12:00:00+08:00', mode: 'manual_makeup_24h' }, []);
     assert.ok(html.includes('今日补发')); assert.ok(plain.includes('人工授权补发'));
+  } finally { close(); }
+});
+
+test('legacy human-review drafts migrate durably to automatic review without approving them', () => {
+  const { store, root, key, close } = setup();
+  try {
+    store.run("UPDATE jobs SET status='pending_human_review',result=? WHERE key=?", pyjson(result), key);
+    store.run("INSERT INTO jobs(key,article,status) VALUES (?,?,?)", 'empty-legacy', pyjson(a), 'pending_human_review');
+    store.checkpoint();
+    store.restore();
+    assert.equal(store.one('SELECT status FROM jobs WHERE key=?', key)!.status, 'pending_ai_review');
+    assert.deepEqual(JSON.parse(store.one('SELECT result FROM jobs WHERE key=?', key)!.result), result);
+    assert.equal(store.one("SELECT status FROM jobs WHERE key='empty-legacy'")!.status, 'queued');
+    assert.equal(store.one('SELECT COUNT(*) n FROM calls')!.n, 0);
+    const saved = JSON.parse(readFileSync(root + '/durable/state.json', 'utf8'));
+    assert.equal(saved.tables.jobs.some((j: Row) => j.status === 'pending_human_review'), false);
+    store.restore();
+    assert.equal(store.one('SELECT status FROM jobs WHERE key=?', key)!.status, 'pending_ai_review');
+  } finally { close(); }
+});
+
+ test('invalid cached drafts are automatically discarded without a model call', async () => {
+  const { store, p, key, close } = setup();
+  try {
+    store.run("UPDATE jobs SET result=?,status='pending_ai_review' WHERE key=?", pyjson({ ...result, claims: [] }), key);
+    const job = store.one('SELECT * FROM jobs WHERE key=?', key)!;
+    assert.equal(await reviewDraft(store, job, a, p), 'invalid_cached_draft');
+    assert.equal(store.one('SELECT status FROM jobs WHERE key=?', key)!.status, 'discarded_invalid_draft');
+    assert.equal(store.one('SELECT COUNT(*) n FROM calls')!.n, 0);
   } finally { close(); }
 });
