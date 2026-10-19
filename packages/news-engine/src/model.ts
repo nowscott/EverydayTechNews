@@ -91,7 +91,7 @@ export interface PaidDependencies {
 }
 /** The only model POST. CLI never exposes dependencies, clocks or token arguments. */
 export async function paidRequest(store: Store, key: string, a: Row, p: Row, permit?: Row, deps: PaidDependencies = {}): Promise<string | null> {
-  if (!store.syncGit && !deps.fetcher) throw new Error('paid_transport_requires_authoritative_checkpoint');
+  if (!store.authoritative && !deps.fetcher) throw new Error('paid_transport_requires_authoritative_checkpoint');
   const now = deps.now ?? (() => new Date()); const fetcher = deps.fetcher ?? fetch;
   const job = store.one('SELECT * FROM jobs WHERE key=?', key); if (!job) return 'unknown_job';
   const exclusion = titleExclusion(a.title); if (exclusion) return exclusion.reason;
@@ -102,6 +102,7 @@ export async function paidRequest(store: Store, key: string, a: Row, p: Row, per
   if (job.attempts >= p.max_attempts) return 'attempt_limit';
   if (job.status.startsWith('retry_after:') && now().getTime() < Date.parse(job.status.slice(12))) return 'backoff_pending';
   if (a.content_status !== 'usable_excerpt' || a.evidence_expired_or_missing || complete(a.text ?? '') !== 'usable_excerpt') return 'insufficient_content';
+  if (['electrek_tesla', 'teslanorth_tesla'].includes(a.source) && a.content_origin !== 'media_article_html') return 'media_article_body_unverified';
   if (cacheKey(a, p) !== key) return 'model_or_prompt_changed_create_new_issue';
   let blocked = gate(p, now(), true, permit); if (blocked) return blocked;
   const verified = await (deps.verify ?? verifyRules)(p);

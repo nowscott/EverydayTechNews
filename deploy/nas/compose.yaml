@@ -1,0 +1,28 @@
+name: everyday-tech-news-test
+services:
+  premium:
+    image: ${NAS_IMAGE:-everyday-tech-news-test:local}
+    build:
+      context: ../..
+      dockerfile: deploy/nas/Dockerfile
+    init: true
+    user: "${NAS_UID:-1000}:${NAS_GID:-1000}"
+    env_file: .env
+    environment:
+      TZ: Asia/Shanghai
+      NEWS_COLLECTION_PROFILE: nas_balanced
+    volumes:
+      - ./data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 2g
+    cpus: 2
+    restart: "no"
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"

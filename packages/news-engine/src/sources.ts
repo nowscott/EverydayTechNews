@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { SOURCES, DISCOVERY_ONLY_SOURCES, ENCODED_REQUIRED_SOURCES } from './constants.ts';
 import { digest, pyjson, stamp, type Row } from './core.ts';
-import { hnConfig, hnPublisher, extractHnPublisher } from './hn-publishers.ts';
+import { hnConfig, hnPublisher, extractHnPublisher, extractPublisherArticle } from './hn-publishers.ts';
 import { titleExclusion } from './editorial-policy.ts';
 import { compareText } from './compat.ts';
 export { SOURCES } from './constants.ts';
@@ -52,6 +52,7 @@ export function parseFeed(raw: string, source: string, fetched: string): Row[] {
       const url = canonical(val('link').trim()); const hosts = ['nasa', 'nasa_blogs'].includes(source)
         ? ['www.nasa.gov', 'nasa.gov', 'science.nasa.gov', 'blogs.nasa.gov'] : [(SOURCES as Row)[source][2]];
       if (!hosts.includes(new URL(url).hostname)) return;
+      if (['electrek_tesla', 'teslanorth_tesla'].includes(source) && !/tesla|cybertruck|cybercab|\bfsd\b/i.test(val('title'))) return;
       const description = clean(val('description'));
       // Resolve the namespace URI rather than assuming the publisher uses "content".
       const encodedNode = item.children().toArray().find((n: any) => {
@@ -64,6 +65,7 @@ export function parseFeed(raw: string, source: string, fetched: string): Row[] {
       const text = encoded ? clean(encoded) : description;
       const a = article(source, url, val('title').trim(), val('pubDate').trim(), fetched, text);
       a.description_clean = description; a.content_origin = encoded ? 'rss_content_encoded' : 'rss_description';
+      if (['electrek_tesla', 'teslanorth_tesla'].includes(source)) a.content_status = 'discovery_only';
       if ((DISCOVERY_ONLY_SOURCES as readonly string[]).includes(source) || ((ENCODED_REQUIRED_SOURCES as readonly string[]).includes(source) && !encoded)) a.content_status = 'discovery_only';
       rows.push(a);
     } catch { /* Invalid individual entries do not invalidate the remaining feed. */ }
@@ -176,6 +178,32 @@ async function supplementHn(rows: Row[], folder: string, fetcher: typeof fetch, 
     } catch (error) { if (storageError(error)) throw error; a.body_probe_status = 'body_fetch_failed'; a.body_http_status = (error as any).status ?? null; }
   });
 }
+async function supplementTeslaMedia(rows: Row[], folder: string, fetcher: typeof fetch, source: string) {
+  const now = Date.now(); const deadline = performance.now() + 30000;
+  const host = source === 'electrek_tesla' ? 'electrek.co' : 'teslanorth.com';
+  const selector = source === 'electrek_tesla' ? '.post-content' : '#pryc-wp-acctp-original-content';
+  const selected = rows.filter(a => !titleExclusion(a.title) && Date.parse(a.published_at) <= now && now - Date.parse(a.published_at) <= 86400000).slice(0, 5);
+  await mapLimit(selected, 2, async a => {
+    if (performance.now() >= deadline) { a.body_probe_status = 'body_batch_deadline'; return; }
+    const url = new URL(a.url);
+    if (url.hostname !== host || url.port || !/^\/\d{4}\/\d{2}\/\d{2}\//.test(url.pathname)) { a.body_probe_status = 'body_url_not_allowlisted'; return; }
+    try {
+      // These WordPress publishers serve dated article paths with a trailing slash.
+      // Keep the canonical identity normalized, but request the publisher's real path.
+      if (!url.pathname.endsWith('/')) url.pathname += '/';
+      const { raw } = await get(url.href, fetcher, false);
+      const parsed = extractPublisherArticle(raw.toString('utf8'), a, { selector });
+      a.body_probe_status = parsed.body_probe_status;
+      if (parsed.body_probe_status !== 'parsed') return;
+      const text = clean(parsed.raw_article_html); const pub = time(parsed.publication_raw);
+      const path = `${folder}/feeds/${source}/${digest(raw)}.html`;
+      mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, raw);
+      Object.assign(a, { text, content_fingerprint: digest(text), content_status: complete(text), content_origin: 'media_article_html',
+        published_at: pub, published_raw: parsed.publication_raw, original_article_published_at: pub, published_time_kind: 'media_article_publication',
+        body_snapshot: path, body_fetched_at: stamp(), fetched_at: stamp() });
+    } catch (error) { if (storageError(error)) throw error; a.body_probe_status = 'body_fetch_failed'; a.body_http_status = (error as any).status ?? null; }
+  });
+}
 export async function fetchSource(source: string, folder: string, fetcher: typeof fetch = fetch): Promise<{ rows: Row[]; health: Row }> {
   const start = performance.now(); let response: Response | undefined; let rows: Row[] = []; let raw: Buffer; let suffix = '.xml';
   try {
@@ -194,7 +222,9 @@ export async function fetchSource(source: string, folder: string, fetcher: typeo
     } else if (source === 'apple' || source === 'tesla') {
       rows = source === 'apple' ? parseAtom(raw.toString('utf8'), observed) : parseTesla(raw.toString('utf8'), observed);
       feedItems = rows.length; scanned = feedItems; suffix = source === 'apple' ? '.xml' : '.html'; await supplement(rows, folder, fetcher);
-    } else { rows = parseFeed(raw.toString('utf8'), source, observed); feedItems = load(raw.toString('utf8'), { xml: true })('rss > channel > item').length; scanned = Math.min(100, feedItems); }
+    } else { rows = parseFeed(raw.toString('utf8'), source, observed); feedItems = load(raw.toString('utf8'), { xml: true })('rss > channel > item').length; scanned = Math.min(100, feedItems);
+      if (['electrek_tesla', 'teslanorth_tesla'].includes(source)) await supplementTeslaMedia(rows, folder, fetcher, source);
+    }
     if (!rows.length) throw new Error('empty_feed');
     const hash = digest(raw); const path = `${folder}/feeds/${source}/${hash}${suffix}`;
     // Storage errors deliberately propagate rather than turning into source failures.

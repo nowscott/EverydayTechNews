@@ -9,14 +9,17 @@ import { collect, assess, enrich, compose, deliver, launchSample, verifyApi, rec
 
 const args = process.argv.slice(2); const operation = args.shift(); const flags: Row = {};
 for (let i = 0; i < args.length; i += 2) {
-  if (!['--data', '--sync-git', '--collect-workers', '--maintenance-only', '--launch', '--verify-api', '--verify-quality', '--sample-revision'].includes(args[i])) throw new Error('unknown_argument');
+  if (!['--data', '--sync-git', '--local-authority', '--collect-workers', '--maintenance-only', '--launch', '--verify-api', '--verify-quality', '--sample-revision'].includes(args[i])) throw new Error('unknown_argument');
   if (args[i] === '--sync-git') { flags.syncGit = true; i--; continue; }
+  if (args[i] === '--local-authority') { flags.localAuthority = true; i--; continue; }
   if (!args[i + 1] || args[i + 1].startsWith('--')) throw new Error('missing_argument');
   flags[args[i].slice(2)] = args[i + 1];
 }
 for (const key of ['maintenance-only', 'launch', 'verify-api', 'verify-quality']) if (flags[key] !== undefined && !['true', 'false'].includes(flags[key])) throw new Error('invalid_boolean');
 if (flags['sample-revision'] !== undefined && !['initial', 'serif', 'serif-retry', 'makeup'].includes(flags['sample-revision'])) throw new Error('invalid_sample_revision');
 const root = resolve(flags.data ?? 'premium_data/pool'); mkdirSync(root, { recursive: true });
+if (flags.syncGit && flags.localAuthority) throw new Error('choose_one_state_authority');
+if (flags.localAuthority && process.platform !== 'linux') throw new Error('nas_authority_requires_linux_flock');
 const allowed = ['init', 'run', 'collect', 'assess', 'enrich', 'verify-api', 'launch-sample', 'fresh-sample', 'send-sample', 'compose', 'deliver', 'reconcile', 'status', 'report', 'archive', 'restore-artifact', 'ack-artifact'];
 if (!operation || !allowed.includes(operation)) throw new Error('unknown_command');
 let localLock: string | undefined;
@@ -34,7 +37,7 @@ try {
   if (operation === 'restore-artifact') { restoreArtifacts(root); console.log(JSON.stringify({ status: 'restored' })); }
   else {
     if (operation === 'run') restoreArtifacts(root);
-    store = new Store(root, !!flags.syncGit);
+    store = new Store(root, !!flags.syncGit, !!flags.localAuthority);
     if (operation === 'init') {
       if (!existsSync(root + '/trial.json')) {
         atomic(root + '/trial.json', { schema_version: 1, mode: 'internal_test', enabled: false, start: '2026-10-19', days: 7, expires_at: EXPIRY, allowed_recipient: RECIPIENT,

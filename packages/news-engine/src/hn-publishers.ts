@@ -9,7 +9,10 @@ export function hnPublisher(value: string): Row | null {
 }
 // A post's submission time is never substituted for the linked article's publication time.
 export function extractHnPublisher(raw: string, a: Row): Row {
-  const publisher = hnPublisher(a.url); if (!publisher) return { body_probe_status: 'publisher_not_allowlisted' };
+  return extractPublisherArticle(raw, a, hnPublisher(a.url));
+}
+export function extractPublisherArticle(raw: string, a: Row, publisher: Row | null): Row {
+  if (!publisher) return { body_probe_status: 'publisher_not_allowlisted' };
   const $ = load(raw); const node = $(publisher.selector).filter((_, el) => !$(el).parents(publisher.selector).length).first();
   if ($('[class*="paywall"], [id*="paywall"], [data-paywall]').length) return { body_probe_status: 'restricted_content' };
   const canonical = $('link[rel="canonical"]').first().attr('href');

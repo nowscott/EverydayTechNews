@@ -69,7 +69,7 @@ export async function sendOnce(store: Store, issueId: string, deps: { transport?
   const config = trial(store.root); const now = deps.now?.() ?? new Date();
   if (!config.enabled || !config.delivery_enabled || now.getTime() >= Date.parse(EXPIRY)) return { status: 'trial_or_delivery_disabled_or_expired' };
   if (read(store.root + '/test-delivery-config.json').allowed_recipient !== RECIPIENT) throw new Error('recipient_not_explicitly_authorized');
-  if (!store.syncGit && !deps.transport) throw new Error('smtp_requires_authoritative_checkpoint');
+  if (!store.authoritative && !deps.transport) throw new Error('smtp_requires_authoritative_checkpoint');
   const folder = store.root + '/issues/' + issueId; const edition = read(folder + '/edition.json');
   if (edition.kind !== 'diagnostic') {
     for (const a of store.expand(edition).articles) {
