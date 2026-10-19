@@ -134,6 +134,16 @@ class DeploymentTests(unittest.TestCase):
             self.c.run()
         self.assertEqual(run.call_count, 3)
 
+    def test_failed_runtime_release_is_excluded_from_rollback_history(self):
+        state = self.c.state()
+        state['history'][0]['runtime_failed'] = True
+        state['blocked'][self.old['tag']] = 'runtime_startup_invalid'
+        m.atomic(self.c.state_path, state)
+        with self.assertRaisesRegex(RuntimeError, 'quarantined'): self.c.rollback(self.old['tag'])
+        with patch.object(m, 'protected', return_value=False), patch.object(self.c, 'validate'), patch.object(self.c, 'prune'):
+            self.c.activate(self.new)
+        self.assertEqual([h['tag'] for h in self.c.state()['history']], [self.new['tag']])
+
     def test_release_must_pass_main_ci(self):
         def command(args, **_):
             if 'rev-parse' in args: return 'b' * 40

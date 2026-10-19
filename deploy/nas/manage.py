@@ -182,7 +182,7 @@ class Controller:
                 if protected(): return self.event('deferred_morning_window', pending=candidate['tag'])
                 candidate = {**candidate, 'checks': 'offline_state_and_ledger_passed', 'backup': str(backup),
                              'deployed_at': dt.datetime.now(SHANGHAI).isoformat()}
-                history = [candidate] + [h for h in state['history'] if h['image'] != candidate['image']]
+                history = [candidate] + [h for h in state['history'] if h['image'] != candidate['image'] and not h.get('runtime_failed')]
                 state.update(active=candidate, history=history[:3],
                              high_water=list(max(tuple(state['high_water']), version(candidate['tag']) or (0, 0, 0))))
                 atomic(self.state_path, state)  # Single source of truth for every new scheduler invocation.
@@ -251,6 +251,8 @@ class Controller:
     def rollback(self, tag):
         with lock(self.root / 'update.lock'):
             state = self.state()
+            if tag in state['blocked']:
+                raise RuntimeError('release_is_quarantined')
             candidate = next((h for h in state['history'] if h['tag'] == tag), None)
             if not candidate: raise RuntimeError('version_not_retained')
             return self.activate(candidate, rollback=True)
