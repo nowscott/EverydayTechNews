@@ -1,0 +1,22 @@
+{
+  "version": "proxy-rules-20261019-1",
+  "source": "https://core.telegram.org/resources/cidr.txt",
+  "source_sha256": "3ecd072cedf72eceee6961b18a51e37f905d5ce4a656a5d24cf5fea63e6ec651",
+  "target_group": "🌍 海外服务",
+  "insert_after": "RULE-SET,private_IP,DIRECT,no-resolve",
+  "domain_suffixes": ["telegram.org", "telegram.me", "t.me", "telegra.ph", "tdesktop.com", "telesco.pe"],
+  "ip_ranges": [
+    "91.108.56.0/22", "91.108.4.0/22", "91.108.8.0/22", "91.108.16.0/22",
+    "91.108.12.0/22", "149.154.160.0/20", "91.105.192.0/23", "91.108.20.0/22",
+    "185.76.151.0/24", "2001:b28:f23d::/48", "2001:b28:f23f::/48",
+    "2001:67c:4e8::/48", "2001:b28:f23c::/48", "2a0a:f280::/32"
+  ],
+  "ip_rules_no_resolve": true,
+  "regional_policy": {
+    "groups": ["🇭🇰 香港线路", "🇸🇬 新加坡线路", "🇺🇸 美国线路", "🇯🇵 日本线路", "🇹🇼 台湾线路"],
+    "remove_global_selector_fallback": true,
+    "retain_filtered_subscription_nodes": true,
+    "normalize_regex_word_boundary_escaping": true,
+    "persist_healthy_region_node_selection": true
+  }
+}
