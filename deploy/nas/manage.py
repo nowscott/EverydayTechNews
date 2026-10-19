@@ -189,6 +189,8 @@ class Controller:
                     self.validate(candidate, snapshot)
                     # Rollback must remain able to read the next checkpoint too.
                     previous = state.get('active')
+                    if previous and previous.get('runtime_failed'):
+                        previous = next((h for h in state['history'] if not h.get('runtime_failed')), None)
                     if previous:
                         self.validate(previous, snapshot)
                 if before != ledger(self.data): raise RuntimeError('live_ledger_changed_during_validation')
