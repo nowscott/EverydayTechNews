@@ -38,3 +38,5 @@
 验证：核心 DNS API 对 www.google.com、google.com、x.com 均查询成功；LAN 的 192.168.31.10:53 对 Google、X、百度均返回正常的 fake-IP 映射（198.18 网段是本配置预期行为）。手机后续需要明确使用 NAS DNS，而非只把 IPv4 网关指向 NAS；本次指导仅修改这台手机，整屋 DHCP DNS 待确认客户端效果后另行调整。手机端最终结果以用户复测及对应连接日志为准。
 
 用户随后确认：手机 DNS 手动仅使用 NAS 并重连后，Google 与 X 均可访问。对应手机连接已包含正确域名，X 主站、API、图片和视频命中海外服务规则并有数据返回。这验证了客户端 DNS 路径是本次故障的关键环节；ChatGPT 网页与 App 继续单独验收，不因 Google/X 恢复而提前宣称通过。
+
+最终手机验收：用户进一步确认 ChatGPT 网页和 App 均正常。Telegram、X、Google、ChatGPT 的本轮手机端验证全部通过。
