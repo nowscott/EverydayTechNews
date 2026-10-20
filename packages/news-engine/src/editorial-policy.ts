@@ -38,13 +38,17 @@ export function publisherMaximum(a: Row): number {
   const p = preferences().source_policy as Row;
   return Number(p.overrides?.[publisherKey(a) ?? ''] ?? p.maximum_per_publisher);
 }
+export function publisherLeadMaximum(a: Row): number {
+  const p = preferences().source_policy as Row;
+  return Number(p.lead_overrides?.[publisherKey(a) ?? ''] ?? p.maximum_leads_per_publisher);
+}
 export function publisherCapacityReached(a: Row, records: Row[]): boolean {
   const key = publisherKey(a);
   return !!key && records.filter(r => publisherKey(r.article ?? r) === key).length >= publisherMaximum(a);
 }
 export function limitDomains<T extends Row>(input: T[], rejected: Row[] = [], maximum = Number(preferences().edition_maximum)): T[] {
   const p = preferences().domain_policy as Row; const counts = new Map<string, number>(); const leads = new Map<string, number>(); const chosen: T[] = []; const deferred: T[] = [];
-  const sourcePolicy = preferences().source_policy as Row; const publishers = new Map<string, number>(); const publisherLeads = new Map<string, number>();
+  const publishers = new Map<string, number>(); const publisherLeads = new Map<string, number>();
   const leadCount = Number(preferences().lead_count);
   for (const original of input) {
     const a = original.article ?? original; const domain = analyzeDomain(a); a.domain = domain.primary; a.domain_analysis = domain;
@@ -54,7 +58,7 @@ export function limitDomains<T extends Row>(input: T[], rejected: Row[] = [], ma
     if (publisher && (publishers.get(publisher) ?? 0) >= publisherMaximum(a)) { rejected.push({ id: a.id, reason: 'publisher_capacity', publisher }); continue; }
     if ((counts.get(a.domain) ?? 0) >= p.maximum_per_domain) { rejected.push({ id: a.id, reason: 'domain_capacity', domain: a.domain }); continue; }
     if (chosen.length < leadCount && ((leads.get(a.domain) ?? 0) >= p.maximum_leads_per_domain
-      || publisher && (publisherLeads.get(publisher) ?? 0) >= sourcePolicy.maximum_leads_per_publisher)) { deferred.push(original); continue; }
+      || publisher && (publisherLeads.get(publisher) ?? 0) >= publisherLeadMaximum(a))) { deferred.push(original); continue; }
     if (chosen.length >= maximum) { rejected.push({ id: a.id, reason: 'edition_capacity', domain: a.domain }); continue; }
     chosen.push(original); counts.set(a.domain, (counts.get(a.domain) ?? 0) + 1);
     if (publisher) publishers.set(publisher, (publishers.get(publisher) ?? 0) + 1);

@@ -67,6 +67,11 @@ export function evaluate(a: Article, cutoff: string, config: EditorialConfig): R
     penalty = 16; signals.push('装饰/宣传内容降权');
   }
   if (search('战地|Gears of War|游戏皮肤|主题壁纸|表盘', a.title)) { penalty += 24; signals.push('非核心AI的游戏/外观更新降权'); }
+  if (search("关注.{0,20}(账号|账户)|follow(?:s|ed|ing)? .{0,30}(?:account|tesla)|banana|香蕉|趣闻", a.title)) { penalty += 24; signals.push('社交关注或趣闻，信息增量低'); }
+  if (search("(?:supercharg|充电站|超充).{0,60}(?:open|启用|开业|投票)|(?:open|启用|开业).{0,60}(?:supercharg|充电站|超充)", a.title)) { penalty += 20; signals.push('局部设施动态降权'); }
+  if (search("预购.{0,20}(?:送达|交付)|(?:delivery|shipping) dates?.{0,20}(?:up|earl)|moving up.{0,30}(?:delivery|shipping)", a.title)) { penalty += 14; signals.push('局部订单时间调整降权'); }
+  if (search("传闻|rumou?r|merger clues|hints?.{0,20}merger", a.title)) { penalty += 10; signals.push('未证实传闻降权'); }
+  if (search('候选版本|候选版|release candidate|\\brc\\b', a.title) && !search('安全|漏洞|重大|security|vulnerab|breaking', a.title)) { penalty += 12; signals.push('常规候选版本降权'); }
   if (a.content_status !== 'usable_excerpt') { evidence = 0; penalty += 100; signals.push('正文不足，禁止生成'); }
   return {
     version: VERSION, score: round2(Math.max(0, Math.min(100, relevance + impact + freshness + evidence + provenance + interestBonus - penalty))),

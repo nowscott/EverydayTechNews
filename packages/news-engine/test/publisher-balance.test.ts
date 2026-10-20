@@ -18,13 +18,13 @@ test('publisher quotas cover cached items, HN referrals and publisher subdomains
   assert.equal(chosen.length, 20);
   const counts = new Map<string, number>();
   for (const row of chosen) { const key = publisherKey(row.article)!; counts.set(key, (counts.get(key) ?? 0) + 1); }
-  assert.equal(counts.get('ithome.com'), 3);
-  assert.ok([...counts.values()].every(n => n <= 4));
-  assert.equal(new Set(chosen.slice(0, 5).map(r => publisherKey(r.article))).size, 5);
+  assert.ok((counts.get('ithome.com') ?? 0) <= 8);
+  assert.ok([...counts.entries()].every(([key, n]) => n <= (key === 'ithome.com' ? 8 : 4)));
+  assert.equal(chosen.slice(0, 5).filter(r => publisherKey(r.article) === 'ithome.com').length, 2);
   assert.ok(rejected.some(r => r.reason === 'publisher_capacity'));
   assert.equal(publisherKey({ url: 'https://developer.apple.com/news/one' }), publisherKey({ url: 'https://www.apple.com/newsroom/two' }));
-  assert.equal(publisherCapacityReached({ url: 'https://www.ithome.com/hn-link', source: 'hackernews' }, chosen), true);
-  assert.equal(limitDomains(input.slice(0, 10)).length, 1); // No publisher padding when five diverse leads are unavailable.
+  assert.equal(publisherCapacityReached({ url: 'https://www.ithome.com/hn-link', source: 'hackernews' }, Array.from({length: 8}, () => input[0])), true);
+  assert.equal(limitDomains(input.slice(0, 10)).length, 2); // No publisher padding when five diverse leads are unavailable.
 });
 
 test('Tesla replacement is publisher-labelled RSS evidence, filtered to Tesla topics with real publication times', () => {

@@ -1,3 +1,4 @@
+import { EDITION_REVIEW_PROMPT, editionReviewKey, validateEditionReview } from './edition-quality.ts';
 import { load } from 'cheerio/slim';
 import { PROMPT, POOL_PROMPT } from './constants.ts';
 import { digest, pyjson, stamp, day, localParts, at, EXPIRY, type Row } from './core.ts';
@@ -11,8 +12,9 @@ function tariff(clock: Date) {
   return weekday >= 1 && weekday <= 5 && ((hour >= 9 && hour < 12) || (hour >= 14 && hour < 18)) ? 2 : 1;
 }
 export function cacheKey(a: Row, p: Row): string {
+  if (a.task_kind === 'edition_review') return editionReviewKey(a.edition_input, p);
   if (a.task_kind === 'review') return reviewKey(a, a.review_draft, p);
-  const prompt = (a.output_schema === 'dual-1' ? POOL_PROMPT : PROMPT) + (p.prompt_version === 'premium-pool-3' ? WRITING_SUFFIX : '');
+  const prompt = (a.output_schema === 'dual-1' ? POOL_PROMPT : PROMPT) + (['premium-pool-3', 'premium-pool-4'].includes(p.prompt_version) ? WRITING_SUFFIX : '');
   const parts = [a.url, a.title, a.published_at, a.content_fingerprint, p.model, p.model_version, p.prompt_version, digest(prompt)];
   if (a.output_schema) parts.push(a.output_schema);
   if (a.confirmed_update_facts?.length) parts.push(digest(pyjson(a.confirmed_update_facts, true)));
@@ -117,10 +119,12 @@ export async function paidRequest(store: Store, key: string, a: Row, p: Row, per
   }
   if (a.task_kind === 'review') Object.assign(evidence, { draft: a.review_draft, fields: a.review_fields, prior_evidence: a.prior_evidence ?? [], update_review_required: !!a.update_review_required });
   else if (a.revision_feedback) evidence.revision_feedback = a.revision_feedback;
-  const prompt = a.task_kind === 'review' ? REVIEW_PROMPT : (a.output_schema === 'dual-1' ? POOL_PROMPT : PROMPT) + (p.prompt_version === 'premium-pool-3' ? WRITING_SUFFIX : '');
-  const body = { model: p.model, thinking: { type: 'disabled' }, temperature: 0, max_tokens: 1800, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: prompt }, { role: 'user', content: pyjson(evidence) }] };
+  const prompt = a.task_kind === 'edition_review' ? EDITION_REVIEW_PROMPT : a.task_kind === 'review' ? REVIEW_PROMPT : (a.output_schema === 'dual-1' ? POOL_PROMPT : PROMPT) + (['premium-pool-3', 'premium-pool-4'].includes(p.prompt_version) ? WRITING_SUFFIX : '');
+  if (a.task_kind === 'edition_review') Object.assign(evidence, { ...a.edition_input, text: '逐篇原文见articles，须连同draft交叉核对。' });
+  const maxTokens = a.task_kind === 'edition_review' ? 6000 : 1800;
+  const body = { model: p.model, thinking: { type: 'disabled' }, temperature: 0, max_tokens: maxTokens, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: prompt }, { role: 'user', content: pyjson(evidence) }] };
   const clock = now(); const multiplier = tariff(clock);
-  const reserve = ((Buffer.byteLength(pyjson(body)) + 512) * p.input_miss_per_million + 1800 * p.output_per_million) / 1e6 * (permit ? Math.max(multiplier, 2) : multiplier);
+  const reserve = ((Buffer.byteLength(pyjson(body)) + 512) * p.input_miss_per_million + maxTokens * p.output_per_million) / 1e6 * (permit ? Math.max(multiplier, 2) : multiplier);
   const spent = store.one('SELECT COALESCE(SUM(COALESCE(cost,reserved)),0) total FROM calls WHERE day=?', day(clock))!.total;
   if (spent + reserve > Math.min(p.daily_budget_cny, 2)) return 'budget_exhausted';
   let callId: number = 0;
@@ -148,7 +152,7 @@ export async function paidRequest(store: Store, key: string, a: Row, p: Row, per
       const estimated = cost(raw.usage, p, multiplier);
       store.run("UPDATE calls SET cost=?,usage=?,status='response_received' WHERE id=?", estimated, pyjson(raw.usage), callId);
       if (raw.choices?.[0]?.finish_reason !== 'stop') throw new Error('incomplete response');
-      const result = a.task_kind === 'review' ? validateReview(JSON.parse(raw.choices[0].message.content), a) : validate(JSON.parse(raw.choices[0].message.content), a);
+      const result = a.task_kind === 'edition_review' ? validateEditionReview(JSON.parse(raw.choices[0].message.content), a.edition_input) : a.task_kind === 'review' ? validateReview(JSON.parse(raw.choices[0].message.content), a) : validate(JSON.parse(raw.choices[0].message.content), a);
       result.generated_at = stamp(now()); result.generation_metadata = { model: p.model, model_version: p.model_version, prompt_version: p.prompt_version, prompt_sha256: digest(prompt), output_schema: a.output_schema ?? 'legacy-1' };
       result.request_strategy = job.attempts === 0 ? 'base' : 'length-and-evidence-repair-1';
       store.run("UPDATE jobs SET result=?,status='pending_ai_review' WHERE key=?", pyjson(result), key);

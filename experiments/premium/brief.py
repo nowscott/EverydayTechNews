@@ -232,8 +232,18 @@ def topic(a):
         if re.search(pattern,t): return label
     return '其他科技'
 
+def event_identity(a):
+    title=a['title'].lower()
+    if re.search(r'tesla|特斯拉',title) and 'spacex' in title and re.search(r'merg|合并|合併',title):return 'tesla-spacex-merger'
+    cves=re.findall(r'cve-\d{4}-\d+',title)
+    return 'security:'+','.join(sorted(set(cves))) if cves else None
+
+def evidence_priority(a):
+    return (100 if a.get('content_status')=='usable_excerpt' else 0)+(20 if a.get('content_origin')!='hn_show_original_post' and re.search(r'official|官方',a.get('source_name','')) else 0)+min(10,len(a.get('text',''))//500)
+
 def duplicate(a, b):
-    if a['url']==b['url'] or a['content_fingerprint']==b['content_fingerprint']: return True
+    if (a.get('url') and a.get('url')==b.get('url')) or (a.get('content_fingerprint') and a.get('content_fingerprint')==b.get('content_fingerprint')): return True
+    if event_identity(a) and event_identity(a)==event_identity(b):return True
     # Conservative event clustering; uncertain matches require editorial review.
     norm=lambda s: re.sub(r'[^\w]', '', s.lower())
     if difflib.SequenceMatcher(None,norm(a['title']),norm(b['title'])).ratio() >= .72:return True
@@ -251,7 +261,8 @@ def select(rows, cutoff, sample=False, target=None):
         if datetime.fromisoformat(a['fetched_at'])>cutoff:
             rejected.append(dict(id=a['id'],title=a['title'],reason='fetched_after_cutoff'));continue
         latest[a['id']]=a
-    rows=sorted(latest.values(),key=lambda a:(topic(a)!='其他科技',a['published_at']),reverse=True)
+    from ranking import evaluate
+    rows=sorted(latest.values(),key=lambda a:(evidence_priority(a),evaluate(a,cutoff)['score'],a['published_at']),reverse=True)
     for a in rows:
         p=datetime.fromisoformat(a['published_at'])
         reason=None

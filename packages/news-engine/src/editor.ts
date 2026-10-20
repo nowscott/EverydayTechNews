@@ -1,4 +1,4 @@
-import { choose, preferences, type Article } from './ranking.ts';
+import { choose, evaluate, preferences, type Article } from './ranking.ts';
 import { search, compareText, microtimestamp } from './compat.ts';
 import type { Row } from './core.ts';
 
@@ -45,8 +45,20 @@ export function sequenceRatio(left: string, right: string): number {
 const normalize = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '');
 const terms = (s: string) => new Set(s.toLowerCase().match(/[a-z]+[ -]?\p{Nd}+[a-z0-9.\-]*|rtx\s*spark|deepseek[ -]v[\p{L}\p{N}_.\-]+|iphone\s+duo|roadster|robotaxi|starship|starlink/gu) ?? []);
 const actions = ['发布|推出|上线|launch|release|introduc|arriv', '价格|售价|price|pricing', '安全|漏洞|security|vulnerab', '交付|deliver', '测试|预览|beta|preview|test', 'walk[ -]?in|无预约|现货|首发日'];
+export function eventIdentity(a: Row): string | null {
+  const title = a.title.toLowerCase();
+  if (/tesla|特斯拉/.test(title) && /spacex/.test(title) && /merg|合并|合併/.test(title)) return 'tesla-spacex-merger';
+  const cves = title.match(/cve-\d{4}-\d+/g);
+  if (cves?.length) return 'security:' + [...new Set(cves)].sort().join(',');
+  return null;
+}
+export function evidencePriority(a: Row): number {
+  return (a.content_status === 'usable_excerpt' ? 100 : 0) + (a.content_origin === 'hn_show_original_post' ? 0 : /official|官方/.test(a.source_name ?? '') ? 20 : 0)
+    + Math.min(10, Math.floor(Array.from(a.text ?? '').length / 500));
+}
 export function duplicate(a: Row, b: Row): boolean {
-  if (a.url === b.url || a.content_fingerprint === b.content_fingerprint) return true;
+  if (a.url && a.url === b.url || a.content_fingerprint && a.content_fingerprint === b.content_fingerprint) return true;
+  if (eventIdentity(a) && eventIdentity(a) === eventIdentity(b)) return true;
   if (sequenceRatio(normalize(a.title), normalize(b.title)) >= .72) return true;
   const bt = terms(b.title);
   return [...terms(a.title)].some(t => bt.has(t)) && actions.some(p => search(p, a.title) && search(p, b.title));
@@ -59,7 +71,7 @@ export function select(input: Row[], cutoff: string, sample = false, target?: nu
     if (microtimestamp(a.fetched_at) > clock) { rejected.push({ id: a.id, title: a.title, reason: 'fetched_after_cutoff' }); continue; }
     latest.set(a.id, a);
   }
-  const ordered = [...latest.values()].sort((a, b) => Number(topic(b) !== '其他科技') - Number(topic(a) !== '其他科技') || compareText(b.published_at, a.published_at));
+  const ordered = [...latest.values()].sort((a, b) => evidencePriority(b) - evidencePriority(a) || evaluate(b as Article, cutoff, preferences()).score - evaluate(a as Article, cutoff, preferences()).score || compareText(b.published_at, a.published_at));
   for (const a of ordered) {
     const published = microtimestamp(a.published_at); let reason: string | null = null;
     if (microtimestamp(a.fetched_at) > clock) reason = 'fetched_after_cutoff';

@@ -1,4 +1,5 @@
-import { mkdirSync, existsSync } from 'node:fs';
+import { reviewEdition, checkedEdition, editionExclusions } from './edition-review.ts';
+import { mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { Store, files } from './store.ts';
 import { atomic, read, pyjson, digest, policy, trial, active, stamp, day, localParts, at, EXPIRY, type Row } from './core.ts';
 import { preferences, VERSION } from './ranking.ts';
@@ -39,7 +40,10 @@ export function candidates(store: Store, cutoff: string, target = Number.MAX_SAF
     const matches = prior.filter(x => duplicate(a, x));
     if (matches.some(x => a.content_fingerprint === x.content_fingerprint)) { reasons.push({ id: a.id, reason: 'already_sent_unchanged' }); continue; }
     if (matches.length) { a.prior_versions = matches.map(x => ({ url: x.url, fingerprint: x.content_fingerprint })); a.prior_evidence = matches.map(x => rows(store, cutoff).find(old => old.content_fingerprint === x.content_fingerprint)).filter(x => x && x.text && !x.evidence_expired_or_missing); a.update_review_required = true; }
-    a.output_schema = 'dual-1'; articles.push(a);
+    a.output_schema = 'dual-1';
+    const job = store.one('SELECT result FROM jobs WHERE key=?', cacheKey(a, policy()));
+    if (job?.result && !editionExclusions(store, [{ article: a, result: JSON.parse(job.result) }], cutoff, reasons).length) continue;
+    articles.push(a);
   }
   const [chosen, rejected] = select(articles, cutoff, false, target); const approved: Row[] = [];
   for (const a of chosen) {
@@ -118,9 +122,10 @@ export async function enrich(store: Store) {
   if (blockedByTime) return { status: blockedByTime, calls: 0 };
   const deadline = stamp(at(day(), '06:15:00')); // Scheduled requests never use an anytime test permit.
   const [cutoff, floor] = writingWindow(); const [eligible] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER, floor);
+  const audit = await reviewEdition(store, recordsReady(store, eligible, deadline, [], false), p, deadline);
   const ready = recordsReady(store, eligible, deadline, []);
-  if (ready.length >= Number(preferences().edition_maximum)) return { status: 'ready_pool_sufficient', ready: ready.length, calls: 0 };
-  let reviewCalls = 0;
+  if (ready.length >= Number(preferences().edition_maximum)) return { status: 'ready_pool_sufficient', ready: ready.length, calls: audit.calls };
+  let reviewCalls = audit.calls;
   for (const a of eligible) {
     if (publisherCapacityReached(a, recordsReady(store, eligible, deadline, [], false))) continue;
     const job = store.one('SELECT * FROM jobs WHERE key=?', cacheKey(a, p));
@@ -179,19 +184,20 @@ function recordsReady(store: Store, articles: Row[], deadline: string, rejected:
     if (exclusion) { rejected.push({ id: a.id, ...exclusion }); continue; }
     a.domain = analyzeDomain(a).primary; a.job_key = key; records.push({ article: a, result: g, status: job.status, calls: store.all('SELECT * FROM calls WHERE job=?', key), ai_review: 'passed' });
   }
-  return restrictDomains ? limitDomains(records, rejected) : records;
+  const usable = editionExclusions(store, records, deadline, rejected);
+  return restrictDomains ? checkedEdition(store, usable, deadline, rejected) : usable;
 }
 function publisherDraftCapacityReached(store: Store, a: Row, articles: Row[], deadline: string): boolean {
   const p = policy();
-  const drafts = articles.filter(candidate => {
+  const drafts = articles.flatMap(candidate => {
     const job = store.one('SELECT result,status FROM jobs WHERE key=?', cacheKey(candidate, p));
-    if (!job?.result || job.status === 'ai_rejected') return false;
+    if (!job?.result || job.status === 'ai_rejected') return [];
     const result = JSON.parse(job.result);
-    if (titleExclusion(candidate.title) || titleExclusion(result.title ?? '')) return false;
-    if (!result.generated_at || !Number.isFinite(Date.parse(result.generated_at)) || Date.parse(result.generated_at) > Date.parse(deadline)) return false;
-    try { validate(result, candidate); return true; } catch { return false; }
+    if (titleExclusion(candidate.title) || titleExclusion(result.title ?? '')) return [];
+    if (!result.generated_at || !Number.isFinite(Date.parse(result.generated_at)) || Date.parse(result.generated_at) > Date.parse(deadline)) return [];
+    try { validate(result, candidate); return [{ article: candidate, result }]; } catch { return []; }
   });
-  return publisherCapacityReached(a, drafts);
+  return publisherCapacityReached(a, editionExclusions(store, drafts, deadline));
 }
 export function compose(store: Store, now = new Date()) {
   const config = trial(store.root); if (!active(config, now)) return { status: 'trial_disabled_or_expired' };
@@ -199,7 +205,7 @@ export function compose(store: Store, now = new Date()) {
   if (now.getTime() < Date.parse(deadline)) return { status: 'generation_deadline_not_reached' };
   const id = 'test-' + day(now); const path = store.root + '/issues/' + id + '/edition.json'; if (existsSync(path)) return read(path);
   const [chosen, rejected] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER); const records = recordsReady(store, chosen, deadline, rejected);
-  const issue = { id, pool_edition: true, quality_policy: 'fidelity-1', mode: 'daily_24h', selection_window: 'rolling_24h', collection_window_start: writingWindow(now)[1], reuse_previous_day_samples: !!preferences().reuse_previous_day_samples, collection_cutoff: cutoff, generation_cutoff: deadline, frozen_at: stamp(now), articles: records.map(r => r.article), rejected,
+  const issue = { id, pool_edition: true, quality_policy: 'fidelity-1', edition_quality_policy: 'edition-consistency-1', mode: 'daily_24h', selection_window: 'rolling_24h', collection_window_start: writingWindow(now)[1], reuse_previous_day_samples: !!preferences().reuse_previous_day_samples, collection_cutoff: cutoff, generation_cutoff: deadline, frozen_at: stamp(now), articles: records.map(r => r.article), rejected,
     source_health: status(store).sources, shortfall: Math.max(0, Number(preferences().edition_minimum) - records.length), editorial_policy: preferences().domain_policy, source_policy: preferences().source_policy, ai_review: 'passed', kind: records.length >= Number(preferences().edition_minimum) ? 'newsletter' : 'diagnostic', sendable_count: 0, engine: 'typescript' };
   return freezeIssue(store, issue, records);
 }
@@ -223,6 +229,7 @@ export async function launchSample(store: Store, revision: SampleRevision = 'ini
   }
   const spec = store.expand(read(path)); const out = store.root + '/issues/' + spec.id + '/edition.json'; if (existsSync(out)) return read(out);
   const permit = { mode: 'internal_test_anytime', issue_id: spec.id, expires_at: spec.generation_cutoff }; const attempted = attemptedVersions(store);
+  await reviewEdition(store, recordsReady(store, spec.articles, spec.generation_cutoff, [], false), p, spec.generation_cutoff, permit);
   processing: for (const a of spec.articles) {
     // Reuse all valid accumulated drafts before paying for any missing ones.
     if (recordsReady(store, spec.articles, spec.generation_cutoff, []).length >= Number(preferences().edition_maximum)) break;
@@ -253,12 +260,14 @@ export async function launchSample(store: Store, revision: SampleRevision = 'ini
         if (after.result) await reviewDraft(store, after, a, p, permit);
       }
     }
+    await reviewEdition(store, recordsReady(store, spec.articles, spec.generation_cutoff, [], false), p, spec.generation_cutoff, permit);
     const ready = recordsReady(store, spec.articles, spec.generation_cutoff, []).length;
     console.log(JSON.stringify({ stage: 'launch_progress', ready, attempted_versions: attempted.size }));
     if (ready >= Number(preferences().edition_maximum)) break;
   }
+  await reviewEdition(store, recordsReady(store, spec.articles, spec.generation_cutoff, [], false), p, spec.generation_cutoff, permit);
   const records = recordsReady(store, spec.articles, spec.generation_cutoff, spec.rejected);
-  const issue = { ...spec, quality_policy: 'fidelity-1', articles: records.map(r => r.article), shortfall: Math.max(0, Number(preferences().edition_minimum) - records.length),
+  const issue = { ...spec, quality_policy: 'fidelity-1', edition_quality_policy: 'edition-consistency-1', articles: records.map(r => r.article), shortfall: Math.max(0, Number(preferences().edition_minimum) - records.length),
     editorial_policy: preferences().domain_policy, source_policy: preferences().source_policy, ai_review: 'passed', is_trial_day: false, kind: records.length >= Number(preferences().edition_minimum) ? 'newsletter' : 'diagnostic', engine: 'typescript' };
   return freezeIssue(store, issue, records);
 }
@@ -295,9 +304,14 @@ export function reportTrial(store: Store, now = new Date()) {
     const overdue = date < day(now) || date === day(now) && localParts(now).hour >= 9;
     const outcome = issue?.kind === 'diagnostic' ? 'insufficient_content' : accepted ? (Date.parse(accepted.accepted_at) < at(date, '06:31:00').getTime() ? 'on_time' : 'delayed') : delivery.some(s => ['sending', 'unknown_do_not_retry'].includes(s)) ? 'delivery_unknown' : overdue ? 'missed' : 'pending';
     days.push({ day: date, outcome, accepted_at: accepted?.accepted_at ?? null, delay_seconds: accepted?.accepted_at ? Math.max(0, Math.floor((Date.parse(accepted.accepted_at) - at(date, '06:30:00').getTime()) / 1000)) : null, status: issue?.kind ?? 'missing', reason: overdue && !delivery.includes('smtp_accepted') ? 'scheduler_missed_delivery_deadline' : null,
-      generated: issue?.articles.length ?? 0, delivery, manual_makeup_delivery: receipts.filter(r => r.issue === 'sample-ts-makeup-' + date).map(r => r.status), ai_review: issue?.quality_policy === 'fidelity-1' ? 'passed_for_included_articles' : 'not_verified', normal_edition: !!issue && issue.quality_policy === 'fidelity-1' && issue.kind === 'newsletter' && delivery.includes('smtp_accepted') });
+      generated: issue?.articles.length ?? 0, edition_review: issue?.edition_quality_policy ?? 'not_available_for_historical_issue',
+      quality_metrics: issue ? { sources: new Set(issue.articles.map((a: Row) => a.source)).size, domains: Object.fromEntries([...new Set(issue.articles.map((a: Row) => a.domain))].map(d => [String(d), issue.articles.filter((a: Row) => a.domain === d).length])),
+        excluded: (issue.rejected ?? []).reduce((acc: Row, r: Row) => { acc[r.reason] = (acc[r.reason] ?? 0) + 1; return acc; }, {}) } : null,
+      editorial_assessment: (() => { const p = store.root + '/durable/editorial-scores/' + date + '.json'; return existsSync(p) ? read(p) : { status: 'pending_assessment', target: 85 }; })(),
+      inbox_feedback: (() => { const p = store.root + '/durable/reader-feedback/' + date + '.json'; return existsSync(p) ? read(p) : { status: 'not_verified' }; })(), delivery, manual_makeup_delivery: receipts.filter(r => r.issue === 'sample-ts-makeup-' + date).map(r => r.status), ai_review: issue?.quality_policy === 'fidelity-1' ? 'passed_for_included_articles' : 'not_verified', normal_edition: !!issue && issue.quality_policy === 'fidelity-1' && issue.kind === 'newsletter' && delivery.includes('smtp_accepted') });
   }
-  const result = { days, completed_normal_editions: days.filter(d => d.normal_edition).length, accounting: status(store).calls, ai_review_outcomes: store.all("SELECT status,COUNT(*) count FROM jobs WHERE json_extract(article,'$.task_kind')='review' AND json_extract(article,'$.url') NOT LIKE 'https://example.invalid/quality/%' GROUP BY status"), quality_control: 'ai_fidelity_review', bill_paid: 'not_verified', engine: 'typescript' };
+  const runtime = { authority: store.localAuthority ? 'nas' : store.syncGit ? 'github_private' : 'offline_copy', version: JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version };
+  const result = { runtime, days, completed_normal_editions: days.filter(d => d.normal_edition).length, accounting: status(store).calls, ai_review_outcomes: store.all("SELECT status,COUNT(*) count FROM jobs WHERE json_extract(article,'$.task_kind')='review' AND json_extract(article,'$.url') NOT LIKE 'https://example.invalid/quality/%' GROUP BY status"), quality_control: 'ai_fidelity_review', bill_paid: 'not_verified', engine: 'typescript' };
   atomic(store.root + '/trial-report.json', result); store.checkpoint(); return result;
 }
 export function collectionIntervalMinutes(now: Date, profile = process.env.NEWS_COLLECTION_PROFILE): number {
