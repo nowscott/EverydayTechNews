@@ -33,6 +33,15 @@ class OrdinaryControllerTests(unittest.TestCase):
   self.assertIsNone(self.c.state()['active'])
  def test_scheduler_lock_is_independent(self):
   with m.base.lock(self.root/'scheduler.lock'):self.assertEqual(self.c.run()['status'],'scheduler_busy')
+ def test_scheduler_passes_mounted_state_path(self):
+  candidate={'tag':'ordinary-news-v1.0.3','image':'pinned','sha':'a'*40,'source':str(self.root)}
+  m.base.atomic(self.c.state_path,{'active':candidate,'history':[candidate]})
+  def command(args,**kwargs):
+   if args[:2]==['git','rev-parse']:return candidate['sha']
+   if args[:2]==['git','status']:return ''
+   self.assertEqual(args[-4:],['ordinary','run','--data','/data'])
+   self.assertEqual(kwargs['env']['ORDINARY_ROOT'],str(self.root.resolve().parent));return ''
+  with patch.object(self.c,'command',side_effect=command):self.c.run()
  def test_startup_is_network_and_credential_free(self):
   def check(args,**kwargs):
    self.assertEqual(args[:2],['docker','compose'])

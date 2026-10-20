@@ -4,6 +4,11 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [ordinary-news-v1.0.3] - 2026-10-20
+
+- 普通版控制器显式传入已挂载的数据目录，避免Compose命令覆盖默认参数后误用镜像内路径。
+- 增加调度参数回归和实际Compose状态报告验证。
+
 ## [ordinary-news-v1.0.2] - 2026-10-20
 
 - 修正私有NAS检出目录构建镜像时的代码读取权限，保持运行时以普通用户启动。

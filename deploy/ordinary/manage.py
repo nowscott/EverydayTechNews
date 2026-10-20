@@ -57,7 +57,7 @@ class Controller(base.Controller):
             env = {**os.environ, 'ORDINARY_IMAGE': current['image'], 'ORDINARY_ROOT': str(self.root.parent),
                    'ORDINARY_UID': str(os.getuid()), 'ORDINARY_GID': str(os.getgid())}
             return self.command(['docker', 'compose', '--env-file', self.config['env_file'], '-f', str(source / 'deploy/ordinary/compose.yaml'),
-                'run', '--rm', '--name', 'etn-ordinary-scheduled', 'ordinary', 'run'], env=env, capture=False, timeout=None)
+                'run', '--rm', '--name', 'etn-ordinary-scheduled', 'ordinary', 'run', '--data', '/data'], env=env, capture=False, timeout=None)
 
     def sync(self):
         with base.lock(self.root / 'sync.lock', blocking=False) as acquired:

@@ -42,3 +42,4 @@ jobs:
           docker run --rm --network none --user "$ORDINARY_UID:$ORDINARY_GID" --read-only -v "$ORDINARY_ROOT/data:/data" --entrypoint node ordinary-ci /app/verify-state.ts
           python -c 'import os,pathlib; pathlib.Path(os.environ["ORDINARY_ROOT"],"network.yaml").write_text("services:\n  ordinary:\n    network_mode: none\n")'
           docker compose --env-file "$ORDINARY_ROOT/ordinary.env" -f deploy/ordinary/compose.yaml -f "$ORDINARY_ROOT/network.yaml" run --rm --entrypoint node ordinary --version
+          docker compose --env-file "$ORDINARY_ROOT/ordinary.env" -f deploy/ordinary/compose.yaml -f "$ORDINARY_ROOT/network.yaml" run --rm ordinary report --data /data
