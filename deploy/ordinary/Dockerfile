@@ -10,6 +10,7 @@ COPY packages/ordinary-news/src packages/ordinary-news/src
 COPY packages/news-common packages/news-common
 COPY config/news-filter.json config/news-filter.json
 COPY deploy/ordinary/verify-state.ts /app/verify-state.ts
+RUN chmod -R a+rX /app
 USER node
 ENTRYPOINT ["node", "packages/ordinary-news/src/main.ts"]
 CMD ["report", "--data", "/data"]

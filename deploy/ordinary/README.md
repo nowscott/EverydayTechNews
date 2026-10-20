@@ -19,7 +19,7 @@ PREMIUM_PRODUCTION_ENABLED=false
 从正式标签的已验证源码运行：
 
 ```sh
-python3 deploy/ordinary/install-managed.py --root /vol3/1000/Docker/everydaytechnews-ordinary --tag ordinary-news-v1.0.1
+python3 deploy/ordinary/install-managed.py --root /vol3/1000/Docker/everydaytechnews-ordinary --tag ordinary-news-v1.0.2
 ```
 
 安装器保留现有crontab，并新增独立每分钟运行、每15分钟更新、每30分钟异步归档任务。原普通版三个Actions工作流继续运行；高级版控制器不替换。初始化、部署校验无网络/无密钥，不发送邮件。首次使用独立容器执行preflight.ts，仅验证Notion读取、SMTP登录和过期退订token签名，不发信、不修改订阅状态。
@@ -50,4 +50,4 @@ python3 deploy/ordinary/install-managed.py --root /vol3/1000/Docker/everydaytech
 
 日常NAS运行不依赖Mac。操作电脑上的对照验收和当前聊天的后续复核允许补查历史证据；电脑未在线会延后验收/切换，旧系统继续服务。不得以观察期结束或CI绿色代替三次正常出刊和实际收件确认。
 
-账本校验使用逐行摘要，避免随着历史邮件增长一次性把全部内容载入内存；1.0.1在64MB JavaScript堆限制下验证大型账本。
+账本校验使用逐行摘要，避免随着历史邮件增长一次性把全部内容载入内存；1.0.2在64MB JavaScript堆限制下验证大型账本。
