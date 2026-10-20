@@ -35,4 +35,4 @@ export function privateRoot(root: string) {
 export function initialConfig() { return { schema_version: 1, mode: 'shadow', test_recipient: OWNER,
   delivery_start: '06:30', delivery_cutoff: '09:00', first_production_date: null, archive_sync_enabled: false, shadow_started_on: day(new Date(Date.now()+86400000)) }; }
 export const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-export function safeError(error: unknown): string { return error instanceof Error && /^[a-z0-9_:-]+$/i.test(error.message) ? error.message : 'external_operation_failed'; }
+export function safeError(error: unknown): string { return error instanceof Error && /^(ordinary_|notion_|archive_|source_|grade_|all_collection_sources_failed$|yesterday_archive_missing$)[a-z0-9_:-]*$/i.test(error.message) ? error.message : 'external_operation_failed'; }
