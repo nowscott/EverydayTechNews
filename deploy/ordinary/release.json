@@ -1,1 +1,7 @@
-{"component":"ordinary-news","version":"1.0.0","state_schema":1,"automatic_deployment":true,"controller_protocol":1}
+{
+  "component": "ordinary-news",
+  "version": "1.0.1",
+  "state_schema": 1,
+  "automatic_deployment": true,
+  "controller_protocol": 1
+}

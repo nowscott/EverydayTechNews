@@ -24,9 +24,13 @@ class Controller(base.Controller):
     def ledger(self):
         path = self.data / 'state.sqlite3'
         if not path.exists(): return hashlib.sha256(b'empty').hexdigest()
+        digest = hashlib.sha256()
         with sqlite3.connect('file:' + str(path) + '?mode=ro', uri=True) as db:
-            tables = {t: db.execute('SELECT * FROM ' + t + ' ORDER BY id').fetchall() for t in ['issues', 'deliveries']}
-        return hashlib.sha256(json.dumps(tables, sort_keys=True).encode()).hexdigest()
+            for table in ['issues', 'deliveries']:
+                digest.update((table + '\0').encode())
+                for row in db.execute('SELECT * FROM ' + table + ' ORDER BY id'):
+                    digest.update((json.dumps(row, separators=(',', ':')) + '\n').encode())
+        return digest.hexdigest()
 
     def snapshot(self, destination):
         shutil.copytree(self.data, destination, ignore=shutil.ignore_patterns('runtime.lock', 'state.sqlite3*'))
