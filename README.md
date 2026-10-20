@@ -130,3 +130,7 @@ Notion 数据库需要包含 `Name`、`Email` 和 `状态` 三列，状态选项
 独立实验入口、运行和审阅说明见 [experiments/premium/README.md](experiments/premium/README.md)。新增持久化新闻池、独立采集/评分/精编/组稿/测试投递阶段，目标5条重点＋10～15条短讯；五项兴趣同级加权，正文和原始响应单独保存90天。普通版行为不变，唯一测试收件人为用户指定邮箱；已有20篇旧版真实模型样本，新版双长度API、人工事实审阅和七天试刊分别验证，未部署生产。
 
 高级订阅的TypeScript完整引擎位于 [packages/news-engine](packages/news-engine/README.md)，包含采集、编辑、模型预算、持久化、组稿、投递和90天归档，以及Python对照和故障测试。私有内测固定唯一测试邮箱，普通订阅不变；部署状态见[迁移记录](packages/news-engine/MIGRATION.md)。[第一批评分测速](packages/news-engine/PERFORMANCE.md)不代表完整链路提速。
+
+## 普通版 NAS / TypeScript 迁移
+
+独立普通版组件及三天观察/切换流程见[部署说明](deploy/ordinary/README.md)。旧Python发送在观察期继续运行；只有通过门槛后才切换，普通版与高级版状态分离。

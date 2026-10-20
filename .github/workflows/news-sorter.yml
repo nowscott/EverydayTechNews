@@ -13,6 +13,7 @@ concurrency:
 
 jobs:
   sort-news:
+    if: vars.ORDINARY_NAS_PRODUCTION_ENABLED != 'true'
     runs-on: ubuntu-latest
 
     steps:

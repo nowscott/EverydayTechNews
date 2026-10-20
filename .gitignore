@@ -47,3 +47,9 @@ dist/
 /deploy/nas/data/
 /deploy/nas/logs/
 /deploy/nas/.scheduler.lock
+
+# Ordinary NAS state and isolated publisher credentials
+/ordinary_data/
+/deploy/ordinary/*.env
+/deploy/ordinary/data/
+/deploy/ordinary/logs/

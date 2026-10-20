@@ -1,0 +1,41 @@
+name: Ordinary TS migration and NAS checks
+on:
+  push:
+    branches: [main]
+    paths: ['packages/ordinary-news/**', 'packages/news-common/**', 'deploy/ordinary/**', 'deploy/nas/manage.py', '.dockerignore', 'config/news-filter.json', '.github/workflows/ordinary-news.yml']
+  pull_request:
+    paths: ['packages/ordinary-news/**', 'packages/news-common/**', 'deploy/ordinary/**', 'deploy/nas/manage.py', '.dockerignore', 'config/news-filter.json', '.github/workflows/ordinary-news.yml']
+permissions: {contents: read}
+jobs:
+  ordinary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@v6
+        with: {node-version: '24', cache: npm, cache-dependency-path: packages/ordinary-news/package-lock.json}
+      - uses: actions/setup-python@v6
+        with: {python-version: '3.14'}
+      - run: python -m pip install -r requirements.txt
+      - run: npm ci --prefix packages/ordinary-news --ignore-scripts --no-audit --no-fund
+      - run: npm run typecheck --prefix packages/ordinary-news
+      - run: npm test --prefix packages/ordinary-news
+        env: {PYTHON: python}
+      - run: python -m unittest discover -s tests -v
+      - run: python -m unittest discover -s deploy/nas/tests -v
+      - run: python -m unittest discover -s deploy/ordinary/tests -v
+      - run: docker build -f deploy/ordinary/Dockerfile . -t ordinary-ci
+      - name: Cold startup, private state and offline validator
+        run: |
+          export ORDINARY_ROOT=$(mktemp -d)
+          export ORDINARY_IMAGE=ordinary-ci
+          export ORDINARY_UID=$(id -u)
+          export ORDINARY_GID=$(id -g)
+          chmod 700 "$ORDINARY_ROOT"
+          mkdir -m 700 "$ORDINARY_ROOT/data"
+          touch "$ORDINARY_ROOT/ordinary.env" "$ORDINARY_ROOT/archive.env"
+          docker run --rm --network none --user "$ORDINARY_UID:$ORDINARY_GID" -v "$ORDINARY_ROOT/data:/data" ordinary-ci init --data /data
+          docker run --rm --network none --user "$ORDINARY_UID:$ORDINARY_GID" --read-only -v "$ORDINARY_ROOT/data:/data" --entrypoint node ordinary-ci /app/verify-state.ts
+          python -c 'import os,pathlib; pathlib.Path(os.environ["ORDINARY_ROOT"],"network.yaml").write_text("services:\n  ordinary:\n    network_mode: none\n")'
+          docker compose --env-file "$ORDINARY_ROOT/ordinary.env" -f deploy/ordinary/compose.yaml -f "$ORDINARY_ROOT/network.yaml" run --rm --entrypoint node ordinary --version

@@ -21,6 +21,7 @@ concurrency:
 
 jobs:
   setup-and-test:
+    if: vars.ORDINARY_NAS_PRODUCTION_ENABLED != 'true'
     runs-on: ubuntu-latest  # 使用 Ubuntu 环境
 
     steps:
