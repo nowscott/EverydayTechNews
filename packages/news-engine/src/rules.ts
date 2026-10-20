@@ -1,5 +1,5 @@
-// Patterns and editorial messages ported from ranking.py editorial-4.4.
-export const VERSION = "editorial-4.4" as const;
+// Patterns and editorial messages ported from ranking.py editorial-5.
+export const VERSION = "editorial-5" as const;
 export const PRIMARY = [
   "github",
   "cloudflare",

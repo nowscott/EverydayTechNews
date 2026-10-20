@@ -29,10 +29,15 @@
     "maximum_leads_per_domain": 2
   },
   "source_policy": {
-    "version": "publishers-1",
+    "version": "publishers-2",
     "maximum_per_publisher": 4,
     "maximum_leads_per_publisher": 1,
-    "overrides": { "ithome.com": 3 }
+    "overrides": {
+      "ithome.com": 8
+    },
+    "lead_overrides": {
+      "ithome.com": 2
+    }
   },
   "selection_window": "rolling_24h",
   "reuse_previous_day_samples": true

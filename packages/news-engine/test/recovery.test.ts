@@ -221,8 +221,8 @@ test('offline end-to-end collection, assessment, cached composition and frozen a
     const jobs = store.all('SELECT * FROM jobs WHERE key<>?', cacheKey(a, policy())); assert.equal(jobs.length, 20);
     for (const job of jobs) store.run("UPDATE jobs SET status='pending_human_review',result=? WHERE key=?", pyjson(approved(JSON.parse(job.article), { ...result, generated_at: '2026-10-19T06:10:00+08:00' })), job.key);
     const frozen = compose(store, new Date('2026-10-19T06:15:00+08:00'));
-    assert.equal(frozen.kind, 'diagnostic'); assert.equal(frozen.articles.length, 1);
-    assert.ok(frozen.rejected.some((r: Row) => r.reason === 'lead_diversity_capacity'));
+    assert.equal(frozen.kind, 'diagnostic'); assert.equal(frozen.articles.length, 0);
+    assert.ok(frozen.rejected.some((r: Row) => r.reason === 'edition_review_not_ready'));
     const html = readFileSync(root + '/issues/' + frozen.id + '/email.html', 'utf8');
     assert.ok(html.includes('诊断')); assert.equal((html.match(/精编短讯<\/span>/g) ?? []).length, 0);
     assert.ok(!html.includes(text)); assert.equal(store.one('SELECT COUNT(*) n FROM calls')!.n, 0);
@@ -273,12 +273,13 @@ test('100-version limit allows cached pool reuse and admits only remaining new v
         const fetchMock = t.mock.method(globalThis, 'fetch', (async (_url: any, options: any) => {
           if (options?.method === 'POST') {
             posts++; const request = JSON.parse(options.body); const evidence = JSON.parse(request.messages[1].content);
+            if (evidence.articles) return Response.json({ usage: { prompt_tokens: 100, completion_tokens: 100 }, choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({ checked_ids: evidence.articles.map((a: Row) => a.id), exclusions: [] }) } }] });
             if (evidence.draft) return new Response(JSON.stringify({ usage: { prompt_tokens: 100, completion_tokens: 100 }, choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(approved({ ...a, text: evidence.text }, evidence.draft).ai_review.result) } }] }));
             return goodResponse();
           } return new Response(prices);
         }) as typeof fetch);
         const issue = await launchSample(store, 'serif'); fetchMock.mock.restore();
-        assert.equal(issue.articles.length, cached ? 20 : 1); assert.equal(posts, cached ? 0 : 2);
+        assert.equal(issue.articles.length, cached ? 20 : 0); assert.equal(posts, cached ? 1 : 2);
         assert.equal(attemptedVersions(store, '2026-10-18').size, 100);
         const html = readFileSync(store.root + '/issues/' + issue.id + '/email.html', 'utf8');
         if (cached) { assert.ok(html.includes('Songti SC')); assert.ok(html.includes('morning-4-pool-ts-serif')); }
@@ -292,15 +293,15 @@ test('publisher capacity blocks additional paid work before pricing or model req
   const { store, p, close } = setup(); let requests = 0;
   try {
     store.syncGit = true; store.push = () => {};
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 9; i++) {
       const unique = Array.from({ length: 30 }, (_, j) => String.fromCodePoint(0x5000 + i * 31 + j)).join('');
-      const input = { ...a, id: `publisher-${i}`, source: 'ithome', title: domainTitles[i] + unique,
+      const input = { ...a, id: `publisher-${i}`, source: 'ithome', title: domainTitles[i % domainTitles.length] + unique,
         url: `https://www.ithome.com/news/${i}`, text: text + unique, content_fingerprint: digest(text + unique),
         published_at: '2026-10-19T04:00:00+08:00', original_article_published_at: '2026-10-19T04:00:00+08:00', fetched_at: '2026-10-19T04:30:00+08:00' };
       const key = cacheKey(input, p);
       store.run('INSERT INTO articles VALUES (?,?,?)', input.id, 'version', pyjson(input));
-      store.run('INSERT INTO jobs(key,article,status,result) VALUES (?,?,?,?)', key, pyjson(input), i < 3 ? 'ai_approved' : 'queued',
-        i < 3 ? pyjson(approved(input, { ...result, generated_at: '2026-10-19T05:01:00+08:00' })) : null);
+      store.run('INSERT INTO jobs(key,article,status,result) VALUES (?,?,?,?)', key, pyjson(input), i < 8 ? 'ai_approved' : 'queued',
+        i < 8 ? pyjson(approved(input, { ...result, generated_at: '2026-10-19T05:01:00+08:00' })) : null);
     }
     const mocked = t.mock.method(globalThis, 'fetch', (async () => { requests++; throw new Error('unexpected_request'); }) as typeof fetch);
     const outcome = await enrich(store); mocked.mock.restore();
