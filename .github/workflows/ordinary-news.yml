@@ -25,7 +25,10 @@ jobs:
       - run: python -m unittest discover -s tests -v
       - run: python -m unittest discover -s deploy/nas/tests -v
       - run: python -m unittest discover -s deploy/ordinary/tests -v
-      - run: docker build -f deploy/ordinary/Dockerfile . -t ordinary-ci
+      - name: Build from private NAS checkout permissions
+        run: |
+          chmod -R go-rwx packages/ordinary-news packages/news-common config deploy/ordinary
+          docker build -f deploy/ordinary/Dockerfile . -t ordinary-ci
       - name: Cold startup, private state and offline validator
         run: |
           export ORDINARY_ROOT=$(mktemp -d)

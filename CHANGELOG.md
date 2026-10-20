@@ -4,6 +4,11 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [ordinary-news-v1.0.2] - 2026-10-20
+
+- 修正私有NAS检出目录构建镜像时的代码读取权限，保持运行时以普通用户启动。
+- 容器CI增加仅所有者可读的源码权限场景，共享模块同步保证容器内可读。
+
 ## [ordinary-news-v1.0.1] - 2026-10-20
 
 - 普通版部署与回退校验改为逐行计算账本摘要，避免历史邮件增长导致内存峰值超出容器限制；状态schema与投递记录不变。
