@@ -19,7 +19,7 @@ PREMIUM_PRODUCTION_ENABLED=false
 从正式标签的已验证源码运行：
 
 ```sh
-python3 deploy/ordinary/install-managed.py --root /vol3/1000/Docker/everydaytechnews-ordinary --tag ordinary-news-v1.0.2
+python3 deploy/ordinary/install-managed.py --root /vol3/1000/Docker/everydaytechnews-ordinary --tag ordinary-news-v1.0.3
 ```
 
 安装器保留现有crontab，并新增独立每分钟运行、每15分钟更新、每30分钟异步归档任务。原普通版三个Actions工作流继续运行；高级版控制器不替换。初始化、部署校验无网络/无密钥，不发送邮件。首次使用独立容器执行preflight.ts，仅验证Notion读取、SMTP登录和过期退订token签名，不发信、不修改订阅状态。
