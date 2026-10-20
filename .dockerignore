@@ -15,3 +15,15 @@
 !deploy/nas/Dockerfile
 !deploy/nas/entrypoint.sh
 !deploy/nas/verify-state.ts
+!packages/news-common/
+!packages/news-common/package.json
+!packages/news-common/src/
+!packages/news-common/src/**
+!packages/ordinary-news/
+!packages/ordinary-news/package.json
+!packages/ordinary-news/package-lock.json
+!packages/ordinary-news/src/
+!packages/ordinary-news/src/**
+!deploy/ordinary/
+!deploy/ordinary/Dockerfile
+!deploy/ordinary/verify-state.ts

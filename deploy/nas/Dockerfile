@@ -9,6 +9,7 @@ WORKDIR /app
 COPY packages/news-engine/package*.json packages/news-engine/
 RUN npm ci --prefix packages/news-engine --omit=dev --ignore-scripts --no-audit --no-fund
 COPY packages/news-engine/src packages/news-engine/src
+COPY packages/news-common packages/news-common
 COPY experiments/premium/*.json experiments/premium/
 COPY config/news-filter.json config/news-filter.json
 COPY deploy/nas/entrypoint.sh /app/entrypoint.sh

@@ -23,7 +23,7 @@ SHANGHAI = dt.timezone(dt.timedelta(hours=8))
 
 
 def version(tag):
-    match = re.fullmatch(r'news-engine-v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)', tag or '')
+    match = re.fullmatch(re.escape(PREFIX) + r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)', tag or '')
     return tuple(map(int, match.groups())) if match else None
 
 
@@ -75,8 +75,8 @@ def ledger(data):
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 
-def compatible(manifest, schema):
-    return (manifest.get('component') == 'news-engine' and manifest.get('state_schema') == schema
+def compatible(manifest, schema, component="news-engine"):
+    return (manifest.get('component') == component and manifest.get('state_schema') == schema
             and manifest.get('controller_protocol') == 1 and manifest.get('automatic_deployment') is True)
 
 
@@ -113,6 +113,15 @@ class Controller:
         with open(self.logs / 'deployments.jsonl', 'a') as log: log.write(json.dumps(value) + '\n')
         return value
 
+    def schema(self):
+        return read(self.data / 'durable/state.json')['schema_version']
+
+    def ledger(self):
+        return ledger(self.data)
+
+    def snapshot(self, destination):
+        shutil.copytree(self.data, destination, ignore=shutil.ignore_patterns('pool.lock', 'state.sqlite3*'))
+
     def source(self, tag):
         repo = self.root / 'repository.git'
         if not repo.exists():
@@ -121,7 +130,7 @@ class Controller:
                       '+refs/heads/main:refs/heads/main', 'refs/tags/' + tag + ':refs/tags/' + tag])
         sha = self.command(['git', '--git-dir', str(repo), 'rev-parse', tag + '^{commit}'])
         self.command(['git', '--git-dir', str(repo), 'merge-base', '--is-ancestor', sha, 'refs/heads/main'])
-        runs = self.api('actions/workflows/news-engine.yml/runs?head_sha=' + sha + '&event=push&per_page=100')
+        runs = self.api('actions/workflows/' + self.config.get('workflow', 'news-engine.yml') + '/runs?head_sha=' + sha + '&event=push&per_page=100')
         if not any(r['head_sha'] == sha and r.get('head_branch') == 'main'
                    and r.get('event') == 'push' and r.get('status') == 'completed'
                    and r.get('conclusion') == 'success' for r in runs.get('workflow_runs', [])):
@@ -132,17 +141,17 @@ class Controller:
             self.command(['git', '--git-dir', str(repo), 'worktree', 'add', '--detach', str(directory), sha])
         if self.command(['git', 'status', '--porcelain', '--untracked-files=all'], cwd=directory):
             raise RuntimeError('release_worktree_modified')
-        manifest = read(directory / 'deploy/nas/release.json', {})
-        schema = read(self.data / 'durable/state.json')['schema_version']
-        if not compatible(manifest, schema) or PREFIX + manifest.get('version', '') != tag:
+        manifest = read(directory / self.config.get('manifest', 'deploy/nas/release.json'), {})
+        schema = self.schema()
+        if not compatible(manifest, schema, self.config.get('component', 'news-engine')) or PREFIX + manifest.get('version', '') != tag:
             raise RuntimeError('release_requires_manual_data_migration')
         return sha, directory
 
     def build(self, tag, sha, directory):
-        image = 'everyday-tech-news-test:' + tag
-        self.command(['docker', 'build', '-f', 'deploy/nas/Dockerfile', '--build-arg', 'NEWS_VERSION=' + tag,
+        image = self.config.get('image_repository', 'everyday-tech-news-test') + ':' + tag
+        self.command(['docker', 'build', '-f', self.config.get('dockerfile', 'deploy/nas/Dockerfile'), '--build-arg', 'NEWS_VERSION=' + tag,
                       '--build-arg', 'NEWS_REVISION=' + sha, '-t', image,
-                      '-t', 'everyday-tech-news-test:git-' + sha, '.'], cwd=directory, capture=False)
+                      '-t', self.config.get('image_repository', 'everyday-tech-news-test') + ':git-' + sha, '.'], cwd=directory, capture=False)
         info = json.loads(self.command(['docker', 'image', 'inspect', image]))[0]
         labels = info['Config'].get('Labels') or {}
         if labels.get('org.opencontainers.image.revision') != sha or labels.get('org.opencontainers.image.version') != tag:
@@ -174,15 +183,15 @@ class Controller:
         # Same lock as the former scheduler: even a wakeup already waiting on it is safe.
         with lock(Path(self.config['scheduler_lock'])):
             if protected(): return self.event('deferred_morning_window', pending=candidate['tag'])
-            with lock(self.data / 'pool.lock'):
+            with lock(self.data / self.config.get('state_lock', 'pool.lock')):
                 state = self.state()
-                before = ledger(self.data)
+                before = self.ledger()
                 identifier = dt.datetime.now(SHANGHAI).strftime('%Y%m%dT%H%M%S%f')
                 backup = self.root / 'backups' / identifier
                 backup.mkdir(parents=True, mode=0o700)
                 with tempfile.TemporaryDirectory(prefix='validate-', dir=self.root) as temp:
                     snapshot = Path(temp) / 'data'
-                    shutil.copytree(self.data, snapshot, ignore=shutil.ignore_patterns('pool.lock', 'state.sqlite3*'))
+                    self.snapshot(snapshot)
                     os.chmod(snapshot, 0o700)
                     with tarfile.open(backup / 'state.tar.gz', 'w:gz') as archive:
                         archive.add(snapshot, arcname='data')
@@ -193,7 +202,7 @@ class Controller:
                         previous = next((h for h in state['history'] if not h.get('runtime_failed')), None)
                     if previous:
                         self.validate(previous, snapshot)
-                if before != ledger(self.data): raise RuntimeError('live_ledger_changed_during_validation')
+                if before != self.ledger(): raise RuntimeError('live_ledger_changed_during_validation')
                 if protected(): return self.event('deferred_morning_window', pending=candidate['tag'])
                 candidate = {**candidate, 'checks': 'offline_state_and_ledger_passed', 'backup': str(backup),
                              'deployed_at': dt.datetime.now(SHANGHAI).isoformat()}
@@ -219,7 +228,7 @@ class Controller:
         retained = {h['image'] for h in state['history']}
         for item in known:
             if item['image'] not in retained and not item.get('legacy'):
-                self.command(['docker', 'image', 'rm', item['image_tag'], 'everyday-tech-news-test:git-' + item['sha']])
+                self.command(['docker', 'image', 'rm', item['image_tag'], self.config.get('image_repository', 'everyday-tech-news-test') + ':git-' + item['sha']])
         atomic(self.root / 'image-history.json', state['history'])
         backups = sorted((self.root / 'backups').glob('*'), reverse=True)
         for path in backups[3:]: shutil.rmtree(path)

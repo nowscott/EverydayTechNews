@@ -1,17 +1,8 @@
-import { readFileSync } from 'node:fs';
 import { search } from './compat.ts';
 import { preferences } from './ranking.ts';
 import type { Row } from './core.ts';
-const rules = JSON.parse(readFileSync(new URL('../../../config/news-filter.json', import.meta.url), 'utf8'));
-export const FILTER_VERSION = rules.version;
-const fold = (s: string) => s.toLowerCase().replaceAll('ß', 'ss').replaceAll('ſ', 's');
-export function titleExclusion(title: string): Row | null {
-  const normalized = fold(title);
-  const keyword = rules.keywords.find((word: string) => normalized.includes(fold(word)));
-  if (keyword) return { reason: 'shared_filter_keyword', matched_keyword: keyword, filter_version: FILTER_VERSION };
-  if (rules.currency_patterns.some((pattern: string) => search(pattern, title, false))) return { reason: 'shared_filter_price', filter_version: FILTER_VERSION };
-  return null;
-}
+import { titleExclusion } from '../../news-common/src/filter.ts';
+export { titleExclusion, FILTER_VERSION } from '../../news-common/src/filter.ts';
 // Brands are interests, not domains. Prefer the subject of the title to incidental body mentions.
 const domains = [
   ['安全与网络', '漏洞|网络安全|隐私|加密|泄露|黑客|安全补丁|\\bsecurity\\b|vulnerab|encryption|privacy|data breach|\\btees?\\b'],
