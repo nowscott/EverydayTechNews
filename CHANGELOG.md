@@ -4,6 +4,11 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [ordinary-news-v1.0.1] - 2026-10-20
+
+- 普通版部署与回退校验改为逐行计算账本摘要，避免历史邮件增长导致内存峰值超出容器限制；状态schema与投递记录不变。
+- 增加64MB JavaScript堆限制下的大型账本恢复校验。
+
 ## [ordinary-news-v1.0.0] - 2026-10-20
 
 - 普通版新闻业务迁至独立TypeScript包和NAS组件，保留昨日新闻、IT之家投票排序、25条链接、通知、Notion订阅状态与45天退订协议。

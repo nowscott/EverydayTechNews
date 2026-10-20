@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { atomic, read, initialConfig, privateRoot, type Row } from './core.ts';
@@ -27,4 +28,13 @@ export class Store {
   }
   ledger() { return { issues: this.all('SELECT * FROM issues ORDER BY id'), deliveries: this.all('SELECT * FROM deliveries ORDER BY id') }; }
   close() { this.db.close(); }
+}
+
+export function ledgerDigest(db:DatabaseSync):string {
+  const digest=createHash('sha256');
+  for(const table of ['issues','deliveries']) {
+    digest.update(table+'\0');
+    for(const row of db.prepare('SELECT * FROM '+table+' ORDER BY id').iterate())digest.update(JSON.stringify(row)+'\n');
+  }
+  return digest.digest('hex');
 }
