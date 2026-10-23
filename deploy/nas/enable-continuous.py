@@ -31,8 +31,9 @@ def enable(root):
         backup.mkdir(parents=True, mode=0o700)
         shutil.copyfile(path, backup / 'trial.json')
         new = {**old, 'testing_period': 'continuous', 'days': None, 'expires_at': None,
+               'authorization': 'User-authorized continuous internal test from 2026-10-23; one test mailbox; production disabled',
                'continuous_authorization': {'by': 'user', 'on': '2026-10-23',
-                    'basis': '用户在本聊天明确要求高级版改为长期测试', 'previous_expiry': old.get('expires_at')}}
+                    'basis': '用户在本聊天明确要求高级版改为长期测试', 'previous_expiry': old.get('expires_at'), 'previous_authorization': old.get('authorization')}}
         m.atomic(path, new)
         try:
             code = "import {trial} from './packages/news-engine/src/core.ts'; const t=trial('/data'); if(t.testing_period!=='continuous')throw Error('invalid'); console.log('continuous_config_validated');"
