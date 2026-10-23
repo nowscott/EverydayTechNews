@@ -4,6 +4,11 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [ordinary-news-v1.0.4] - 2026-10-23
+
+- 修复IT之家七位数新闻编号被截断导致投票接口返回空响应的问题，旧Python与TypeScript保持一致。
+- 三天迁移门槛增加有效投票证据，全评分失败的降级日不放行；不改写历史冻结期刊或发送记录。
+
 ## [ordinary-news-v1.0.3] - 2026-10-20
 
 - 普通版控制器显式传入已挂载的数据目录，避免Compose命令覆盖默认参数后误用镜像内路径。

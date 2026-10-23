@@ -17,6 +17,9 @@ var gradestr = '<div class="bt">
 
 
 class GradeParsingTests(unittest.TestCase):
+    def test_extracts_seven_digit_id_without_losing_millions(self):
+        self.assertEqual(news_sorter.extract_news_id("https://www.ithome.com/1/016/700.htm?from=test#vote"), "1016700")
+
     def test_extracts_full_news_id(self):
         self.assertEqual(
             news_sorter.extract_news_id(

@@ -37,10 +37,10 @@ def adjust_value_based_on_title(title):
 
 
 def extract_news_id(url):
-    match = re.search(r"/(\d+)/(\d+)\.htm(?:[?#].*)?$", url)
+    match = re.search(r"/((?:\d+/)+\d+)\.htm(?:[?#].*)?$", url)
     if not match:
         return None
-    return "".join(match.groups())
+    return match.group(1).replace("/", "").lstrip("0") or "0"
 
 
 def parse_grade_response(content):

@@ -87,9 +87,10 @@ test('real pooled SMTP disconnect after DATA causes one transaction and no libra
 });
 test('three consecutive actual shadow days plus inbox confirmation gate cutover',()=>{
  const {store,root,close}=setup();
- try{for(const date of ['2026-10-21','2026-10-22','2026-10-23'])atomic(root+'/reports/'+date+'.json',{date,mode:'shadow',delivery:{completed:true,outcome:'smtp_accepted',delay_seconds:20,finished_at:date+'T06:32:00+08:00'},content:{count:25},parity:{status:'passed'}});
+ try{for(const date of ['2026-10-21','2026-10-22','2026-10-23'])atomic(root+'/reports/'+date+'.json',{date,mode:'shadow',delivery:{completed:true,outcome:'smtp_accepted',delay_seconds:20,finished_at:date+'T06:32:00+08:00'},content:{count:25},grading:{valid:25,failed:0,total:25},parity:{status:'passed'}});
   assert.equal(shadowGate(root,'2026-10-23').reason,'shadow_inbox_confirmation_required');
   atomic(root+'/feedback/2026-10-22.json',{status:'received_confirmed'});assert.equal(shadowGate(root,'2026-10-23').passed,true);
+  const noVotes=read(root+'/reports/2026-10-22.json');noVotes.grading.valid=0;atomic(root+'/reports/2026-10-22.json',noVotes);assert.equal(shadowGate(root,'2026-10-23').reason,'shadow_grading_has_no_valid_votes');noVotes.grading.valid=25;atomic(root+'/reports/2026-10-22.json',noVotes);
   const changed=read(root+'/reports/2026-10-22.json');changed.delivery.outcome='delivery_unknown';atomic(root+'/reports/2026-10-22.json',changed);assert.equal(shadowGate(root,'2026-10-23').passed,false);
  }finally{close();}
 });
