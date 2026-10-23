@@ -86,7 +86,7 @@ export function parseGrade(raw: string): [number, number] {
   const a = /id=["']sgrade2["'][\s\S]*?<div>(\d+)<\/div>/.exec(raw), b = /id=["']sgrade0["'][\s\S]*?<div>(\d+)<\/div>/.exec(raw);
   if (!a || !b) throw new Error('grade_parse_failed'); return [Number(a[1]), Number(b[1])];
 }
-export const newsId = (url: string) => /\/(\d+)\/(\d+)\.htm(?:[?#].*)?$/.exec(url)?.slice(1).join('') ?? null;
+export const newsId = (url: string) => /\/((?:\d+\/)+\d+)\.htm(?:[?#].*)?$/.exec(url)?.[1].replaceAll('/', '').replace(/^0+(?=\d)/, '') ?? null;
 export function sortItems(items: Item[], values: Record<string, number>): Item[] { return [...items].sort((a, b) => (values[b[1]] ?? -100) - (values[a[1]] ?? -100)); }
 export async function rank(store: Store, now = new Date(), fetcher: typeof fetch = fetch) {
   recoverArchive(store.root);

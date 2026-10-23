@@ -32,6 +32,7 @@ export function shadowGate(root:string,today=day()):Row {
     if(!r||r.mode!=='shadow'||!r.delivery.completed||r.delivery.outcome!=='smtp_accepted'||r.delivery.delay_seconds>60
       ||!r.content?.count||r.parity?.status!=='passed'||Date.parse(r.delivery.finished_at)>at(date,'06:35:00').getTime())return {passed:false,reason:'three_consecutive_shadow_days_required',day:date};
     reports.push(r);
+    if(!r.grading||r.grading.valid<1)return {passed:false,reason:'shadow_grading_has_no_valid_votes',day:date};
   }
   const start=read(root+'/config.json',{}).shadow_started_on??reports[0].date;
   const received=existsSync(root+'/feedback')&&readdirSync(root+'/feedback').filter(n=>/^\d{4}-\d\d-\d\d\.json$/.test(n)&&n.slice(0,10)>=start&&n.slice(0,10)<=today).some(n=>read(root+'/feedback/'+n,{}).status==='received_confirmed');

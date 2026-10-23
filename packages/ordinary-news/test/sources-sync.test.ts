@@ -5,9 +5,15 @@ import {tmpdir} from 'node:os';
 import {createHash} from 'node:crypto';
 import {Store} from '../src/store.ts';
 import {atomic,atomicText,hash} from '../src/core.ts';
-import {saveNews,recoverArchive,archivePath,collect,rank,parseMarkdown} from '../src/archive.ts';
+import {saveNews,recoverArchive,archivePath,collect,rank,parseMarkdown,newsId} from '../src/archive.ts';
 import {subscribers,markAbnormal} from '../src/subscribers.ts';
 import {syncArchive} from '../src/sync.ts';
+test('IT Home numeric paths retain seven-digit IDs and normalize legacy zero prefixes',()=>{
+ assert.equal(newsId('https://www.ithome.com/0/963/924.htm'),'963924');
+ assert.equal(newsId('https://www.ithome.com/1/016/700.htm?from=test#vote'),'1016700');
+ assert.equal(newsId('https://www.ithome.com/963/924.htm'),'963924');
+ assert.equal(newsId('https://www.ithome.com/not-an-article'),null);
+});
 const clock=new Date('2026-10-21T00:30:00+08:00');
 test('collection preserves monthly dedupe, frozen daily files and cross-month publication dates',()=>{
  const root=mkdtempSync(tmpdir()+'/ordinary-archive-');
@@ -25,7 +31,7 @@ test('RSS fallback, grade cache and explicit failed-score statistics work withou
   const rss='<rss><channel><item><title>充分长度的普通科技消息</title><link>https://www.ithome.com/1/015/101.htm</link><pubDate>Tue, 20 Oct 2026 22:30:00 +0800</pubDate></item></channel></rss>';
   const fetcher=(async(url:any)=>{if(String(url).includes('/list/'))return new Response('',{status:403});return new Response(rss);}) as typeof fetch;
   assert.equal((await collect(store,clock,fetcher)).source,'rss');
-  const grade=(async()=>{grades++;return new Response('<div id="sgrade2"><div>9</div></div><div id="sgrade0"><div>1</div></div>');}) as typeof fetch;
+  const grade=(async(url:any)=>{assert.equal(String(url),'https://dyn.ithome.com/grade/1015101');grades++;return new Response('<div id="sgrade2"><div>9</div></div><div id="sgrade0"><div>1</div></div>');}) as typeof fetch;
   const first=await rank(store,clock,grade);assert.equal(first.valid,1);await rank(store,clock,grade);assert.equal(grades,1);
  }finally{store.close();rmSync(root,{recursive:true,force:true});}
 });

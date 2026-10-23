@@ -19,7 +19,7 @@ PREMIUM_PRODUCTION_ENABLED=false
 从正式标签的已验证源码运行：
 
 ```sh
-python3 deploy/ordinary/install-managed.py --root /vol3/1000/Docker/everydaytechnews-ordinary --tag ordinary-news-v1.0.3
+python3 deploy/ordinary/install-managed.py --root /vol3/1000/Docker/everydaytechnews-ordinary --tag ordinary-news-v1.0.4
 ```
 
 安装器保留现有crontab，并新增独立每分钟运行、每15分钟更新、每30分钟异步归档任务。原普通版三个Actions工作流继续运行；高级版控制器不替换。初始化、部署校验无网络/无密钥，不发送邮件。首次使用独立容器执行preflight.ts，仅验证Notion读取、SMTP登录和过期退订token签名，不发信、不修改订阅状态。
@@ -34,7 +34,7 @@ python3 deploy/ordinary/install-managed.py --root /vol3/1000/Docker/everydaytech
 
 ## 三天观察与正式切换
 
-1. 连续三个真实晨间运行，只向测试邮箱发一封标记测试邮件；正常网络下06:31前开始、06:35前结束，无未知或重复发送。
+1. 连续三个真实晨间运行，只向测试邮箱发一封标记测试邮件；正常网络下06:31前开始、06:35前结束，无未知或重复发送，且每天有有效投票评分；评分全失败的降级日不能通过迁移观察。
 2. 在操作电脑运行 `python deploy/ordinary/verify-shadow.py --date YYYY-MM-DD`，用同一批采集和投票证据与旧Python算法逐项离线比较，结果写入私有shadow报告。历史七日离线对照不替代这三天实际定时观察。
 3. 用户至少确认一次普通版TS测试邮件确实收到，才记录data/feedback/YYYY-MM-DD.json，格式为status=received_confirmed、confirmed_by=user、confirmed_at与依据；SMTP成功不能代替。
 4. 在NAS的archive.env配置仓库专用细粒度凭据`ARCHIVE_GITHUB_TOKEN`，仅当前仓库Contents读写，不授予Actions/Workflows/管理权限，不使用个人全局CLI登录token。值不要提交Git或发到聊天。
