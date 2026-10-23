@@ -22,6 +22,10 @@ class ContinuousConfigurationTests(unittest.TestCase):
   with patch('subprocess.run',return_value=subprocess.CompletedProcess([],0,stdout='continuous_config_validated')):r=m.enable(self.root)
   self.assertEqual(r['status'],'continuous_enabled');self.assertTrue(r['ledger_unchanged']);self.assertEqual((self.data/'durable/state.json').read_bytes(),before)
   v=json.loads((self.data/'trial.json').read_text());self.assertIsNone(v['expires_at']);self.assertFalse(v['production_enabled']);self.assertEqual(v['allowed_recipient'],self.old['allowed_recipient']);self.assertEqual(m.enable(self.root)['status'],'already_continuous')
+ def test_legacy_installed_controller_uses_global_ledger(self):
+  p=self.root/'manage.py';p.write_text(p.read_text().replace('    def ledger(self):\n        return ledger(self.data)\n',''))
+  with patch('subprocess.run',return_value=subprocess.CompletedProcess([],0,stdout='continuous_config_validated')):r=m.enable(self.root)
+  self.assertTrue(r['ledger_unchanged'])
  def test_old_engine_cannot_enable_continuous(self):
   (self.root/'deployment.json').write_text(json.dumps({'active':{'tag':'news-engine-v0.5.0','image':'fake'}}))
   with self.assertRaisesRegex(RuntimeError,'requires_engine'):m.enable(self.root)

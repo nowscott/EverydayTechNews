@@ -25,7 +25,8 @@ def enable(root):
         if old.get('testing_period') == 'continuous': return {'status': 'already_continuous'}
         if old.get('allowed_recipient') != 'nowscott@qq.com' or old.get('production_enabled') is not False or old.get('daily_budget_cny') != 2:
             raise RuntimeError('unexpected_existing_trial_boundary')
-        before = c.ledger()
+        ledger = (lambda: c.ledger()) if hasattr(c, 'ledger') else (lambda: m.ledger(c.data))
+        before = ledger()
         stamp = dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
         backup = root / 'continuous-config-backups' / stamp
         backup.mkdir(parents=True, mode=0o700)
@@ -39,7 +40,7 @@ def enable(root):
             code = "import {trial} from './packages/news-engine/src/core.ts'; const t=trial('/data'); if(t.testing_period!=='continuous')throw Error('invalid'); console.log('continuous_config_validated');"
             c.command(['docker', 'run', '--rm', '--network', 'none', '--read-only', '--user', str(os.getuid())+':'+str(os.getgid()),
                 '-v', str(c.data)+':/data:ro', '--entrypoint', 'node', active['image'], '--input-type=module', '-e', code])
-            if c.ledger() != before: raise RuntimeError('ledger_changed_during_configuration')
+            if ledger() != before: raise RuntimeError('ledger_changed_during_configuration')
         except Exception:
             m.atomic(path, old)
             raise
