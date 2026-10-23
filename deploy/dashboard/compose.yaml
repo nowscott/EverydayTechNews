@@ -62,6 +62,9 @@ services:
     cpus: 0.5
     restart: unless-stopped
     healthcheck:
-      disable: true
+      test: ["CMD", "node", "-e", "const s=JSON.parse(require('node:fs').readFileSync('/data/bodies/status.json','utf8'));process.exit(Date.now()-Date.parse(s.checked_at)<900000?0:1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
     labels: {com.centurylinklabs.watchtower.enable: "false"}
     logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}

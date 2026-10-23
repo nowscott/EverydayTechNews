@@ -74,5 +74,6 @@ export async function collectBodies(config: Config, cacheRoot: string, deps:{now
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const config={ordinary:process.env.DASHBOARD_ORDINARY_DATA??'/data/ordinary',premium:process.env.DASHBOARD_PREMIUM_DATA??'/data/premium',runtime:'/data/runtime'},root=process.env.DASHBOARD_BODY_CACHE??'/data/bodies';
+  mkdirSync(root,{recursive:true,mode:0o700});writeFileSync(join(root,'status.json'),JSON.stringify({version:'1.1.0',state:'starting',checked_at:new Date().toISOString()}),{mode:0o600});
   do{try{console.log(JSON.stringify(await collectBodies(config,root)));}catch{console.error('article_collection_unavailable');}if(process.argv.includes('--once'))break;await delay(300000);}while(true);
 }
