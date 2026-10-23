@@ -4,12 +4,14 @@ WORKDIR /app
 COPY apps/nas-dashboard/package*.json ./
 RUN npm ci --no-audit --no-fund
 COPY apps/nas-dashboard/ ./
-RUN npm run build
+RUN npm run build && npm prune --omit=dev --no-audit --no-fund
 
 FROM ${NODE_IMAGE}
 WORKDIR /app
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/server ./server
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/package.json ./package.json
 RUN chmod -R a+rX /app
 USER 1000:1001
 ENV NODE_ENV=production PORT=3080 TZ=Asia/Shanghai

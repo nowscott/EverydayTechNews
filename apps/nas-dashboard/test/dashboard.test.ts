@@ -72,3 +72,12 @@ test('HTTP authentication, session expiry on restart, rate limiting, method and 
 });
 
 test('first-fetch date is stable across repeat observations and temporary snapshots are removed',()=>{const f=fixture();try{const previous=new Date(Date.now()-86400000).toISOString(),a={id:'old',title:'旧闻',content_fingerprint:'same',fetched_at:previous};f.p.prepare('INSERT INTO articles VALUES(?,?,?)').run('old','v1',JSON.stringify(a));f.p.prepare('INSERT INTO articles VALUES(?,?,?)').run('old','v2',JSON.stringify({...a,fetched_at:new Date().toISOString()}));const result=f.dashboard.news('premium',new URLSearchParams({from:f.today,to:f.today}));assert.equal(result.data.total,1);const r=new Reader(f.ordinary);r.query('SELECT * FROM issues');const temp=r.snapshotRoot!;r.close();assert.throws(()=>readFileSync(temp+'/state.sqlite3'));}finally{f.close();}});
+
+test('original reader reuses saved source text and separate verified cache without changing business state',()=>{
+ const f=fixture();try{
+ const article=JSON.parse(f.p.prepare('SELECT data FROM articles').get()!.data as string);article.text='这是已保存的来源正文。';article.content_origin='official_article_html';f.p.prepare('UPDATE articles SET data=?').run(JSON.stringify(article));
+ const params=new URLSearchParams({from:f.today,to:f.today}),item=f.dashboard.news('premium',params).data.items[0];const before=hashes(f.root);
+ const detail=f.dashboard.news('premium',params,item.id);assert.equal(detail.data.original.kind,'article_text');assert.equal(detail.data.original.text,article.text);assert.deepEqual(hashes(f.root),before);
+ const ordinary=f.dashboard.news('ordinary',params).data.items[0];assert.equal(f.dashboard.news('ordinary',params,ordinary.id).data.original.state,'pending');
+ }finally{f.close();}
+});

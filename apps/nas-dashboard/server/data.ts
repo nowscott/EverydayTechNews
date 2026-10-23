@@ -3,10 +3,11 @@ import { readFileSync, readdirSync, statSync, realpathSync, mkdtempSync, copyFil
 import { resolve, sep, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
+import { cachedBody, articleUrl } from './body-cache.ts';
 import { redact, safeUrl } from './security.ts';
 export type Row = Record<string, any>;
 export type Component = 'ordinary' | 'premium';
-export type Config = { ordinary: string; premium: string; runtime: string; ordinaryDeployment?: string; premiumDeployment?: string };
+export type Config = { ordinary: string; premium: string; runtime: string; ordinaryDeployment?: string; premiumDeployment?: string; bodies?: string };
 export const day = (now = new Date()) => new Date(now.getTime() + 28800000).toISOString().slice(0, 10);
 const dateOf = (value: unknown) => { const d = new Date(String(value)); return Number.isFinite(d.getTime()) ? day(d) : null; };
 const parse = (value: string | null) => value ? JSON.parse(value) : null;
@@ -126,6 +127,7 @@ function news(r: Reader, component: Component, from: string, to: string): Row[] 
       fetched_at: a.fetched_at, published_at: a.published_at, date_basis: 'first_fetch_day',
       score: ranking?.score ?? null, score_system: ranking?.version ?? '未评分', score_detail: ranking ? { breakdown: ranking.breakdown, signals: ranking.signals, note: ranking.note } : null,
       stage: j ? stage(j.status, !!j.result) : 'collected', raw_status: j?.status ?? 'not_queued', rewrite: j?.result ?? null,
+      article_id:a.id,content_fingerprint:a.content_fingerprint,
       review: j?.status === 'ai_approved' ? 'passed' : j?.status === 'ai_rejected' ? 'rejected' : j?.result ? 'pending' : 'not_started', editions: selected.get(a.url) ?? [] }];
   });
 }
@@ -206,12 +208,32 @@ export class Dashboard {
     return this.read(component, r => {
       let rows = news(r,component,from,to);
       const sources = [...new Set(rows.map(a=>a.source))].sort();
-      if (id) { const row = rows.find(v=>v.id===id); if (!row) throw Error('not_found'); return row; }
+      if (id) { const row = rows.find(v=>v.id===id); if (!row) throw Error('not_found'); return {...row,original:this.original(r,component,row)}; }
       const q = (params.get('q') ?? '').toLowerCase(), source = params.get('source'), status = params.get('stage');
       rows = rows.filter(a => a.title.toLowerCase().includes(q) && (!source || a.source === source) && (!status || a.stage === status));
       rows.sort(params.get('sort') === 'score' ? (a,b)=>(b.score??-Infinity)-(a.score??-Infinity) : (a,b)=>String(b.fetched_at??b.date).localeCompare(String(a.fetched_at??a.date)));
       return { items: rows.slice((page-1)*30,page*30).map(({rewrite,score_detail,...v})=>v), total: rows.length, page, page_size: 30, sources, from,to };
     });
+  }
+  original(r: Reader, component: Component, row: Row): Row {
+    const cache=cachedBody(this.config.bodies,row.url);
+    if(cache?.state==='available')return cache;
+    if(component==='premium'){
+      const stored=r.query("SELECT data FROM articles WHERE id=? AND json_extract(data,'$.content_fingerprint')=? ORDER BY rowid LIMIT 1",row.article_id,row.content_fingerprint)[0];
+      const a=stored?parse(stored.data):null;
+      let text=a?.text;
+      if(!text&&/^bodies\/[a-f0-9]{64}\.json$/.test(a?._body_ref??'')){
+        const manifest=r.file('archive-manifests/objects.json'),entry=manifest?.[a._body_ref];
+        if(entry&&Date.parse(entry.expires_at)>Date.now()){
+          const raw=r.file('transient/'+a._body_ref,'text');
+          if(raw&&digest(raw)===entry.sha256)text=JSON.parse(raw).text;
+        }
+      }
+      if(typeof text==='string'&&text.trim())return {state:'available',kind:/_article_html$/.test(a.content_origin??'')?'article_text':'excerpt',url:row.url,text:text.slice(0,100000),fetched_at:a.body_fetched_at??a.fetched_at,origin:a.content_origin,background_state:cache?.state??'pending'};
+    }
+    if(cache)return cache;
+    try{articleUrl(row.url);}catch{return {state:'unsupported',url:row.url,reason:'publisher_not_supported'};}
+    return {state:'pending',url:row.url,reason:'background_capture_pending'};
   }
   issues(component: Component, params: URLSearchParams, id?: string) {
     const {from,to,page}=range(params);

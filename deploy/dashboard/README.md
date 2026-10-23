@@ -29,3 +29,10 @@ record-run.py 用独立的非阻塞锁避免重叠，原业务锁仍保留。开
 验证桌面和手机宽度、筛选/分页/详情、脱敏与登录；核对真实数据库数量、费用和发送状态。只读隔离验证应在无业务写入的短窗口内，对数据库、WAL、durable/state和发送文件做前后哈希，查询调用数和账本行数。观察到并行业务任务时，应明确区分自然调度写入，不能归因于看板，也不能声称哈希不变。
 
 测试：`npm test --prefix apps/nas-dashboard`、`npm run build --prefix apps/nas-dashboard`、`python3 -m unittest discover -s deploy/dashboard -p 'test_*.py'`。
+
+
+## 从v1.0升级到v1.1
+
+备份当前compose.yaml、compose.env、installation.json。新建看板目录下bodies（0700、与业务相同UID），构建v1.1镜像后替换DASHBOARD_IMAGE并使用新compose.yaml执行up -d --wait。新增body-collector只读挂载两个业务目录，唯一可写挂载为看板自己的bodies；它无dashboard.env、SMTP或模型凭据。collector使用既有NAS本机7890代理访问固定允许的新闻发布方，host网络不开放监听端口。网页进程仍只读挂载全部业务与正文缓存。
+
+回滚到v1.0时先停止body-collector，再恢复备份的compose.yaml与镜像配置；保留bodies目录和既有业务状态。新抓取的正文只供本地阅读，不进入旧业务的选题、评分、发信或归档发布流程。
