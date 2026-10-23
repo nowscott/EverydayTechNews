@@ -13,8 +13,8 @@ export const SOURCES = {
     "blogs.nvidia.com"
   ],
   "github": [
-    "GitHub 更新日志",
-    "https://github.blog/changelog/feed/",
+    "GitHub 重大产品动态",
+    "https://github.blog/feed/",
     "github.blog"
   ],
   "cloudflare": [
@@ -91,7 +91,14 @@ export const SOURCES = {
     "Ars Technica 科学",
     "https://feeds.arstechnica.com/arstechnica/science",
     "arstechnica.com"
-  ]
+  ],
+  "mit_ai": ["MIT News · AI研究", "https://news.mit.edu/rss/topic/artificial-intelligence2", "news.mit.edu"],
+  "ars_ai": ["Ars Technica · AI", "https://arstechnica.com/ai/feed/", "arstechnica.com"],
+  "quanta": ["Quanta · 科学与计算", "https://www.quantamagazine.org/feed/", "www.quantamagazine.org"],
+  "deepmind": ["Google DeepMind 官方研究", "https://deepmind.google/blog/rss.xml", "deepmind.google"],
+  "google_research": ["Google Research 官方研究", "https://research.google/blog/rss/", "research.google"],
+  "huggingface": ["Hugging Face 官方博客", "https://huggingface.co/blog/feed.xml", "huggingface.co"],
+  "qbitai": ["量子位", "https://www.qbitai.com/feed", "www.qbitai.com"]
 } as const;
 // Keep the legacy identity for archived evidence/parity; do not poll the blocked IR page.
 export const ACTIVE_SOURCES = Object.keys(SOURCES).filter(source => source !== 'tesla');

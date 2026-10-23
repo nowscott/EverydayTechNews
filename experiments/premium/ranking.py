@@ -3,9 +3,9 @@ from collections import Counter
 from datetime import datetime
 import re
 
-VERSION='editorial-5'
-PRIMARY={'nvidia','github','cloudflare','microsoft_foundry','apple','tesla','nasa','apple_developer','nasa_blogs'}
-AI=r'(?<![A-Za-z])ai(?![A-Za-z])|\b(?:llm|agents?|chatgpt|openai|anthropic|claude|copilot|foundry|deepseek|gemini|gpt[- ]?\d|transformer|clef|qwen|llama|mistral|multimodal)\b|人工智能|大模型|智能体|生成式|机器学习|模型训练|推理模型'
+VERSION='editorial-6'
+PRIMARY={'mit_ai','deepmind','google_research','huggingface','nvidia','github','cloudflare','microsoft_foundry','apple','tesla','nasa','apple_developer','nasa_blogs'}
+AI=r'(?<![A-Za-z])ai(?![A-Za-z])|\b(?:llm|agents?|chatgpt|openai|anthropic|claude|copilot|foundry|deepseek|gemini|gpt[- ]?\d|transformer|clef|qwen|llama|mistral|multimodal|embeddings?|diffusion|foundation models?|neural networks?)\b|人工智能|大模型|智能体|生成式|机器学习|模型训练|推理模型'
 CHIPS=r'\b(?:gpu|cpu|nvidia|geforce|dlss|semiconductor|chips?|hbm|cuda|esp32|firmware)\b|芯片|算力|半导体|显卡|存储芯片|量子计算'
 SOFTWARE=r'\b(?:release|runner|update|gateway|license|security|vulnerability|open.source|developer|software|api|python|linux|windows|parser|combinators?|compiler|programming|browser|database|databases|framework|encryption|javascript|typescript|rust)\b|更新|软件|开源|漏洞|开发者'
 INTERESTS = {

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { Store } from '../src/store.ts';
-import { policy, pyjson } from '../src/core.ts';
+import { atomic, policy, pyjson } from '../src/core.ts';
 import { editionInput, validateEditionReview } from '../src/edition-quality.ts';
 import { reviewEdition, checkedEdition, editionExclusions } from '../src/edition-review.ts';
 import { limitDomains, publisherKey, publisherCapacityReached } from '../src/editorial-policy.ts';
@@ -62,7 +62,7 @@ test('edition review requires complete coverage and attributable verbatim confli
 });
 
 test('audited reserve replaces rejected article; changed draft, next day and unaudited pool fail closed', async () => {
-  const root=mkdtempSync(tmpdir()+'/edition-review-');const store=new Store(root);const rows=records();
+  const root=mkdtempSync(tmpdir()+'/edition-review-');const store=new Store(root);atomic(root+'/trial.json',{schema_version:1,mode:'internal_test',enabled:true,model_enabled:true,production_enabled:false,start:'2026-10-19',days:7,expires_at:'2026-10-26T00:00:00+08:00',allowed_recipient:'nowscott@qq.com',daily_budget_cny:2});const rows=records();
   const prices=policy(); let posts=0;
   try {
     rows[0].result.summary='特斯拉年度股东大会定于12月3日。';rows[1].result.summary='特斯拉股东大会定于12月6日。';
@@ -88,7 +88,7 @@ test('audited reserve replaces rejected article; changed draft, next day and una
 });
 
 test('unknown edition audit usage never retries; requests outside paid window never POST', async () => {
-  const root=mkdtempSync(tmpdir()+'/edition-unknown-');const store=new Store(root);const rows=records();let posts=0;
+  const root=mkdtempSync(tmpdir()+'/edition-unknown-');const store=new Store(root);atomic(root+'/trial.json',{schema_version:1,mode:'internal_test',enabled:true,model_enabled:true,production_enabled:false,start:'2026-10-19',days:7,expires_at:'2026-10-26T00:00:00+08:00',allowed_recipient:'nowscott@qq.com',daily_budget_cny:2});const rows=records();let posts=0;
   try {
     const deps={now:()=>clock,verify:async()=>true,token:'test-token',fetcher:(async ()=>{posts++;throw new Error('unknown transport');}) as typeof fetch};
     await reviewEdition(store,rows,policy(),deadline,undefined,deps);
@@ -101,7 +101,7 @@ test('unknown edition audit usage never retries; requests outside paid window ne
 });
 
 test('malformed known-cost edition responses get at most three attempts; budget blocks audit POST', async () => {
-  const root=mkdtempSync(tmpdir()+'/edition-invalid-');const store=new Store(root);let posts=0;
+  const root=mkdtempSync(tmpdir()+'/edition-invalid-');const store=new Store(root);atomic(root+'/trial.json',{schema_version:1,mode:'internal_test',enabled:true,model_enabled:true,production_enabled:false,start:'2026-10-19',days:7,expires_at:'2026-10-26T00:00:00+08:00',allowed_recipient:'nowscott@qq.com',daily_budget_cny:2});let posts=0;
   const deps={now:()=>clock,verify:async()=>true,token:'test-token',fetcher:(async ()=>{
     posts++;return Response.json({usage:{prompt_tokens:100,completion_tokens:100},choices:[{finish_reason:'stop',message:{content:'{"checked_ids":[],"exclusions":[]}'}}]});
   }) as typeof fetch};

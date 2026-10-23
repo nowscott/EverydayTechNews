@@ -42,9 +42,11 @@ export function policy(): Row { return read(fileURLToPath(new URL('../../../expe
 export function trial(root: string): Row {
   const t = read(root + '/trial.json');
   if (t.schema_version !== 1 || t.mode !== 'internal_test' || t.production_enabled !== false || t.allowed_recipient !== RECIPIENT
-    || t.start !== '2026-10-19' || t.days !== 7 || Date.parse(t.expires_at) !== Date.parse(EXPIRY)
+    || t.start !== '2026-10-19' || !(t.testing_period === 'continuous' && t.days === null && t.expires_at === null
+      || t.testing_period !== 'continuous' && t.days === 7 && Date.parse(t.expires_at) === Date.parse(EXPIRY))
     || !(t.daily_budget_cny > 0 && t.daily_budget_cny <= 2)) throw new Error('invalid_trial_boundary');
   return t;
 }
-export const active = (t: Row, now = new Date()) => t.enabled === true && day(now) >= t.start && now.getTime() < Date.parse(t.expires_at);
+export const trialDeadline = (t: Row) => t.testing_period === 'continuous' && t.expires_at === null ? Infinity : Date.parse(t.expires_at);
+export const active = (t: Row, now = new Date()) => t.enabled === true && day(now) >= t.start && now.getTime() < trialDeadline(t);
 export const exists = existsSync;

@@ -40,7 +40,7 @@ function article(source: string, url: string, title: string, pub: string, fetche
   return { id: digest(url), url, source, source_name: (SOURCES as Row)[source][0], title, published_raw: pub,
     published_at: published, published_time_kind: 'rss_article_publication', original_article_published_at: published,
     fetched_at: fetched, event_time: null, text, content_status: complete(text), content_fingerprint: digest(text),
-    content_origin: 'rss_description', language: source === 'ithome' ? 'zh-CN' : 'en', description_clean: text,
+    content_origin: 'rss_description', language: ['ithome','qbitai'].includes(source) ? 'zh-CN' : 'en', description_clean: text,
     rights_status: 'unconfirmed_model_and_distribution' };
 }
 export function parseFeed(raw: string, source: string, fetched: string): Row[] {
@@ -67,6 +67,7 @@ export function parseFeed(raw: string, source: string, fetched: string): Row[] {
       a.description_clean = description; a.content_origin = encoded ? 'rss_content_encoded' : 'rss_description';
       if (['electrek_tesla', 'teslanorth_tesla'].includes(source)) a.content_status = 'discovery_only';
       if ((DISCOVERY_ONLY_SOURCES as readonly string[]).includes(source) || ((ENCODED_REQUIRED_SOURCES as readonly string[]).includes(source) && !encoded)) a.content_status = 'discovery_only';
+      if (REGISTERED_BODIES[source]) a.content_status='discovery_only';
       rows.push(a);
     } catch { /* Invalid individual entries do not invalidate the remaining feed. */ }
   });
@@ -204,6 +205,33 @@ async function supplementTeslaMedia(rows: Row[], folder: string, fetcher: typeof
     } catch (error) { if (storageError(error)) throw error; a.body_probe_status = 'body_fetch_failed'; a.body_http_status = (error as any).status ?? null; }
   });
 }
+export const REGISTERED_BODIES:Row = {
+  deepmind:{host:'deepmind.google',prefix:'/blog/',selector:'article, main',slash:true},
+  google_research:{host:'research.google',prefix:'/blog/',selector:'article, main',slash:true},
+  huggingface:{host:'huggingface.co',prefix:'/blog/',selector:'article, main'},
+  qbitai:{host:'www.qbitai.com',prefix:'/',selector:'.article, article, .article-content, .entry-content'}
+};
+export async function supplementRegistered(rows:Row[],folder:string,fetcher:typeof fetch,source:string) {
+  const rule=REGISTERED_BODIES[source];if(!rule)return;
+  const clock=Date.now(),deadline=performance.now()+90000;
+  const chosen=rows.filter(a=>!titleExclusion(a.title)&&Date.parse(a.published_at)<=clock&&clock-Date.parse(a.published_at)<=86400000).slice(0,6);
+  await mapLimit(chosen,2,async a=>{
+    a.content_status='discovery_only';
+    try {
+      if(performance.now()>=deadline){a.body_probe_status='body_batch_deadline';return;}
+      const url=new URL(a.url);
+      if(url.hostname!==rule.host||url.port||!url.pathname.startsWith(rule.prefix)){a.body_probe_status='body_url_not_allowlisted';return;}
+      if(rule.slash&&!url.pathname.endsWith('/'))url.pathname+='/';
+      const {raw}=await get(url.href,fetcher,false);
+      const parsed=extractPublisherArticle(raw.toString('utf8'),a,{selector:rule.selector,feed_publication_fallback:true});
+      a.body_probe_status=parsed.body_probe_status;if(parsed.body_probe_status!=='parsed')return;
+      const text=clean(parsed.raw_article_html),published=time(parsed.publication_raw),path=`${folder}/feeds/${source}/${digest(raw)}.html`;
+      mkdirSync(dirname(path),{recursive:true});writeFileSync(path,raw);
+      Object.assign(a,{text,content_fingerprint:digest(text),content_status:complete(text),content_origin:'registered_article_html',published_at:published,
+        original_article_published_at:published,published_time_kind:'registered_feed_article_publication',body_snapshot:path,body_fetched_at:stamp()});
+    }catch(error){if(storageError(error))throw error;a.body_probe_status='body_fetch_failed';}
+  });
+}
 export async function fetchSource(source: string, folder: string, fetcher: typeof fetch = fetch): Promise<{ rows: Row[]; health: Row }> {
   const start = performance.now(); let response: Response | undefined; let rows: Row[] = []; let raw: Buffer; let suffix = '.xml';
   try {
@@ -224,6 +252,7 @@ export async function fetchSource(source: string, folder: string, fetcher: typeo
       feedItems = rows.length; scanned = feedItems; suffix = source === 'apple' ? '.xml' : '.html'; await supplement(rows, folder, fetcher);
     } else { rows = parseFeed(raw.toString('utf8'), source, observed); feedItems = load(raw.toString('utf8'), { xml: true })('rss > channel > item').length; scanned = Math.min(100, feedItems);
       if (['electrek_tesla', 'teslanorth_tesla'].includes(source)) await supplementTeslaMedia(rows, folder, fetcher, source);
+      if (REGISTERED_BODIES[source]) await supplementRegistered(rows,folder,fetcher,source);
     }
     if (!rows.length) throw new Error('empty_feed');
     const hash = digest(raw); const path = `${folder}/feeds/${source}/${hash}${suffix}`;

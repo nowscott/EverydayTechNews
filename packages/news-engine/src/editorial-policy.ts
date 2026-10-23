@@ -3,6 +3,16 @@ import { preferences } from './ranking.ts';
 import type { Row } from './core.ts';
 import { titleExclusion } from '../../news-common/src/filter.ts';
 export { titleExclusion, FILTER_VERSION } from '../../news-common/src/filter.ts';
+// Routine platform administration is not a reader-facing technology development.
+export function articleExclusion(a:Row):Row|null {
+  const shared=titleExclusion(a.title);if(shared)return shared;
+  if(publisherKey(a)!=='github.blog')return null;
+  const majorSecurity=/CVE-\d|critical vulnerab|zero.day|remote code execution|高危漏洞|重大安全/i.test(a.title);
+  const model=/\b(?:gpt[- ]?\d|claude|gemini|deepseek|llama|mistral|o[134])\b/i.test(a.title);
+  const launch=/introduc|launch|releas|available|support|发布|正式上线/i.test(a.title);
+  const capability=/coding agent|autonomous agent|agent mode|Copilot SDK|GitHub Spark|编码智能体|自主编程/i.test(a.title);
+  return majorSecurity||(model||capability)&&launch?null:{reason:'routine_platform_changelog',policy:'reader-value-1'};
+}
 // Brands are interests, not domains. Prefer the subject of the title to incidental body mentions.
 const domains = [
   ['安全与网络', '漏洞|网络安全|隐私|加密|泄露|黑客|安全补丁|\\bsecurity\\b|vulnerab|encryption|privacy|data breach|\\btees?\\b'],
@@ -22,6 +32,7 @@ export function publisherKey(a: Row): string | null {
   let host: string;
   try { host = new URL(a.url).hostname.toLowerCase().replace(/^www\./, ''); }
   catch { return a.source ? 'source:' + a.source : null; }
+  if(['blog.google','deepmind.google','research.google'].includes(host))return 'google.com';
   return ['ithome.com', 'apple.com', 'nasa.gov', 'nvidia.com', 'microsoft.com', 'cloudflare.com', 'electrek.co']
     .find(root => host === root || host.endsWith('.' + root)) ?? host;
 }
@@ -43,7 +54,7 @@ export function limitDomains<T extends Row>(input: T[], rejected: Row[] = [], ma
   const leadCount = Number(preferences().lead_count);
   for (const original of input) {
     const a = original.article ?? original; const domain = analyzeDomain(a); a.domain = domain.primary; a.domain_analysis = domain;
-    const exclusion = titleExclusion(a.title) ?? (original.result?.title ? titleExclusion(original.result.title) : null);
+    const exclusion = articleExclusion(a) ?? (original.result?.title ? titleExclusion(original.result.title) : null);
     if (exclusion) { rejected.push({ id: a.id, ...exclusion }); continue; }
     const publisher = publisherKey(a);
     if (publisher && (publishers.get(publisher) ?? 0) >= publisherMaximum(a)) { rejected.push({ id: a.id, reason: 'publisher_capacity', publisher }); continue; }

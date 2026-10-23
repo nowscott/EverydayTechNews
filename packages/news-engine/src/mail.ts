@@ -4,7 +4,7 @@ import { limitDomains } from './editorial-policy.ts';
 import nodemailer from 'nodemailer';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { Store, files } from './store.ts';
-import { atomic, read, digest, RECIPIENT, EXPIRY, trial, stamp, active, day, localParts, type Row } from './core.ts';
+import { atomic, read, digest, RECIPIENT, trialDeadline, trial, stamp, active, day, localParts, type Row } from './core.ts';
 import { isApproved, draftHash } from './quality.ts';
 import { policy } from './core.ts';
 import { authorizedTestRecipient } from './subscribers.ts';
@@ -73,7 +73,7 @@ export function freezeIssue(store: Store, issue: Row, records: Row[]) {
 export async function sendOnce(store: Store, issueId: string, deps: { transport?: any; now?: () => Date; authorize?: () => Promise<boolean> } = {}): Promise<Row> {
   if (!/^[A-Za-z0-9_-]+$/.test(issueId)) throw new Error('invalid_issue');
   const config = trial(store.root); const now = deps.now?.() ?? new Date();
-  if (!config.enabled || !config.delivery_enabled || now.getTime() >= Date.parse(EXPIRY)) return { status: 'trial_or_delivery_disabled_or_expired' };
+  if (!config.enabled || !config.delivery_enabled || now.getTime() >= trialDeadline(config)) return { status: 'trial_or_delivery_disabled_or_expired' };
   if (read(store.root + '/test-delivery-config.json').allowed_recipient !== RECIPIENT) throw new Error('recipient_not_explicitly_authorized');
   if (!store.authoritative && !deps.transport) throw new Error('smtp_requires_authoritative_checkpoint');
   const folder = store.root + '/issues/' + issueId; const edition = read(folder + '/edition.json');
@@ -102,7 +102,7 @@ export async function sendOnce(store: Store, issueId: string, deps: { transport?
   const path = store.root + '/deliveries/' + fingerprint + '.json'; const save = () => { atomic(path, receipt); store.checkpoint(); };
   save(); // Claim is remotely durable before creating an SMTP connection.
   const sendingTime = deps.now?.() ?? new Date(); const sendingParts = localParts(sendingTime);
-  if (sendingTime.getTime() >= Date.parse(EXPIRY) || (issueId.startsWith('test-') && (!active(config, sendingTime) || !issueId.startsWith('test-' + day(sendingTime)) || sendingParts.hour < 6 || sendingParts.hour >= 9 || sendingParts.hour === 6 && sendingParts.minute < 30))) {
+  if (sendingTime.getTime() >= trialDeadline(config) || (issueId.startsWith('test-') && (!active(config, sendingTime) || !issueId.startsWith('test-' + day(sendingTime)) || sendingParts.hour < 6 || sendingParts.hour >= 9 || sendingParts.hour === 6 && sendingParts.minute < 30))) {
     receipt.status = 'not_sent_outside_window'; save(); return receipt;
   }
   if (issueId.startsWith('test-') && edition.kind !== 'diagnostic' && edition.articles.some((a: Row) => !Number.isFinite(Date.parse(a.published_at)) || Date.parse(a.published_at) < sendingTime.getTime() - 86400000 || Date.parse(a.published_at) > sendingTime.getTime())) {

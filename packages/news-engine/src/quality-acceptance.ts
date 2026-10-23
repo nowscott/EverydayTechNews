@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { Store } from './store.ts';
-import { atomic, read, policy, trial, EXPIRY, stamp, day, digest, pyjson, type Row } from './core.ts';
+import { atomic, read, policy, trial, trialDeadline, stamp, day, digest, pyjson, type Row } from './core.ts';
 import { reviewDraft } from './review.ts';
 
 export const qualityCases = [
@@ -15,10 +15,10 @@ export const qualityCases = [
 ];
 export async function verifyQuality(store: Store): Promise<Row> {
   if (!store.syncGit) throw new Error('quality_verification_requires_private_checkpoint');
-  const t = trial(store.root); if (!t.enabled || !t.model_enabled || Date.now() >= Date.parse(EXPIRY)) return { status: 'trial_or_model_disabled_or_expired' };
+  const t = trial(store.root); if (!t.enabled || !t.model_enabled || Date.now() >= trialDeadline(t)) return { status: 'trial_or_model_disabled_or_expired' };
   const path = store.root + '/durable/quality-acceptance-' + day() + '.json';
   if (!existsSync(path)) {
-    atomic(path, { issue_id: 'test-quality-' + day(), mode: 'internal_test_anytime', expires_at: stamp(new Date(Math.min(Date.now() + 30 * 60000, Date.parse(EXPIRY)))), results: [] });
+    atomic(path, { issue_id: 'test-quality-' + day(), mode: 'internal_test_anytime', expires_at: stamp(new Date(Math.min(Date.now() + 30 * 60000, trialDeadline(t)))), results: [] });
     store.checkpoint();
   }
   const spec = read(path); const p = policy(); p.daily_budget_cny = Math.min(p.daily_budget_cny, t.daily_budget_cny);
