@@ -28,7 +28,7 @@ POOL_PROMPT = PROMPT + '''本任务要求同次生成两种长度：summary通�
 SOURCES = {
     'ithome': ('IT之家', 'https://www.ithome.com/rss/', 'www.ithome.com'),
     'nvidia': ('NVIDIA 官方博客', 'https://blogs.nvidia.com/feed/', 'blogs.nvidia.com'),
-    'github': ('GitHub 更新日志', 'https://github.blog/changelog/feed/', 'github.blog'),
+    'github': ('GitHub 重大产品动态', 'https://github.blog/feed/', 'github.blog'),
     'cloudflare': ('Cloudflare 官方博客', 'https://blog.cloudflare.com/rss/', 'blog.cloudflare.com'),
     'microsoft_foundry': ('Microsoft Foundry 官方博客', 'https://devblogs.microsoft.com/foundry/feed/', 'devblogs.microsoft.com'),
     'openai': ('OpenAI 官方新闻', 'https://openai.com/news/rss.xml', 'openai.com'),
@@ -288,7 +288,9 @@ def load_policy():
 def gate(p, current, verified, test_permit=None):
     current=current.astimezone(SH)
     if not verified: return 'official_rules_unconfirmed'
-    if not (datetime.fromisoformat(p['verified_on']).date() <= current.date() and current < datetime.fromisoformat(p['valid_until'])): return 'rules_expired_or_future'
+    if current.date() < datetime.fromisoformat(p['verified_on']).date(): return 'rules_expired_or_future'
+    if not (p.get('verification_mode') == 'live_every_request' and p.get('valid_until') is None) and current >= datetime.fromisoformat(p['valid_until']): return 'rules_expired_or_future'
+    if current >= datetime.fromisoformat('2026-10-26T00:00:00+08:00'): return 'trial_expired'
     if p['timezone']!='Asia/Shanghai' or p['window_start']!='05:00' or p['window_end']!='06:15': return 'window_conflict'
     if p['stop_new_before_seconds'] < p['request_deadline_seconds']+60: return 'unsafe_margin'
     if test_permit:

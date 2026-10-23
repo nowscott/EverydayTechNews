@@ -28,7 +28,7 @@ docker compose -f deploy/nas/compose.yaml run --rm premium status
 3. 检查所有未过期 objects 的 transient 文件存在且 SHA-256 匹配。若缺失，先解决下载问题，不能启用 NAS 模型或发送。
 4. 验证后，仅在交接副本中将 archive-manifests/latest.json 和 days.json 移到交接备份中；保留 objects.json。NAS 启动器遇到 latest.json 会拒绝启动，避免误调用 GitHub 下载。原仓库和原 artifacts 不动。
 5. 将完整交接副本（包括 transient）传入新的 data 目录，排除 .git、旧锁文件和可重建的 state.sqlite3。修正所有者权限，运行 status、report，并对照迁移前的费用、发送记录、期刊、未确认外部动作和正文数量。不要重置账本或重新 init。
-6. 将既有测试密钥填入 .env，确认只发 nowscott@qq.com；保持原每日最高 2 元和 2026-10-26 00:00 上海时间到期边界。迁移不重开七天试刊。
+6. 将既有测试密钥填入 .env，确认只发 nowscott@qq.com；保持每日最高2元；七天试刊是历史迁移设置。2026-10-23用户已授权长期内部测试，按下方连续测试流程启用。
 7. 对照成功后设置 NAS_TRIAL_ENABLED=true，再执行 run。这个开关不会修改或放宽 trial.json 内的开关、收件人和期限。
 
 NAS 的正式 run 还使用 `--local-authority`，仅在 Linux flock 保护下运行。私有数据目录必须为 0700，且包含 0600 的 `.nas-authority.json`，记录旧任务已停止、来源提交和原状态摘要；缺少交接记录会拒绝真实模型和 SMTP 操作。普通离线副本不获得此权限。该模式每次外部操作前以 fsync 的原子状态检查点持久化费用预留与发送记录，无需 GitHub 凭据。
@@ -72,3 +72,12 @@ data 是完整持久状态，更新容器不会移除它；正文仍按现有对
 ## 正式版本管理
 
 后续更新采用 [Git Release、自动部署与回退流程](VERSIONING.md)。`local` 镜像仅用于最初迁移；受管理运行使用固定提交和镜像摘要，每 15 分钟检查正式版本，04:00–09:00 不切换，失败继续使用旧版。
+
+
+## 长期内部测试（2026-10-23用户授权）
+
+news-engine-v0.6.0起支持显式`testing_period=continuous`，`days=null`、`expires_at=null`。仅取消整轮测试到期日；仍只发指定测试邮箱，每日2元、100个新版本、05:00—06:12新增模型请求、06:30—09:00投递、AI验收与生产关闭均保留。人工样刊许可仍最长30分钟，到期不重开；未知费用/SMTP状态不重试。
+
+先按VERSIONING发布并部署0.6.0，在NAS从该正式版本源码执行`python3 deploy/nas/enable-continuous.py --root /vol3/1000/Docker/everydaytechnews-managed`。工具锁定更新、调度与账本，备份原trial.json，只修改测试期限，使用实际镜像离线验证，并证明费用/冻结期刊/投递账本不变。旧版不能读取新配置时回退会被阻断，不得恢复旧账本；后续修复发布兼容版本。
+
+价格策略使用`verification_mode=live_every_request`与`valid_until=null`，含义是每次付费请求都须重新核对官方模型版本、价格表和时段规则，并非永久信任当前价格。无法读取或规则改变即暂停该次请求。暂停长期测试仍使用现有enabled/model_enabled/delivery_enabled开关。

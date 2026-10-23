@@ -36,6 +36,7 @@ export function extractPublisherArticle(raw: string, a: Row, publisher: Row | nu
   if (!date && new Set(dates).size === 1) date = dates[0];
   const times = node.find('time[datetime]').map((_, el) => $(el).attr('datetime')!).get();
   if (!date && new Set(times).size === 1) date = times[0];
+  if ((!date || !/(?:Z|[+-]\d\d:\d\d)$/.test(date)) && publisher.feed_publication_fallback === true && a.published_time_kind === 'rss_article_publication') date = a.original_article_published_at;
   if (!date || !/(?:Z|[+-]\d\d:\d\d)$/.test(date) || !Number.isFinite(Date.parse(date))) return { body_probe_status: 'publication_timestamp_unconfirmed' };
   node.find('nav,header,footer,aside,script,style,form,[class*="related"],[class*="share"]').remove();
   return { body_probe_status: 'parsed', raw_article_html: $.html(node), publication_raw: date, publisher_host: new URL(a.url).hostname };

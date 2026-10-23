@@ -1,9 +1,9 @@
 import { EDITION_REVIEW_PROMPT, editionReviewKey, validateEditionReview } from './edition-quality.ts';
 import { load } from 'cheerio/slim';
 import { PROMPT, POOL_PROMPT } from './constants.ts';
-import { digest, pyjson, stamp, day, localParts, at, EXPIRY, type Row } from './core.ts';
+import { digest, pyjson, stamp, day, localParts, at, EXPIRY, trial, trialDeadline, type Row } from './core.ts';
 import { complete, whitespace } from './sources.ts';
-import { titleExclusion } from './editorial-policy.ts';
+import { titleExclusion, articleExclusion } from './editorial-policy.ts';
 import { Store } from './store.ts';
 import { REVIEW_PROMPT, WRITING_SUFFIX, reviewKey, validateReview } from './quality.ts';
 export const codepoints = (s: string) => Array.from(s).length;
@@ -44,16 +44,17 @@ export function cost(usage: Row, p: Row, multiplier = 1) {
   if (![input, output, hit].every(x => Number.isInteger(x) && x >= 0) || hit > input) throw new Error('bad usage');
   return multiplier * ((input - hit) * p.input_miss_per_million + hit * p.input_hit_per_million + output * p.output_per_million) / 1e6;
 }
-export function gate(p: Row, now: Date, verified: boolean, permit?: Row): string | null {
+export const pricingDeadline = (p:Row) => p.verification_mode === 'live_every_request' && p.valid_until === null ? Infinity : Date.parse(p.valid_until);
+export function gate(p: Row, now: Date, verified: boolean, permit?: Row, deadline = Date.parse(EXPIRY)): string | null {
   if (!verified) return 'official_rules_unconfirmed';
-  if (day(now) < p.verified_on || now.getTime() >= Date.parse(p.valid_until)) return 'rules_expired_or_future';
-  if (now.getTime() >= Date.parse(EXPIRY)) return 'trial_expired';
+  if (day(now) < p.verified_on || !(p.verification_mode === 'live_every_request' && p.valid_until === null) && (!Number.isFinite(Date.parse(p.valid_until)) || now.getTime() >= Date.parse(p.valid_until))) return 'rules_expired_or_future';
+  if (now.getTime() >= deadline) return 'trial_expired';
   if (p.timezone !== 'Asia/Shanghai' || p.window_start !== '05:00' || p.window_end !== '06:15') return 'window_conflict';
   if (p.stop_new_before_seconds < p.request_deadline_seconds + 60 || p.request_deadline_seconds > 90) return 'unsafe_margin';
   if (permit) {
     if (String(permit.issue_id).startsWith('test-pool-')) return 'scheduled_job_cannot_use_anytime_permit';
     if (permit.mode !== 'internal_test_anytime' || !/^(sample-|test-)/.test(permit.issue_id ?? '') || !Number.isFinite(Date.parse(permit.expires_at))) return 'invalid_test_permit';
-    if (now.getTime() >= Math.min(Date.parse(permit.expires_at), Date.parse(EXPIRY)) - p.stop_new_before_seconds * 1000) return 'test_permit_expired';
+    if (now.getTime() >= Math.min(Date.parse(permit.expires_at), deadline) - p.stop_new_before_seconds * 1000) return 'test_permit_expired';
     return null;
   }
   if (now < at(day(now), '05:00:00') || now.getTime() >= at(day(now), '06:15:00').getTime() - p.stop_new_before_seconds * 1000) return 'outside_window_or_margin';
@@ -96,7 +97,7 @@ export async function paidRequest(store: Store, key: string, a: Row, p: Row, per
   if (!store.authoritative && !deps.fetcher) throw new Error('paid_transport_requires_authoritative_checkpoint');
   const now = deps.now ?? (() => new Date()); const fetcher = deps.fetcher ?? fetch;
   const job = store.one('SELECT * FROM jobs WHERE key=?', key); if (!job) return 'unknown_job';
-  const exclusion = titleExclusion(a.title); if (exclusion) return exclusion.reason;
+  const exclusion = articleExclusion(a); if (exclusion) return exclusion.reason;
   if (job.result) return 'cached';
   if (['inflight', 'uncertain_requires_review', 'failed_validation_review'].includes(job.status)) return 'held_for_review';
   // Unknown-cost failures are held even when a legacy job carries retry_after.
@@ -106,10 +107,13 @@ export async function paidRequest(store: Store, key: string, a: Row, p: Row, per
   if (a.content_status !== 'usable_excerpt' || a.evidence_expired_or_missing || complete(a.text ?? '') !== 'usable_excerpt') return 'insufficient_content';
   if (['electrek_tesla', 'teslanorth_tesla'].includes(a.source) && a.content_origin !== 'media_article_html') return 'media_article_body_unverified';
   if (cacheKey(a, p) !== key) return 'model_or_prompt_changed_create_new_issue';
-  let blocked = gate(p, now(), true, permit); if (blocked) return blocked;
+  const config = trial(store.root);
+  if(!config.enabled||!config.model_enabled)return 'trial_or_model_disabled_or_expired';
+  const deadline = trialDeadline(config);
+  let blocked = gate(p, now(), true, permit, deadline); if (blocked) return blocked;
   const verified = await (deps.verify ?? verifyRules)(p);
   store.run('INSERT OR REPLACE INTO meta VALUES (?,?)', 'last_rule_check', pyjson({ at: stamp(now()), verified, source: p.source, policy_sha256: digest(pyjson(p, true)) }));
-  blocked = gate(p, now(), verified, permit); if (blocked) return blocked;
+  blocked = gate(p, now(), verified, permit, deadline); if (blocked) return blocked;
   const token = deps.token ?? process.env.DEEPSEEK_API_KEY?.trim(); if (!token) return 'missing_api_key';
   const evidence: Row = Object.fromEntries(['title', 'url', 'source_name', 'published_at', 'text'].map(k => [k, a[k]]));
   if (job.attempts > 0) evidence.revision_instruction = '这是已知费用的内部校验修复，不是新文章。summary严格限制80–130个中文字符、绝不超过150字符；次要数字留在points，不必把所有事实塞入概括。英文标题译成自然中文。claims每段evidence逐字复制原文一段连续文字，保留换行，不允许拼接表格的不连续单元格。优先保住主体、核心变化、范围和计划/测试等限定。';
@@ -133,7 +137,7 @@ export async function paidRequest(store: Store, key: string, a: Row, p: Row, per
     store.run("UPDATE jobs SET attempts=attempts+1,status='inflight' WHERE key=?", key);
   });
   store.checkpoint(); // Fail before any POST if reservation push failed.
-  blocked = gate(p, now(), verified, permit);
+  blocked = gate(p, now(), verified, permit, deadline);
   if (!blocked && (day(now()) !== day(clock) || tariff(now()) !== multiplier)) blocked = 'billing_period_changed';
   if (blocked) {
     store.run("UPDATE calls SET cost=0,status='not_sent' WHERE id=?", callId); store.run("UPDATE jobs SET status='queued' WHERE key=?", key); store.checkpoint(); return blocked;

@@ -1,7 +1,8 @@
-// Patterns and editorial messages ported from ranking.py editorial-5.
-export const VERSION = "editorial-5" as const;
+// Patterns and editorial messages ported from ranking.py editorial-6.
+export const VERSION = "editorial-6" as const;
 export const PRIMARY = [
   "github",
+  "mit_ai", "deepmind", "google_research", "huggingface",
   "cloudflare",
   "nasa",
   "nasa_blogs",
@@ -11,11 +12,11 @@ export const PRIMARY = [
   "tesla",
   "microsoft_foundry"
 ] as const;
-export const AI = "(?<![A-Za-z])ai(?![A-Za-z])|\\b(?:llm|agents?|chatgpt|openai|anthropic|claude|copilot|foundry|deepseek|gemini|gpt[- ]?\\d|transformer|clef|qwen|llama|mistral|multimodal)\\b|人工智能|大模型|智能体|生成式|机器学习|模型训练|推理模型" as const;
+export const AI = "(?<![A-Za-z])ai(?![A-Za-z])|\\b(?:llm|agents?|chatgpt|openai|anthropic|claude|copilot|foundry|deepseek|gemini|gpt[- ]?\\d|transformer|clef|qwen|llama|mistral|multimodal|embeddings?|diffusion|foundation models?|neural networks?)\\b|人工智能|大模型|智能体|生成式|机器学习|模型训练|推理模型" as const;
 export const CHIPS = "\\b(?:gpu|cpu|nvidia|geforce|dlss|semiconductor|chips?|hbm|cuda|esp32|firmware)\\b|芯片|算力|半导体|显卡|存储芯片|量子计算" as const;
 export const SOFTWARE = "\\b(?:release|runner|update|gateway|license|security|vulnerability|open.source|developer|software|api|python|linux|windows|parser|combinators?|compiler|programming|browser|database|databases|framework|encryption|javascript|typescript|rust)\\b|更新|软件|开源|漏洞|开发者" as const;
 export const INTERESTS = {
-  "AI": "(?<![A-Za-z])ai(?![A-Za-z])|\\b(?:llm|agents?|chatgpt|openai|anthropic|claude|copilot|foundry|deepseek|gemini|gpt[- ]?\\d|transformer|clef|qwen|llama|mistral|multimodal)\\b|人工智能|大模型|智能体|生成式|机器学习|模型训练|推理模型",
+  "AI": "(?<![A-Za-z])ai(?![A-Za-z])|\\b(?:llm|agents?|chatgpt|openai|anthropic|claude|copilot|foundry|deepseek|gemini|gpt[- ]?\\d|transformer|clef|qwen|llama|mistral|multimodal|embeddings?|diffusion|foundation models?|neural networks?)\\b|人工智能|大模型|智能体|生成式|机器学习|模型训练|推理模型",
   "Apple": "(?<![A-Za-z0-9])(?:apple|iphone|ipad|macbook|macos|ios|watchos|visionos|airpods|imac|homepod|mac\\s+(?:mini|studio|pro)|vision\\s+pro)(?![A-Za-z0-9])|苹果",
   "NVIDIA": "(?<![A-Za-z0-9])(?:nvidia|geforce|cuda|rtx|blackwell|rubin)(?![A-Za-z0-9])|英伟达",
   "Tesla": "(?<![A-Za-z0-9])(?:tesla|cybertruck|cybercab|fsd)(?![A-Za-z0-9])|特斯拉",

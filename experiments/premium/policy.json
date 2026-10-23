@@ -1,7 +1,7 @@
 {
   "source": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/",
   "verified_on": "2026-10-18",
-  "valid_until": "2026-10-26T00:00:00+08:00",
+  "valid_until": null,
   "timezone": "Asia/Shanghai",
   "window_start": "05:00",
   "window_end": "06:15",
@@ -15,5 +15,7 @@
   "input_hit_per_million": 0.02,
   "output_per_million": 4.0,
   "peak_rule": "北京时间周一至周五（不含中国法定节假日）09:00–12:00、14:00–18:00；其余空闲",
-  "prompt_version": "premium-pool-4"
+  "prompt_version": "premium-pool-4",
+  "verification_mode": "live_every_request",
+  "last_reverified_on": "2026-10-23"
 }

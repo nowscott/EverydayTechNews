@@ -184,7 +184,7 @@ def verify_api(store):
         article=chosen[0];key=b.cache_key(article,p)
         with store.db:store.db.execute('INSERT OR IGNORE INTO jobs(key,article,status) VALUES (?,?,?)',(key,json.dumps(article,ensure_ascii=False),'queued'))
         atomic(path,dict(mode='internal_test_anytime',issue_id='test-api-acceptance-'+b.now().date().isoformat(),
-            job_key=key,expires_at=min(b.now()+timedelta(minutes=30),datetime.fromisoformat(p['valid_until'])).isoformat(),
+            job_key=key,expires_at=min(b.now()+timedelta(minutes=30),datetime.fromisoformat(p['valid_until'] or '2026-10-26T00:00:00+08:00')).isoformat(),
             purpose='Explicit user-authorized API verification; one article, no email, never counts as trial day'))
         store.checkpoint()
     permit=json.loads(path.read_text());job=store.db.execute('SELECT * FROM jobs WHERE key=?',(permit['job_key'],)).fetchone()

@@ -1,12 +1,12 @@
 import { reviewEdition, checkedEdition, editionExclusions } from './edition-review.ts';
 import { mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { Store, files } from './store.ts';
-import { atomic, read, pyjson, digest, policy, trial, active, stamp, day, localParts, at, EXPIRY, type Row } from './core.ts';
+import { atomic, read, pyjson, digest, policy, trial, active, stamp, day, localParts, at, trialDeadline, type Row } from './core.ts';
 import { preferences, VERSION } from './ranking.ts';
 import { duplicate, select } from './editor.ts';
-import { cacheKey, paidRequest, validate, inspectRules, gate } from './model.ts';
+import { pricingDeadline, cacheKey, paidRequest, validate, inspectRules, gate } from './model.ts';
 import { fetchSource, mapLimit, SOURCES } from './sources.ts';
-import { limitDomains, analyzeDomain, titleExclusion, publisherCapacityReached } from './editorial-policy.ts';
+import { limitDomains, analyzeDomain, titleExclusion, articleExclusion, publisherCapacityReached } from './editorial-policy.ts';
 import { ACTIVE_SOURCES } from './constants.ts';
 import { reviewDraft, prepareRevision } from './review.ts';
 import { isApproved } from './quality.ts';
@@ -29,7 +29,7 @@ export function candidates(store: Store, cutoff: string, target = Number.MAX_SAF
   });
   const articles: Row[] = []; const reasons: Row[] = [];
   for (const a of rows(store, cutoff)) {
-    const exclusion = titleExclusion(a.title);
+    const exclusion = articleExclusion(a);
     if (exclusion) { reasons.push({ id: a.id, title: a.title, ...exclusion }); continue; }
     let reason: string | null = null;
     if (['electrek_tesla', 'teslanorth_tesla'].includes(a.source) && a.content_origin !== 'media_article_html') reason = 'media_article_body_unverified';
@@ -180,7 +180,7 @@ function recordsReady(store: Store, articles: Row[], deadline: string, rejected:
     if (!g.generated_at || !Number.isFinite(Date.parse(g.generated_at)) || Date.parse(g.generated_at) > Date.parse(deadline)) { rejected.push({ id: a.id, reason: 'generated_after_deadline' }); continue; }
     try { validate(g, a); } catch { rejected.push({ id: a.id, reason: 'saved_result_failed_current_validation' }); continue; }
     if (!isApproved(a, g, p, deadline)) { rejected.push({ id: a.id, reason: 'ai_review_not_passed' }); continue; }
-    const exclusion = titleExclusion(a.title) ?? titleExclusion(g.title);
+    const exclusion = articleExclusion(a) ?? titleExclusion(g.title);
     if (exclusion) { rejected.push({ id: a.id, ...exclusion }); continue; }
     a.domain = analyzeDomain(a).primary; a.job_key = key; records.push({ article: a, result: g, status: job.status, calls: store.all('SELECT * FROM calls WHERE job=?', key), ai_review: 'passed' });
   }
@@ -193,7 +193,7 @@ function publisherDraftCapacityReached(store: Store, a: Row, articles: Row[], de
     const job = store.one('SELECT result,status FROM jobs WHERE key=?', cacheKey(candidate, p));
     if (!job?.result || job.status === 'ai_rejected') return [];
     const result = JSON.parse(job.result);
-    if (titleExclusion(candidate.title) || titleExclusion(result.title ?? '')) return [];
+    if (articleExclusion(candidate) || titleExclusion(result.title ?? '')) return [];
     if (!result.generated_at || !Number.isFinite(Date.parse(result.generated_at)) || Date.parse(result.generated_at) > Date.parse(deadline)) return [];
     try { validate(result, candidate); return [{ article: candidate, result }]; } catch { return []; }
   });
@@ -217,14 +217,14 @@ export function samplePath(root: string, revision: SampleRevision = 'initial') {
 }
 export async function launchSample(store: Store, revision: SampleRevision = 'initial') {
   if (!store.authoritative) throw new Error('launch_requires_authoritative_private_git');
-  const t = trial(store.root); if (!t.enabled || !t.model_enabled || Date.now() >= Date.parse(EXPIRY)) return { status: 'trial_or_model_disabled_or_expired' };
+  const t = trial(store.root); if (!t.enabled || !t.model_enabled || Date.now() >= trialDeadline(t)) return { status: 'trial_or_model_disabled_or_expired' };
   const path = samplePath(store.root, revision); const p = policy();
   if (!existsSync(path)) {
     const check = await inspectRules(p); console.log(JSON.stringify({ stage: 'launch_pricing_preflight', ...check }));
     if (!check.verified) return { status: 'official_rules_unconfirmed', pricing: check };
     const cutoff = stamp(); const [chosen, rejected] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER); queue(store, chosen, p);
     const spec = { id: (revision === 'initial' ? 'sample-ts-launch-' : 'sample-ts-' + revision + '-') + day(), mode: revision === 'makeup' ? 'manual_makeup_24h' : 'current_24h_sample', makeup_for: revision === 'makeup' ? 'test-' + day() : null, pool_edition: true, articles: chosen, rejected, collection_cutoff: cutoff,
-      generation_cutoff: stamp(new Date(Math.min(Date.parse(cutoff) + 30 * 60000, Date.parse(EXPIRY), Date.parse(p.valid_until)))), created_at: stamp(), source_health: status(store).sources };
+      generation_cutoff: stamp(new Date(Math.min(Date.parse(cutoff) + 30 * 60000, trialDeadline(t), pricingDeadline(p)))), created_at: stamp(), source_health: status(store).sources };
     atomic(path, store.shrink(spec)); store.checkpoint();
   }
   const spec = store.expand(read(path)); const out = store.root + '/issues/' + spec.id + '/edition.json'; if (existsSync(out)) return read(out);
@@ -273,11 +273,11 @@ export async function launchSample(store: Store, revision: SampleRevision = 'ini
 }
 export async function verifyApi(store: Store) {
   if (!store.authoritative) throw new Error('acceptance_requires_authoritative_private_git');
-  const t = trial(store.root); if (!t.enabled || !t.model_enabled || Date.now() >= Date.parse(EXPIRY)) return { status: 'trial_or_model_disabled_or_expired' };
+  const t = trial(store.root); if (!t.enabled || !t.model_enabled || Date.now() >= trialDeadline(t)) return { status: 'trial_or_model_disabled_or_expired' };
   const path = store.root + '/durable/ts-api-acceptance.json'; const p = policy();
   if (!existsSync(path)) {
     const [chosen] = candidates(store, stamp(), 1); if (!chosen.length) return { status: 'no_eligible_acceptance_article' }; queue(store, chosen, p);
-    atomic(path, { mode: 'internal_test_anytime', issue_id: 'test-ts-api-' + day(), job_key: chosen[0].job_key, expires_at: stamp(new Date(Math.min(Date.now() + 30 * 60000, Date.parse(EXPIRY)))) }); store.checkpoint();
+    atomic(path, { mode: 'internal_test_anytime', issue_id: 'test-ts-api-' + day(), job_key: chosen[0].job_key, expires_at: stamp(new Date(Math.min(Date.now() + 30 * 60000, trialDeadline(t)))) }); store.checkpoint();
   }
   const permit = read(path); const job = store.one('SELECT * FROM jobs WHERE key=?', permit.job_key)!; repairKnown(store, job, p);
   const blocked = await paidRequest(store, job.key, JSON.parse(job.article), p, permit);
@@ -296,7 +296,8 @@ export async function deliver(store: Store, sample = false, now = new Date(), re
 }
 export function reportTrial(store: Store, now = new Date()) {
   const t = trial(store.root); const receipts = files(store.root + '/deliveries').map(read); const days = [];
-  for (let i = 0; i < t.days; i++) {
+  const count = t.testing_period === 'continuous' ? Math.max(0, Math.floor((at(day(now), '00:00:00').getTime() - at(t.start, '00:00:00').getTime()) / 86400000) + 1) : t.days;
+  for (let i = 0; i < count; i++) {
     const date = day(new Date(at(t.start, '00:00:00').getTime() + i * 86400000)); const id = 'test-' + date;
     const path = store.root + '/issues/' + id + '/edition.json'; let issue = existsSync(path) ? read(path) : null;
     const accepted = receipts.find(r => (r.issue === id || r.issue.startsWith(id + '-r-')) && r.status === 'smtp_accepted');
@@ -311,7 +312,7 @@ export function reportTrial(store: Store, now = new Date()) {
       inbox_feedback: (() => { const p = store.root + '/durable/reader-feedback/' + date + '.json'; return existsSync(p) ? read(p) : { status: 'not_verified' }; })(), delivery, manual_makeup_delivery: receipts.filter(r => r.issue === 'sample-ts-makeup-' + date).map(r => r.status), ai_review: issue?.quality_policy === 'fidelity-1' ? 'passed_for_included_articles' : 'not_verified', normal_edition: !!issue && issue.quality_policy === 'fidelity-1' && issue.kind === 'newsletter' && delivery.includes('smtp_accepted') });
   }
   const runtime = { authority: store.localAuthority ? 'nas' : store.syncGit ? 'github_private' : 'offline_copy', version: JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version };
-  const result = { runtime, days, completed_normal_editions: days.filter(d => d.normal_edition).length, accounting: status(store).calls, ai_review_outcomes: store.all("SELECT status,COUNT(*) count FROM jobs WHERE json_extract(article,'$.task_kind')='review' AND json_extract(article,'$.url') NOT LIKE 'https://example.invalid/quality/%' GROUP BY status"), quality_control: 'ai_fidelity_review', bill_paid: 'not_verified', engine: 'typescript' };
+  const result = { runtime, testing_period: t.testing_period ?? 'fixed_seven_days', expires_at: t.expires_at, days, completed_normal_editions: days.filter(d => d.normal_edition).length, accounting: status(store).calls, ai_review_outcomes: store.all("SELECT status,COUNT(*) count FROM jobs WHERE json_extract(article,'$.task_kind')='review' AND json_extract(article,'$.url') NOT LIKE 'https://example.invalid/quality/%' GROUP BY status"), quality_control: 'ai_fidelity_review', bill_paid: 'not_verified', engine: 'typescript' };
   atomic(store.root + '/trial-report.json', result); store.checkpoint(); return result;
 }
 export function collectionIntervalMinutes(now: Date, profile = process.env.NEWS_COLLECTION_PROFILE): number {
@@ -328,7 +329,7 @@ export function due(store: Store, now = new Date()) {
   }
   if (hour === 5 && minute >= 55 && (!observed || Number(observed.slice(14, 16)) < 50)) collect = true;
   return { compose: enabled && now >= at(day(now), '06:15:00') && !existsSync(store.root + '/issues/test-' + day(now) + '/edition.json'),
-    deliver: enabled && morning && (hour > 6 || minute >= 30), collect: collect && !(hour >= 6 && (hour > 6 || minute >= 15) && hour < 9), enrich: enabled && t.model_enabled && gate(policy(), now, true) === null, maintain: true };
+    deliver: enabled && morning && (hour > 6 || minute >= 30), collect: collect && !(hour >= 6 && (hour > 6 || minute >= 15) && hour < 9), enrich: enabled && t.model_enabled && gate(policy(), now, true, undefined, trialDeadline(t)) === null, maintain: true };
 }
 
 export function refreshDeliveryIssue(store: Store, id: string, now: Date): string {
