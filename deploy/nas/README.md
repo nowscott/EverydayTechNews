@@ -81,3 +81,12 @@ news-engine-v0.6.0起支持显式`testing_period=continuous`，`days=null`、`ex
 先按VERSIONING发布并部署0.6.0，在NAS从该正式版本源码执行`python3 deploy/nas/enable-continuous.py --root /vol3/1000/Docker/everydaytechnews-managed`。工具锁定更新、调度与账本，备份原trial.json，只修改测试期限，使用实际镜像离线验证，并证明费用/冻结期刊/投递账本不变。旧版不能读取新配置时回退会被阻断，不得恢复旧账本；后续修复发布兼容版本。
 
 价格策略使用`verification_mode=live_every_request`与`valid_until=null`，含义是每次付费请求都须重新核对官方模型版本、价格表和时段规则，并非永久信任当前价格。无法读取或规则改变即暂停该次请求。暂停长期测试仍使用现有enabled/model_enabled/delivery_enabled开关。
+
+
+## NAS自主异常检查（v0.6.1）
+
+随身电脑上的Codex每日评分和普通版迁移复核已按用户2026-10-23要求暂停。NAS继续独立采集、AI逐篇/整期验收、发送与生成报告。人工编辑评分按需复盘，不把模型验收率换算成85分。
+
+从正式版本源码执行`python3 deploy/nas/health-check.py --root /vol3/1000/Docker/everydaytechnews-managed install`安装独立NAS任务，09:10—23:10每小时检查一次。正常不发通知；未见当日SMTP接收、未知发送/费用、预算异常或全部来源失败时，仅通知指定测试邮箱。已投递的不足15条诊断不重复通知。通知结果未知不会自动重发，同一天最多一次；网络或SMTP不可用时只能保留本地记录，不能保证通知送达。检查本身不调用模型、不补发早报、不修改费用或早报发送账本。普通版自身已有NAS异常通知。
+
+普通版迁移仍处影子观察，正式切换需在NAS可访问时完成一次验收及凭据配置；暂停本机复核不会提前放行。
