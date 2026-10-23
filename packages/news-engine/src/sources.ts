@@ -40,7 +40,7 @@ function article(source: string, url: string, title: string, pub: string, fetche
   return { id: digest(url), url, source, source_name: (SOURCES as Row)[source][0], title, published_raw: pub,
     published_at: published, published_time_kind: 'rss_article_publication', original_article_published_at: published,
     fetched_at: fetched, event_time: null, text, content_status: complete(text), content_fingerprint: digest(text),
-    content_origin: 'rss_description', language: source === 'ithome' ? 'zh-CN' : 'en', description_clean: text,
+    content_origin: 'rss_description', language: ['ithome','qbitai'].includes(source) ? 'zh-CN' : 'en', description_clean: text,
     rights_status: 'unconfirmed_model_and_distribution' };
 }
 export function parseFeed(raw: string, source: string, fetched: string): Row[] {
