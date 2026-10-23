@@ -41,6 +41,7 @@
 - `src/mailer.py`：SMTP 连接复用、断线重连、重试与失败分类
 - `src/main.py`：加载配置并编排每日邮件任务
 - `apps/subscription-web`：React + Tailwind CSS 订阅网页与 Vercel API
+- `apps/nas-dashboard`：NAS 局域网只读工作台，统一查看普通版/高级版的新闻、AI处理、评分、费用、邮件与调度；[部署说明](deploy/dashboard/README.md)
 
 ## 工具部署
 

@@ -27,3 +27,18 @@
 !deploy/ordinary/
 !deploy/ordinary/Dockerfile
 !deploy/ordinary/verify-state.ts
+
+# Independent NAS dashboard (no private state or local dependencies)
+!apps/
+!apps/nas-dashboard/
+!apps/nas-dashboard/package.json
+!apps/nas-dashboard/package-lock.json
+!apps/nas-dashboard/tsconfig.json
+!apps/nas-dashboard/vite.config.ts
+!apps/nas-dashboard/index.html
+!apps/nas-dashboard/src/
+!apps/nas-dashboard/src/**
+!apps/nas-dashboard/server/
+!apps/nas-dashboard/server/**
+!deploy/dashboard/
+!deploy/dashboard/Dockerfile
