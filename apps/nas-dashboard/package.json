@@ -1,6 +1,6 @@
 {
   "name": "@everyday-tech-news/nas-dashboard",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "type": "module",
   "engines": {
@@ -14,7 +14,7 @@
     "password": "node server/password.ts"
   },
   "dependencies": {
-    "cheerio": "1.2.0",
+    "cheerio": "1.2.1",
     "react": "19.2.7",
     "react-dom": "19.2.7"
   },

@@ -1,5 +1,9 @@
 # 更新日志
 
+## nas-dashboard-v1.2.1
+
+- 侧栏导航改用统一 SVG 线条图标，统一尺寸、线宽及文字对齐，适配手机并继承选中状态颜色。
+
 本文件记录 EverydayTechNews 的重要版本变更。
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
