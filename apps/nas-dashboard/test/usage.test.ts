@@ -77,7 +77,7 @@ test('legacy validation reasons use only the safe saved reason; busy source neve
   f.call(1,'2026-10-24',null,u,.2,'invalid_response');
   f.db.prepare('INSERT INTO responses VALUES(?,?,?)').run(1,'PRIVATE_MODEL_RESPONSE','response_validation_failed');
   const v=f.read();assert.equal(v.data.items[0].error_code,'response_validation_failed');assert(!JSON.stringify(v).includes('PRIVATE_MODEL_RESPONSE'));
-  f.db.exec('BEGIN EXCLUSIVE');
+  f.db.exec("BEGIN EXCLUSIVE; INSERT INTO calls(id,day,status) VALUES(999,'2026-10-24','reserved')");
   try{const unavailable=f.read();assert.equal(unavailable.data.available,false);assert.equal(unavailable.data.summary,null);}finally{f.db.exec('ROLLBACK');}
  }finally{f.close();}
 });
