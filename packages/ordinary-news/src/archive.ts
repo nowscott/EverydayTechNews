@@ -35,15 +35,17 @@ export function parseRss(raw: string): News[] {
   });
 }
 export async function request(url: string, fetcher: typeof fetch = fetch, retries = 3, timeout = 40000, delays = [2000, 5000]): Promise<string> {
+  let last:unknown;
   for (let i = 0; i < retries; i++) {
     try {
       const response = await fetcher(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(timeout) });
       if (response.ok) return await response.text();
-      if (![429, 500, 502, 503, 504].includes(response.status)) throw new Error('source_http_permanent');
-    } catch (e) { if (e instanceof Error && e.message === 'source_http_permanent') throw e; }
+      last=Object.assign(new Error('source_http_error'),{http_status:response.status});
+      if (![429, 500, 502, 503, 504].includes(response.status)) throw Object.assign(new Error('source_http_permanent'),{http_status:response.status});
+    } catch (e) { last=e;if (e instanceof Error && e.message === 'source_http_permanent') throw e; }
     if (i + 1 < retries) await sleep(delays[Math.min(i, delays.length - 1)] ?? 0);
   }
-  throw new Error('source_retries_exhausted');
+  throw Object.assign(new Error('source_retries_exhausted'),{http_status:(last as any)?.http_status,cause_code:(last as any)?.name==='TimeoutError'?'timeout':'network_or_http'});
 }
 export function recoverArchive(root: string) {
   const path=root+'/archive-journal.json';if(!existsSync(path))return;
@@ -102,7 +104,7 @@ export async function rank(store: Store, now = new Date(), fetcher: typeof fetch
       else if (id) for (let attempt = 1; attempt <= 3; attempt++) {
         try { const raw = await request('https://dyn.ithome.com/grade/' + id, fetcher, 1, 15000, []); const votes = parseGrade(raw);
           score = calculateScore(...votes); status = 'valid'; details = { votes, attempts: attempt, response_sha256: hash(raw) }; break;
-        } catch { details = { attempts: attempt }; if (attempt < 3) await sleep(1000); }
+        } catch (error:any) { details = { attempts: attempt, failed_at:new Date().toISOString(), error_code:error.message==='grade_parse_failed'?'grade_parse_failed':error.http_status?'grade_http_error':error.name==='TimeoutError'||error.cause_code==='timeout'?'grade_timeout':'grade_network_error', http_status:error.http_status??null, parser_version:'ithome-votes-1' }; if (attempt < 3) await sleep(1000); }
       }
       store.run('INSERT OR REPLACE INTO grades VALUES (?,?,?,?,?)', date, url, score, status, JSON.stringify(details));
     }

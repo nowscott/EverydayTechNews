@@ -1,0 +1,72 @@
+name: everyday-tech-news-dashboard
+services:
+  dashboard:
+    image: ${DASHBOARD_IMAGE:?pinned dashboard image required}
+    init: true
+    user: "${DASHBOARD_UID:-1000}:${DASHBOARD_GID:-1001}"
+    env_file:
+      - path: ${DASHBOARD_ROOT:?dashboard root required}/dashboard.env
+        format: raw
+    environment:
+      TZ: Asia/Shanghai
+      DASHBOARD_ORDINARY_DATA: /data/ordinary
+      DASHBOARD_PREMIUM_DATA: /data/premium
+      DASHBOARD_SESSION_FILE: /data/auth/sessions.json
+      DASHBOARD_RUNTIME: /data/runtime
+      DASHBOARD_BODY_CACHE: /data/bodies
+      DASHBOARD_ORDINARY_DEPLOYMENT: /data/ordinary-deployment
+      DASHBOARD_PREMIUM_DEPLOYMENT: /data/premium-deployment
+    ports:
+      - "${DASHBOARD_BIND_IP:?NAS LAN IPv4 required}:${DASHBOARD_PORT:-3080}:3080"
+    volumes:
+      - ${DASHBOARD_ROOT}/auth:/data/auth
+      - ${DASHBOARD_ORDINARY_DATA:?ordinary data required}:/data/ordinary:ro
+      - ${DASHBOARD_PREMIUM_DATA:?premium data required}:/data/premium:ro
+      - ${DASHBOARD_ROOT}/runtime:/data/runtime:ro
+      - ${DASHBOARD_ROOT}/bodies:/data/bodies:ro
+      - ${DASHBOARD_ROOT}/deployment/ordinary:/data/ordinary-deployment:ro
+      - ${DASHBOARD_ROOT}/deployment/premium:/data/premium-deployment:ro
+    read_only: true
+    tmpfs: ["/tmp:size=256m,mode=1777"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 512m
+    cpus: 1
+    restart: unless-stopped
+    labels: {com.centurylinklabs.watchtower.enable: "false"}
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+
+  body-collector:
+    image: ${DASHBOARD_IMAGE:?pinned dashboard image required}
+    init: true
+    user: "${DASHBOARD_UID:-1000}:${DASHBOARD_GID:-1001}"
+    entrypoint: [node, server/collector.ts]
+    # This process only fetches public publisher pages; it has no credentials.
+    environment:
+      TZ: Asia/Shanghai
+      DASHBOARD_ORDINARY_DATA: /data/ordinary
+      DASHBOARD_PREMIUM_DATA: /data/premium
+      DASHBOARD_BODY_CACHE: /data/bodies
+      HTTP_PROXY: http://127.0.0.1:7890
+      HTTPS_PROXY: http://127.0.0.1:7890
+      NODE_USE_ENV_PROXY: "1"
+      NO_PROXY: localhost,127.0.0.1
+    network_mode: host
+    volumes:
+      - ${DASHBOARD_ORDINARY_DATA}:/data/ordinary:ro
+      - ${DASHBOARD_PREMIUM_DATA}:/data/premium:ro
+      - ${DASHBOARD_ROOT}/bodies:/data/bodies
+    read_only: true
+    tmpfs: ["/tmp:size=256m,mode=1777"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 512m
+    cpus: 0.5
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "const s=JSON.parse(require('node:fs').readFileSync('/data/bodies/status.json','utf8'));process.exit(Date.now()-Date.parse(s.checked_at)<900000?0:1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+    labels: {com.centurylinklabs.watchtower.enable: "false"}
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}

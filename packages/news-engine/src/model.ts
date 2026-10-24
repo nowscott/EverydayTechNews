@@ -1,4 +1,5 @@
 import { EDITION_REVIEW_PROMPT, editionReviewKey, validateEditionReview } from './edition-quality.ts';
+import { errorCode, stageOf, requestConstraints, REQUEST_STRATEGY } from './diagnostics.ts';
 import { load } from 'cheerio/slim';
 import { PROMPT, POOL_PROMPT } from './constants.ts';
 import { digest, pyjson, stamp, day, localParts, at, EXPIRY, trial, trialDeadline, type Row } from './core.ts';
@@ -99,7 +100,9 @@ export async function paidRequest(store: Store, key: string, a: Row, p: Row, per
   const job = store.one('SELECT * FROM jobs WHERE key=?', key); if (!job) return 'unknown_job';
   const exclusion = articleExclusion(a); if (exclusion) return exclusion.reason;
   if (job.result) return 'cached';
-  if (['inflight', 'uncertain_requires_review', 'failed_validation_review'].includes(job.status)) return 'held_for_review';
+  const repairable = job.status === 'failed_validation_review' && a.task_kind !== 'edition_review'
+    && !!store.one("SELECT id FROM calls WHERE job=? AND status='invalid_response' AND cost IS NOT NULL",key);
+  if (['inflight', 'uncertain_requires_review', 'failed_validation_review'].includes(job.status) && !repairable) return 'held_for_review';
   // Unknown-cost failures are held even when a legacy job carries retry_after.
   if (store.one('SELECT id FROM calls WHERE job=? AND cost IS NULL', key)) return 'held_unknown_cost';
   if (job.attempts >= p.max_attempts) return 'attempt_limit';
@@ -115,8 +118,11 @@ export async function paidRequest(store: Store, key: string, a: Row, p: Row, per
   store.run('INSERT OR REPLACE INTO meta VALUES (?,?)', 'last_rule_check', pyjson({ at: stamp(now()), verified, source: p.source, policy_sha256: digest(pyjson(p, true)) }));
   blocked = gate(p, now(), verified, permit, deadline); if (blocked) return blocked;
   const token = deps.token ?? process.env.DEEPSEEK_API_KEY?.trim(); if (!token) return 'missing_api_key';
+  const lastDiagnostic=store.one("SELECT data FROM meta WHERE key IN (SELECT 'call_diagnostic:' || id FROM calls WHERE job=?) ORDER BY rowid DESC LIMIT 1",key);
+  const diagnostic=lastDiagnostic?JSON.parse(lastDiagnostic.data):null;
   const evidence: Row = Object.fromEntries(['title', 'url', 'source_name', 'published_at', 'text'].map(k => [k, a[k]]));
-  if (job.attempts > 0) evidence.revision_instruction = '这是已知费用的内部校验修复，不是新文章。summary严格限制80–130个中文字符、绝不超过150字符；次要数字留在points，不必把所有事实塞入概括。英文标题译成自然中文。claims每段evidence逐字复制原文一段连续文字，保留换行，不允许拼接表格的不连续单元格。优先保住主体、核心变化、范围和计划/测试等限定。';
+  evidence.output_constraints=requestConstraints(a,job.attempts>0?diagnostic?.error_code:undefined);
+  if (job.attempts > 0) evidence.revision_instruction = '这是已知费用的内部校验修复，不是新文章。必须修复output_constraints.previous_error。short_summary目标30–60字符，绝不超过80字符。summary严格限制80–130个中文字符、绝不超过150字符；次要数字留在points，不必把所有事实塞入概括。英文标题译成自然中文。claims每段evidence逐字复制原文一段连续文字，保留换行，不允许拼接表格的不连续单元格。优先保住主体、核心变化、范围和计划/测试等限定。';
   if (a.prior_versions?.length) {
     evidence.prior_versions_untrusted = a.prior_versions; evidence.editorial_task = '更新报道：只选当前正文比旧版本新增且有证据的事实，不能确认增量则报告不足；旧发布时间不代表新事件时间。';
     if (a.confirmed_update_facts?.length) { evidence.human_reviewed_new_facts = a.confirmed_update_facts; evidence.editorial_task += '只对human_reviewed_new_facts中经人工确认的增量写作，仍须逐字证据；这不是事实正确保证。'; }
@@ -135,6 +141,7 @@ export async function paidRequest(store: Store, key: string, a: Row, p: Row, per
   store.tx(() => {
     callId = Number(store.run('INSERT INTO calls(day,job,reserved,status,tariff_multiplier,execution_mode) VALUES (?,?,?,?,?,?)', day(clock), key, reserve, 'reserved', multiplier, permit ? 'internal_test_anytime' : 'scheduled_window').lastInsertRowid);
     store.run("UPDATE jobs SET attempts=attempts+1,status='inflight' WHERE key=?", key);
+    store.run('INSERT OR REPLACE INTO meta VALUES (?,?)','call_diagnostic:'+callId,pyjson({call_id:callId,stage:stageOf(a),attempt:job.attempts+1,started_at:stamp(clock),strategy:REQUEST_STRATEGY,error_code:null}));
   });
   store.checkpoint(); // Fail before any POST if reservation push failed.
   blocked = gate(p, now(), verified, permit, deadline);
@@ -158,17 +165,24 @@ export async function paidRequest(store: Store, key: string, a: Row, p: Row, per
       if (raw.choices?.[0]?.finish_reason !== 'stop') throw new Error('incomplete response');
       const result = a.task_kind === 'edition_review' ? validateEditionReview(JSON.parse(raw.choices[0].message.content), a.edition_input) : a.task_kind === 'review' ? validateReview(JSON.parse(raw.choices[0].message.content), a) : validate(JSON.parse(raw.choices[0].message.content), a);
       result.generated_at = stamp(now()); result.generation_metadata = { model: p.model, model_version: p.model_version, prompt_version: p.prompt_version, prompt_sha256: digest(prompt), output_schema: a.output_schema ?? 'legacy-1' };
-      result.request_strategy = job.attempts === 0 ? 'base' : 'length-and-evidence-repair-1';
+      result.request_strategy = REQUEST_STRATEGY;
       store.run("UPDATE jobs SET result=?,status='pending_ai_review' WHERE key=?", pyjson(result), key);
     }
-  } catch {
+  } catch (error) {
+    const code=errorCode(error);
+    const info=JSON.parse(store.one('SELECT data FROM meta WHERE key=?','call_diagnostic:'+callId)!.data);
+    info.error_code=code;store.run('UPDATE meta SET data=? WHERE key=?',pyjson(info),'call_diagnostic:'+callId);
     if (received && store.one('SELECT cost FROM calls WHERE id=?', callId)?.cost != null) {
-      store.run("UPDATE responses SET validation_error='response_validation_failed' WHERE call_id=?", callId);
+      store.run('UPDATE responses SET validation_error=? WHERE call_id=?', code, callId);
       store.run("UPDATE calls SET status='invalid_response' WHERE id=?", callId); store.run("UPDATE jobs SET status='failed_validation_review' WHERE key=?", key);
     } else {
       store.run("UPDATE calls SET status='transport_usage_unknown' WHERE id=?", callId); store.run("UPDATE jobs SET status='uncertain_requires_review' WHERE key=?", key);
     }
   } finally {
+    const info=JSON.parse(store.one('SELECT data FROM meta WHERE key=?','call_diagnostic:'+callId)!.data);
+    const state=store.one('SELECT status FROM calls WHERE id=?',callId)!.status;
+    info.finished_at=stamp(now());info.status=state;if(state==='http_error_usage_unknown')info.error_code='http_error_usage_unknown';
+    store.run('UPDATE meta SET data=? WHERE key=?',pyjson(info),'call_diagnostic:'+callId);
     store.run('UPDATE calls SET seconds=? WHERE id=?', (performance.now() - start) / 1000, callId); store.checkpoint();
   }
   return null;

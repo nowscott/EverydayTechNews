@@ -1,6 +1,6 @@
 {
   "component": "ordinary-news",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "state_schema": 1,
   "automatic_deployment": true,
   "controller_protocol": 1

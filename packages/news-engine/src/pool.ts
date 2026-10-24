@@ -111,10 +111,6 @@ export async function collect(store: Store, workers = 4, fetcher: typeof fetch =
     coverage_gaps: [{ source: 'spacex', status: 'no_verified_accessible_official_feed', note: 'Official updates page blocked; NASA is partial coverage only' }], engine: 'typescript' };
   store.run('INSERT OR REPLACE INTO meta VALUES (?,?)', 'health', pyjson(health)); atomic(store.root + '/source-health.json', health); store.checkpoint(); assess(store); return health;
 }
-function repairKnown(store: Store, job: Row, p: Row) {
-  if (job.status === 'failed_validation_review' && job.attempts < p.max_attempts && store.one("SELECT id FROM calls WHERE job=? AND status='invalid_response' AND cost IS NOT NULL", job.key)
-    && !store.one('SELECT id FROM calls WHERE job=? AND cost IS NULL', job.key)) store.run("UPDATE jobs SET status='queued' WHERE key=?", job.key);
-}
 export async function enrich(store: Store) {
   const config = trial(store.root); if (!active(config) || !config.model_enabled) return { status: 'trial_or_model_disabled_or_expired', calls: 0 };
   const p = policy(); p.daily_budget_cny = Math.min(p.daily_budget_cny, config.daily_budget_cny);
@@ -142,7 +138,7 @@ export async function enrich(store: Store) {
   for (const job of jobs) {
     if (invoked >= Number(preferences().batch_size)) break; if (!keys.has(job.key)) continue;
     if (!attempted.has(job.key) && attempted.size >= Number(preferences().new_versions_per_day)) continue;
-    const candidate = eligible.find(a => cacheKey(a, p) === job.key)!; const a: Row = { ...candidate, revision_feedback: JSON.parse(job.article).revision_feedback }; if (!a.text || a.evidence_expired_or_missing) continue; repairKnown(store, job, p);
+    const candidate = eligible.find(a => cacheKey(a, p) === job.key)!; const a: Row = { ...candidate, revision_feedback: JSON.parse(job.article).revision_feedback }; if (!a.text || a.evidence_expired_or_missing) continue;
     const completed = recordsReady(store, eligible, deadline, [], false);
     if (publisherCapacityReached(a, completed)) continue;
     if (publisherDraftCapacityReached(store, a, eligible, deadline)) continue;
@@ -240,7 +236,7 @@ export async function launchSample(store: Store, revision: SampleRevision = 'ini
     let job = store.one('SELECT * FROM jobs WHERE key=?', a.job_key)!;
     while (!job.result && job.attempts < p.max_attempts) {
       if (!attempted.has(job.key) && attempted.size >= Number(preferences().new_versions_per_day)) { spec.rejected.push({ id: a.id, reason: 'daily_new_version_limit' }); break processing; }
-      repairKnown(store, job, p); const before = store.one('SELECT COUNT(*) n FROM calls')!.n;
+      const before = store.one('SELECT COUNT(*) n FROM calls')!.n;
       const blocked = await paidRequest(store, job.key, a, p, permit); job = store.one('SELECT * FROM jobs WHERE key=?', a.job_key)!;
       const after = store.one('SELECT COUNT(*) n FROM calls')!.n; if (after > before) attempted.add(job.key);
       if (blocked) {
@@ -279,7 +275,7 @@ export async function verifyApi(store: Store) {
     const [chosen] = candidates(store, stamp(), 1); if (!chosen.length) return { status: 'no_eligible_acceptance_article' }; queue(store, chosen, p);
     atomic(path, { mode: 'internal_test_anytime', issue_id: 'test-ts-api-' + day(), job_key: chosen[0].job_key, expires_at: stamp(new Date(Math.min(Date.now() + 30 * 60000, trialDeadline(t)))) }); store.checkpoint();
   }
-  const permit = read(path); const job = store.one('SELECT * FROM jobs WHERE key=?', permit.job_key)!; repairKnown(store, job, p);
+  const permit = read(path); const job = store.one('SELECT * FROM jobs WHERE key=?', permit.job_key)!;
   const blocked = await paidRequest(store, job.key, JSON.parse(job.article), p, permit);
   const result = { status: blocked ?? store.one('SELECT status FROM jobs WHERE key=?', job.key)!.status, mail_sent: false, is_trial_day: false, accounting: status(store).calls };
   atomic(store.root + '/durable/ts-api-verification.json', result); store.checkpoint(); return result;

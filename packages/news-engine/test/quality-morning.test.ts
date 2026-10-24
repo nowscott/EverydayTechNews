@@ -173,6 +173,30 @@ test('daily report distinguishes on-time, delayed, insufficient and unknown outc
   } finally { close(); }
 });
 
+test('known-cost invalid review is repaired within the original job and unknown costs, limits, expiry and time stay blocked',async()=>{
+ for(const mode of ['repair','unknown','limit','expired','late','budget']){
+  const {store,p,key,close}=setup();let requests=0;
+  try{
+   const parent=store.one('SELECT * FROM jobs WHERE key=?',key)!;
+   const deps={now,token:'test',verify:async()=>true,fetcher:(async(_u:any,options:any)=>{
+    requests++;const input=JSON.parse(JSON.parse(options.body).messages[1].content);
+    if(requests===2)assert.equal(input.output_constraints.previous_error,'review_verdict_conflict');
+    const r=good();if(requests===1)r.verdict='reject';return response(r);
+   }) as typeof fetch};
+   await reviewDraft(store,parent,a,p,undefined,deps);
+   const rk=reviewKey(a,draft,p);assert.equal(store.one('SELECT status FROM jobs WHERE key=?',rk)!.status,'failed_validation_review');
+   if(mode==='unknown')store.run('UPDATE calls SET cost=NULL WHERE job=?',rk);
+   if(mode==='limit')store.run('UPDATE jobs SET attempts=3 WHERE key=?',rk);
+   if(mode==='budget')store.run('INSERT INTO calls(day,job,reserved,status) VALUES (?,?,?,?)','2026-10-19','budget',2,'reserved');
+   const input=mode==='expired'?{...a,evidence_expired_or_missing:true}:a;
+   const outcome=await reviewDraft(store,parent,input,p,undefined,{...deps,now:mode==='late'?()=>new Date('2026-10-19T06:14:00+08:00'):now});
+   assert.equal(requests,mode==='repair'?2:1);
+   if(mode==='repair'){assert.equal(outcome,'ai_approved');assert.equal(store.one('SELECT attempts FROM jobs WHERE key=?',rk)!.attempts,2);}
+   const diagnostic=JSON.parse(store.one("SELECT data FROM meta WHERE key='call_diagnostic:1'")!.data);
+   assert.equal(diagnostic.stage,'review');assert.equal(diagnostic.error_code,'review_verdict_conflict');assert.ok(diagnostic.started_at&&diagnostic.finished_at);
+  }finally{close();}
+ }
+});
 test('Notion test flag filters tests while premium eligibility survives clearing it', async () => {
   const records = [subscriber('first@example.org'), subscriber('second@example.org'), subscriber('ordinary@example.org', '正常', false), subscriber('paused@example.org', '已退订')];
   for (const record of records) record.properties['高级内测'] = { checkbox: true };

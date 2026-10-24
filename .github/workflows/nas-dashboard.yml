@@ -1,0 +1,21 @@
+name: NAS dashboard
+on:
+  push:
+    paths: ['apps/nas-dashboard/**', 'deploy/dashboard/**', '.dockerignore', '.github/workflows/nas-dashboard.yml']
+  pull_request:
+    paths: ['apps/nas-dashboard/**', 'deploy/dashboard/**', '.dockerignore', '.github/workflows/nas-dashboard.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24', cache: npm, cache-dependency-path: apps/nas-dashboard/package-lock.json}
+      - run: npm ci --prefix apps/nas-dashboard
+      - run: npm test --prefix apps/nas-dashboard
+      - run: npm run build --prefix apps/nas-dashboard
+      - run: python3 -m unittest discover -s deploy/dashboard -p 'test_*.py'
+      - run: docker build -f deploy/dashboard/Dockerfile -t etn-dashboard:ci .
+      - run: docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges:true --entrypoint node etn-dashboard:ci --version
