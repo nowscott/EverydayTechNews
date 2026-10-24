@@ -4,6 +4,7 @@ import { resolve, sep, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { cachedBody, articleUrl } from './body-cache.ts';
+import { sanitizeEmail } from './mail-preview.ts';
 import { isEvidenceFailure } from './evidence.ts';
 import { redact, safeUrl } from './security.ts';
 export type Row = Record<string, any>;
@@ -132,6 +133,34 @@ function news(r: Reader, component: Component, from: string, to: string): Row[] 
       review: j?.status === 'ai_approved' ? 'passed' : j?.status === 'ai_rejected' ? 'rejected' : j?.result ? 'pending' : 'not_started', editions: selected.get(a.url) ?? [] }];
   });
 }
+function frozenRows(r: Reader, component: Component, issue: Row): Row[] {
+  if(component==='ordinary')return (issue.items??[]).map((item:string[],index:number)=>({index,title:item[0],url:safeUrl(item[1]),source:'IT之家',date:issue.news_day??issue.day,component,score:null,score_system:'冻结期刊',stage:'collected',raw_status:'frozen_issue',review:'not_applicable',rewrite:null,editions:[issue.id]}));
+  const comparison=r.file('issues/'+issue.id+'/comparison.json');
+  const matching=comparison?.issue?.id===issue.id && comparison.issue.html_sha256===issue.html_sha256;
+  const records=matching?comparison.records??[]:[];
+  return (issue.articles??[]).map((a:Row,index:number)=>{
+    const record=records.find((v:Row)=>v.article?.id===a.id&&v.article?.content_fingerprint===a.content_fingerprint),draft=record?.result;
+    return {index,title:draft?.title??a.title,url:safeUrl(a.url),source:a.source_name??a.source??new URL(a.url).hostname,date:dateOf(a.fetched_at)??dateOf(issue.frozen_at),article_id:a.id,content_fingerprint:a.content_fingerprint,component,
+      summary:draft?.short_summary??draft?.summary??null,score:a.ranking?.score??null,score_system:a.ranking?.version??'冻结期刊',score_detail:a.ranking?{breakdown:a.ranking.breakdown,signals:a.ranking.signals,note:a.ranking.note}:null,
+      stage:record?.status==='ai_approved'?'approved':'archived',raw_status:record?.status??'frozen_issue',review:record?.ai_review==='passed'?'passed':draft?.ai_review?.result?.verdict==='pass'?'passed':'not_recorded',rewrite:draft??null,editions:[issue.id]};
+  });
+}
+function mailVersion(r: Reader, component: Component, id: string, selected?: string): Row {
+  const stored=r.query('SELECT data FROM issues WHERE id=?',id)[0];if(!stored)throw Error('not_found');const issue=parse(stored.data);
+  if(component==='premium'){
+    const html=r.file('issues/'+id+'/email.html','text');let state='available',reason=null;
+    if(html==null){state='unavailable';reason='saved_html_missing';}
+    else if(!issue.html_sha256){state='unavailable';reason='saved_hash_missing';}
+    else if(digest(html)!==issue.html_sha256){state='unavailable';reason='saved_hash_mismatch';}
+    const sent=receipts(r,component).filter(v=>v.issue===id);return {state,reason,html:state==='available'?sanitizeEmail(html):null,source:'frozen_html',versions:[],selected:null,status:deliveryState(sent)};
+  }
+  const versions=r.query("SELECT id,email,status,CASE WHEN length(json_extract(data,'$.html'))>0 THEN 1 ELSE 0 END available,json_extract(data,'$.accepted_at') accepted_at,json_extract(data,'$.started_at') started_at FROM deliveries WHERE issue=?",id)
+    .sort((a,b)=>Number(b.status==='smtp_accepted')-Number(a.status==='smtp_accepted')||String(b.accepted_at??b.started_at??'').localeCompare(String(a.accepted_at??a.started_at??'')));
+  const chosen=selected?versions.find(v=>v.id===selected):versions[0];if(selected&&!chosen)throw Error('not_found');
+  const html=chosen?.available?r.query("SELECT json_extract(data,'$.html') html FROM deliveries WHERE issue=? AND id=?",id,chosen.id)[0]?.html:null;
+  return {state:html?'available':'unavailable',reason:html?null:'saved_html_missing',source:'delivery_ledger',html:html?sanitizeEmail(html):null,
+    versions:versions.map(v=>({id:v.id,recipient:v.email,status:v.status,accepted_at:v.accepted_at,available:!!v.available})),selected:chosen?.id??null,status:chosen?deliveryState([chosen]):'pending'};
+}
 export function deliveryState(rows: Row[], expected?: number): string {
   if (!rows.length) return 'pending';
   if (rows.some(r => r.status === 'unknown_do_not_retry')) return 'unknown';
@@ -244,8 +273,25 @@ export class Dashboard {
       if (!id) return {items:rows.slice((page-1)*30,page*30),total:rows.length,page,page_size:30};
       const found=all.find(v=>v.id===id);if(!found)throw Error('not_found');
       const text=component==='premium'?r.file('issues/'+found.id+'/email.txt','text'):(found.data.items??[]).map((item:string[],index:number)=>`${index+1}. ${item[0]}\n${safeUrl(item[1])??'链接不可用'}`).join('\n\n');
-      return {...rows.find(v=>v.id===id), preview_text:text, preview_items:component==='ordinary'?found.data.items:found.data.articles.map((a:Row)=>({title:a.title,url:safeUrl(a.url)})), receipts:deliveries.filter(d=>d.issue===id), quality:found.data.edition_review??null};
+      const {html,...preview}=mailVersion(r,component,id);
+      return {...rows.find(v=>v.id===id), preview, preview_text:text, preview_items:component==='ordinary'?found.data.items:found.data.articles.map((a:Row)=>({title:a.title,url:safeUrl(a.url)})), receipts:deliveries.filter(d=>d.issue===id), quality:found.data.edition_review??null};
     });
+  }
+  home(component: Component, now=new Date()) {
+    const date=day(now);
+    return this.read(component,r=>{
+      const latest=issues(r,component).sort((a,b)=>String(b.frozen_at??b.date??'').localeCompare(String(a.frozen_at??a.date??'')))[0];
+      const all=news(r,component,date,date);all.sort((a,b)=>String(b.fetched_at??b.date).localeCompare(String(a.fetched_at??a.date)));
+      let edition=null,highlights:Row[]=[];
+      if(latest){const issue=parse(r.query('SELECT data FROM issues WHERE id=?',latest.id)[0]?.data);if(issue){const frozen=frozenRows(r,component,issue);highlights=latest.kind==='diagnostic'?[]:frozen.slice(0,5).map(({rewrite,...v})=>v);edition={id:latest.id,date:latest.date,frozen_at:latest.frozen_at,kind:latest.kind,mode:latest.mode,count:latest.count,source_count:new Set(frozen.map(v=>v.source)).size,delivery:deliveryState(receipts(r,component).filter(v=>v.issue===latest.id)),is_today:latest.date===date};}}
+      return {date,edition,highlights,recent:all.slice(0,6).map(({rewrite,score_detail,...v})=>v)};
+    });
+  }
+  feature(component: Component, id: string, index: number) {
+    return this.read(component,r=>{const saved=r.query('SELECT data FROM issues WHERE id=?',id)[0];if(!saved)throw Error('not_found');const issue=parse(saved.data),row=frozenRows(r,component,issue)[index];if(!row)throw Error('not_found');return {...row,original:this.original(r,component,row)};});
+  }
+  preview(component: Component, id: string, receipt?: string) {
+    return this.read(component,r=>mailVersion(r,component,id,receipt));
   }
   runs(component: Component, params: URLSearchParams) {
     const {from,to,page}=range(params), r=new Reader(this.config.runtime);

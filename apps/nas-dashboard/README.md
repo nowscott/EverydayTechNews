@@ -38,3 +38,12 @@ SMTP accepted 仅表示服务器接收；只有普通版现有 feedback/received
 ## v1.1.1 收件确认提示
 
 feedback/YYYY-MM-DD.json是可选的人工收件确认记录。仅在文件不存在时标为not_recorded，作为普通信息展示，不计入read_state的partial或页面黄色告警；收件状态仍为未确认。文件存在却无法读取或JSON损坏时仍告警，其他必需数据缺失、损坏和数据库忙也继续告警。接口和页面共用同一状态判定，不通过生成虚假确认文件来消除提示。
+
+
+## v1.2 今日早报与邮件版式预览
+
+默认首页展示所选版本的最新冻结期刊、前5条冻结精选和当天6条新抓取内容，并记住本机版本选择。精选从期刊comparison.json中的记录读取，不采用后来修改的写作任务；缺少冻结摘要不临时生成。原文入口通过期刊索引读取冻结记录及已有原文。今天未出刊和诊断刊有独立提示，状态页保留原有详细监控。
+
+新增GET /api/home?component=...、GET /api/issues/:id/articles/:index?component=...和GET /api/issues/:id/preview?component=...&receipt=...，均受原有登录保护。期刊详情增加preview元数据和脱敏收件版本，JSON不返回原始HTML。普通版优先选择最近一次SMTP接收的账本版本，高级版以原始HTML核对冻结SHA256；无可验证HTML时不以现有模板冒充历史发送。
+
+HTML经清理后在无allow权限的sandbox iframe中呈现；预览接口使用独立CSP，允许原有内联排版，禁止脚本、外部资源、表单和链接操作。原应用CSP只放行同源frame，其他保护保持不变。所有预览均只读，不调用模型、SMTP或外部新闻抓取。

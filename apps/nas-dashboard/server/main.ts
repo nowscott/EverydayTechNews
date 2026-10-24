@@ -4,6 +4,7 @@ import { resolve, extname } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { Dashboard, type Config, type Component } from './data.ts';
+import { PREVIEW_CSP } from './mail-preview.ts';
 import { verifyPassword } from './security.ts';
 const base = resolve(fileURLToPath(new URL('..',import.meta.url)));
 export function createApp(config: Config, passwordHash: string, secure = false) {
@@ -15,10 +16,10 @@ export function createApp(config: Config, passwordHash: string, secure = false) 
   const session = (req: IncomingMessage) => /(?:^|;\s*)dashboard_session=([a-f0-9]{64})(?:;|$)/.exec(req.headers.cookie??'')?.[1] ?? '';
   return createServer(async (req,res)=>{
     res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');res.setHeader('X-Frame-Options','DENY');
-    res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
+    res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
     try {
       const url=new URL(req.url??'/', 'http://dashboard.local'),path=url.pathname;
-      if(path==='/api/health'&&req.method==='GET')return send(res,200,{status:'ok',version:'1.1.1'});
+      if(path==='/api/health'&&req.method==='GET')return send(res,200,{status:'ok',version:'1.2.0'});
       if(path==='/api/login'&&req.method==='POST') {
         if(req.headers.origin && req.headers.origin !== `${secure?'https':'http'}://${req.headers.host}`)return send(res,403,{error:'origin_rejected'});
         const ip=req.socket.remoteAddress??'unknown',now=Date.now();
@@ -47,7 +48,18 @@ export function createApp(config: Config, passwordHash: string, secure = false) 
         if(path==='/api/overview')return send(res,200,{read_at:new Date().toISOString(),data:dashboard.overview()});
         const component=url.searchParams.get('component')??'premium';
         if(!['ordinary','premium'].includes(component))return send(res,400,{error:'invalid_component'});
-        const c=component as Component, match=/^\/api\/(news|issues)(?:\/([a-f0-9]{64}|[A-Za-z0-9_-]{1,140}))?$/.exec(path);
+        const c=component as Component;
+        if(path==='/api/home')return send(res,200,dashboard.home(c));
+        const feature=/^\/api\/issues\/([A-Za-z0-9_-]{1,140})\/articles\/(\d{1,3})$/.exec(path);
+        if(feature)return send(res,200,dashboard.feature(c,feature[1],Number(feature[2])));
+        const preview=/^\/api\/issues\/([A-Za-z0-9_-]{1,140})\/preview$/.exec(path);
+        if(preview){
+          const value=dashboard.preview(c,preview[1],url.searchParams.get('receipt')??undefined).data;
+          res.removeHeader('X-Frame-Options');res.setHeader('Content-Security-Policy',PREVIEW_CSP);
+          res.writeHead(value.state==='available'?200:409,{'Content-Type':'text/html; charset=utf-8'});
+          return res.end(value.html??'<!doctype html><meta charset="utf-8"><p>此版本未保存可验证的邮件版式，请查看纯文本。</p>');
+        }
+        const match=/^\/api\/(news|issues)(?:\/([a-f0-9]{64}|[A-Za-z0-9_-]{1,140}))?$/.exec(path);
         if(match)return send(res,200,match[1]==='news'?dashboard.news(c,url.searchParams,match[2]):dashboard.issues(c,url.searchParams,match[2]));
         if(path==='/api/runs')return send(res,200,dashboard.runs(c,url.searchParams));
         return send(res,404,{error:'not_found'});
@@ -66,6 +78,6 @@ export function createApp(config: Config, passwordHash: string, secure = false) 
 if(process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const server=createApp({ordinary:process.env.DASHBOARD_ORDINARY_DATA??'/data/ordinary',premium:process.env.DASHBOARD_PREMIUM_DATA??'/data/premium',runtime:process.env.DASHBOARD_RUNTIME??'/data/runtime',ordinaryDeployment:process.env.DASHBOARD_ORDINARY_DEPLOYMENT,bodies:process.env.DASHBOARD_BODY_CACHE??'/data/bodies',premiumDeployment:process.env.DASHBOARD_PREMIUM_DEPLOYMENT},process.env.DASHBOARD_PASSWORD_HASH??'',process.env.DASHBOARD_SECURE_COOKIE==='true');
   server.requestTimeout=10000;server.headersTimeout=10000;server.maxRequestsPerSocket=200;
-  server.listen(Number(process.env.PORT??3080),process.env.DASHBOARD_HOST??'0.0.0.0',()=>console.log('NAS dashboard 1.1.1 listening'));
+  server.listen(Number(process.env.PORT??3080),process.env.DASHBOARD_HOST??'0.0.0.0',()=>console.log('NAS dashboard 1.2.0 listening'));
   for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>server.close(()=>process.exit(0)));
 }
