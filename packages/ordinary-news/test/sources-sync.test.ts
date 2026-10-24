@@ -83,3 +83,12 @@ test('a crash between monthly and daily writes replays the durable archive journ
   atomic(root+'/archive-journal.json',{updates:[{path:'../escape.md',body,sha256:hash(body)}]});assert.throws(()=>recoverArchive(root),/journal_invalid/);
  }finally{rmSync(root,{recursive:true,force:true});}
 });
+test('grade failures retain a controlled parser diagnostic without changing three-attempt behavior',async()=>{
+ const root=mkdtempSync(tmpdir()+'/ordinary-grade-failure-'),store=new Store(root);let calls=0;
+ try{
+  saveNews(root,clock,[{title:'重要人工智能模型更新消息',link:'https://www.ithome.com/1/015/102.htm',time:'2026-10-20T20:00:00',category:'科技'}]);
+  const outcome=await rank(store,clock,(async()=>{calls++;return new Response('not a voting page');}) as typeof fetch);
+  assert.equal(outcome.failed,1);assert.equal(calls,3);
+  const d=JSON.parse(store.one('SELECT data FROM grades')!.data);assert.equal(d.error_code,'grade_parse_failed');assert.equal(d.attempts,3);assert.ok(d.failed_at);assert.equal(d.http_status,null);
+ }finally{store.close();rmSync(root,{recursive:true,force:true});}
+});

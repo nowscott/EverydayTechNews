@@ -1,0 +1,2266 @@
+[
+  {
+    "case": 510,
+    "article": {
+      "title": "外部评估人员发现 OpenAI 内部监控系统漏洞：AI 智能体可绕过安全限制",
+      "output_schema": "dual-1",
+      "text": "发现多项新漏洞。其中一项漏洞可被 AI 智能体利用， 使数百次操作逃过监控\n[证据片段边界]\n这次评估于 7 月 21 日至 8 月 11 日进行\n[证据片段边界]\nOpenAI 的 Codex 智能体 存在绕过安全限制的潜在途径\n[证据片段边界]\nOpenAI 告知两家机构，影响实际运行系统安全防护措施的漏洞 均已修复 ，但修复措施有效与否尚未被两家机构核实\n[证据片段边界]\nMETR 和 Redwood Research 各派出一名研究员，获准查阅 OpenAI 的内部代码和文档，并与部分技术人员交流。两人在现场始终有人陪同，使用的设备均由 OpenAI 提供，且不得带离办公场所\n[证据片段边界]\n两家机构向 OpenAI 提交了一份完整的 61 页内部报告，但同意仅公开评估结果概要，并允许 OpenAI 删除涉及敏感信息的内容\n[证据片段边界]\n此次评估以 7 月 21 日及之前的监控系统为对象。研究人员指出，OpenAI 在评估期间也在扩展该系统"
+    },
+    "result": {
+      "title": "外部评估发现OpenAI监控系统漏洞，Codex智能体存绕过安全限制潜在途径",
+      "summary": "METR与Redwood Research于7月21日至8月11日对OpenAI内部监控系统试点评估，发现一项漏洞可被AI智能体利用使数百次操作逃过监控，Codex智能体存在绕过安全限制的潜在途径。OpenAI称影响实际运行系统的漏洞均已修复，但修复有效性尚未被两家机构核实。",
+      "short_summary": "METR与Redwood Research对OpenAI监控系统试点评估，发现漏洞可让AI智能体数百次操作逃过监控，Codex存绕过安全限制潜在途径。OpenAI称已修复，有效性未核实。",
+      "points": [
+        "两家机构各派一名研究员，获准查阅OpenAI内部代码和文档并与部分技术人员交流，现场始终有人陪同，设备由OpenAI提供且不得带离",
+        "两家机构提交61页内部报告，同意仅公开概要并允许OpenAI删除敏感内容，无权自行公开删减信息",
+        "评估以7月21日及之前的监控系统为对象，OpenAI在评估期间也在扩展该系统"
+      ],
+      "why": "",
+      "uncertainties": [
+        "OpenAI称漏洞已修复，但修复措施是否有效尚未被两家评估机构核实",
+        "公开信息仅为评估结果概要，删减内容的具体信息未披露"
+      ],
+      "claims": [
+        {
+          "claim": "METR与Redwood Research对OpenAI内部监控系统进行试点评估，发现一项漏洞可被AI智能体利用使数百次操作逃过监控",
+          "evidence": "发现多项新漏洞。其中一项漏洞可被 AI 智能体利用，\n使数百次操作逃过监控"
+        },
+        {
+          "claim": "评估于7月21日至8月11日进行",
+          "evidence": "这次评估于 7 月 21 日至 8 月 11 日进行"
+        },
+        {
+          "claim": "Codex智能体存在绕过安全限制的潜在途径",
+          "evidence": "OpenAI 的 Codex 智能体\n存在绕过安全限制的潜在途径"
+        },
+        {
+          "claim": "OpenAI称影响实际运行系统安全防护措施的漏洞均已修复，但修复有效性尚未被两家机构核实",
+          "evidence": "OpenAI 告知两家机构，影响实际运行系统安全防护措施的漏洞\n均已修复\n，但修复措施有效与否尚未被两家机构核实"
+        },
+        {
+          "claim": "两家机构各派一名研究员，现场有人陪同，设备由OpenAI提供且不得带离",
+          "evidence": "METR 和 Redwood Research 各派出一名研究员，获准查阅 OpenAI 的内部代码和文档，并与部分技术人员交流。两人在现场始终有人陪同，使用的设备均由 OpenAI 提供，且不得带离办公场所"
+        },
+        {
+          "claim": "两家机构提交61页内部报告，同意仅公开概要并允许OpenAI删除敏感内容，无权自行公开删减信息",
+          "evidence": "两家机构向 OpenAI 提交了一份完整的 61 页内部报告，但同意仅公开评估结果概要，并允许 OpenAI 删除涉及敏感信息的内容"
+        },
+        {
+          "claim": "评估以7月21日及之前的监控系统为对象，OpenAI在评估期间也在扩展该系统",
+          "evidence": "此次评估以 7 月 21 日及之前的监控系统为对象。研究人员指出，OpenAI 在评估期间也在扩展该系统"
+        }
+      ]
+    },
+    "expected": "short_summary_missing_or_over_80"
+  },
+  {
+    "case": 511,
+    "article": {
+      "title": "Crackgate? iPhone Duo Owners Report Screens Breaking Along the Hinge",
+      "output_schema": "dual-1",
+      "text": "Some iPhone Duos are already experiencing hinge issues that cause display cracks\n[证据片段边界]\nAn iPhone Duo owner in Australia said his device cracked after being opened fewer than 20 times, and there was no visible damage beforehand.\n[证据片段边界]\nited an Apple Store , and Apple replaced the broken device right away. Apple is likely col\n[证据片段边界]\nThere are several images of broken displays from demo devices in China\n[证据片段边界]\nIt isn't known how widespread the issue is or whether we'll see an uptick in complaints over time.\n[证据片段边界]\nHinge failures from normal use should be covered under the one-year warranty, and customers receiving an ‌iPhone Duo‌ today will also have two weeks to make a return.\n[证据片段边界]\nSome reviewers who got an ‌iPhone Duo‌ early subjected it to folding tests and didn't experience screen issues, but that's a small sample."
+    },
+    "result": {
+      "title": "部分iPhone Duo用户报告屏幕沿铰链开裂",
+      "summary": "MacRumors汇总Reddit及论坛照片称，部分iPhone Duo屏幕沿铰链开裂，多呈一侧亮像素线。澳大利亚一用户称开合不足20次即听到异响并开裂，事前无可见损伤，苹果门店已换机。中国演示机亦有裂屏图但背景不明。报道称问题范围未知，正常使用铰链故障应属一年保修，当日收货者有两周退货期。",
+      "short_summary": "MacRumors称部分iPhone Duo屏幕沿铰链开裂；澳用户称开合不足20次即裂，苹果已换机。范围未知，正常使用铰链故障应属一年保修。",
+      "points": [
+        "报道称中国演示机也出现裂屏图片，但多数图片背景不明，可能存在用户损坏因素。",
+        "部分提前拿到设备的评测者做过折叠测试，未遇屏幕问题，但样本很小。",
+        "报道称当日收货用户有两周退货期。"
+      ],
+      "why": "",
+      "uncertainties": [
+        "故障发生率及是否随时间增多尚不清楚",
+        "中国演示机裂屏图片背景大多不明",
+        "早期折叠测试样本很小，不能代表整体"
+      ],
+      "claims": [
+        {
+          "claim": "部分iPhone Duo屏幕沿铰链开裂",
+          "evidence": "Some iPhone Duos are already experiencing hinge issues that cause display cracks"
+        },
+        {
+          "claim": "澳大利亚一用户称开合不足20次即开裂，事前无可见损伤",
+          "evidence": "An iPhone Duo owner in Australia said his device cracked after being opened fewer than 20 times, and there was no visible damage beforehand."
+        },
+        {
+          "claim": "该用户到苹果门店后获立即换机",
+          "evidence": "The user visited an Apple Store, and Apple replaced the broken device right away."
+        },
+        {
+          "claim": "中国演示机亦有裂屏图片，但多数背景不明",
+          "evidence": "There are several images of broken displays from demo devices in China"
+        },
+        {
+          "claim": "问题范围未知",
+          "evidence": "It isn't known how widespread the issue is or whether we'll see an uptick in complaints over time."
+        },
+        {
+          "claim": "正常使用铰链故障应属一年保修，当日收货者有两周退货期",
+          "evidence": "Hinge failures from normal use should be covered under the one-year warranty, and customers receiving an ‌iPhone Duo‌ today will also have two weeks to make a return."
+        },
+        {
+          "claim": "部分早期评测者折叠测试未遇屏幕问题，但样本小",
+          "evidence": "Some reviewers who got an ‌iPhone Duo‌ early subjected it to folding tests and didn't experience screen issues, but that's a small sample."
+        }
+      ]
+    },
+    "expected": "unsupported evidence"
+  },
+  {
+    "case": 517,
+    "article": {
+      "title": "Crackgate? iPhone Duo Owners Report Screens Breaking Along the Hinge",
+      "output_schema": "dual-1",
+      "text": "Some iPhone Duos are already experiencing hinge issues that cause display cracks\n[证据片段边界]\nmost result in a line of bright pixels across one side of the screen\n[证据片段边界]\nAn iPhone Duo owner in Australia said his device cracked after being opened fewer than 20 times\n[证据片段边界]\nApple replaced the broken device right away\n[证据片段边界]\nThere are several images of broken displays from demo devices in China\n[证据片段边界]\nto folding tests and didn't experience screen issues, but that's a small sample. With so many peopl\n[证据片段边界]\nIt isn't known how widespread the issue is\n[证据片段边界]\nHinge failures from normal use should be covered under the one-year warranty"
+    },
+    "result": {
+      "title": "iPhone Duo 用户报告屏幕沿铰链开裂",
+      "summary": "MacRumors 汇总 Reddit 与论坛照片称，部分 iPhone Duo 屏幕沿铰链开裂，多表现为一侧亮像素线。一名澳大利亚用户称开合不足20次即听到异响并裂屏，苹果已换机。问题范围未知。",
+      "short_summary": "MacRumors 汇总用户照片称部分 iPhone Duo 屏幕沿铰链开裂；一名澳大利亚用户称开合不足20次即裂屏，苹果已换机。范围未知。",
+      "points": [
+        "中国演示机也出现碎屏照片，但多数图片背景不明，可能存在用户损坏因素。",
+        "部分提前拿到设备的评测者做过折叠测试，未遇屏幕问题，但样本很小。",
+        "正常使用导致的铰链故障应属一年保修范围，当日收货用户有两周退货期。"
+      ],
+      "why": "",
+      "uncertainties": [
+        "故障是否普遍、投诉是否会随时间增加均未知。",
+        "中国演示机碎屏照片多数背景不明，无法排除用户损坏。",
+        "评测者折叠测试样本很小，不能代表整体可靠性。"
+      ],
+      "claims": [
+        {
+          "claim": "部分 iPhone Duo 屏幕沿铰链开裂",
+          "evidence": "Some iPhone Duos are already experiencing hinge issues that cause display cracks"
+        },
+        {
+          "claim": "多表现为一侧亮像素线",
+          "evidence": "most result in a line of bright pixels across one side of the screen"
+        },
+        {
+          "claim": "澳大利亚用户称开合不足20次即裂屏",
+          "evidence": "An\niPhone Duo\nowner in Australia said his device cracked after being opened fewer than 20 times"
+        },
+        {
+          "claim": "苹果已为该用户换机",
+          "evidence": "Apple replaced the broken device right away"
+        },
+        {
+          "claim": "中国演示机也有碎屏照片但背景多不明",
+          "evidence": "There are several images of broken displays from\ndemo devices in China"
+        },
+        {
+          "claim": "评测者折叠测试未遇问题但样本小",
+          "evidence": "subjected it to folding tests\ndidn't experience screen issues, but that's a small sample"
+        },
+        {
+          "claim": "问题范围未知",
+          "evidence": "It isn't known how widespread the issue is"
+        },
+        {
+          "claim": "保修与退货安排",
+          "evidence": "Hinge failures from normal use should be covered under the one-year warranty"
+        }
+      ]
+    },
+    "expected": "unsupported evidence"
+  },
+  {
+    "case": 519,
+    "article": {
+      "title": "Crackgate? iPhone Duo Owners Report Screens Breaking Along the Hinge",
+      "output_schema": "dual-1",
+      "text": "Some iPhone Duos are already experiencing hinge issues that cause display cracks\n[证据片段边界]\nide of the screen. An iPhone Duo owner in Australia said his device cracked after being opened fewer than 20 times, and there was no v\n[证据片段边界]\nApple replaced the broken device right away\n[证据片段边界]\nIt isn't known how widespread the issue is\n[证据片段边界]\nThe backstory for most of the images is unknown\n[证据片段边界]\nbut that's a small sample\n[证据片段边界]\nHinge failures from normal use should be covered under the one-year warranty"
+    },
+    "result": {
+      "title": "iPhone Duo 用户报告屏幕沿铰链开裂",
+      "summary": "MacRumors 汇总 Reddit 与论坛照片称，部分 iPhone Duo 屏幕沿铰链开裂，多呈一侧亮像素线。澳大利亚一用户称开合不足20次即听到响声并裂屏，苹果已换机。问题范围未知。",
+      "short_summary": "MacRumors 汇总用户照片称部分 iPhone Duo 屏幕沿铰链开裂；澳大利亚一用户称开合不足20次即裂屏，苹果已换机，范围未知。",
+      "points": [
+        "澳大利亚用户称开合前内屏与外部铰链均无损伤痕迹，到 Apple Store 后苹果立即更换了设备。",
+        "中国演示机也出现碎屏图片，但多数图片背景不明，可能存在用户损坏因素。",
+        "部分提前拿到设备的评测者做过折叠测试，未出现屏幕问题，但样本很小。",
+        "正常使用导致的铰链故障应属一年保修范围，当日收货用户有两周退货期。"
+      ],
+      "why": "",
+      "uncertainties": [
+        "问题是否普遍、投诉是否会随时间增加均未知",
+        "中国演示机碎屏图片多数背景不明",
+        "评测者折叠测试样本很小"
+      ],
+      "claims": [
+        {
+          "claim": "部分 iPhone Duo 屏幕沿铰链开裂",
+          "evidence": "Some iPhone Duos are already experiencing hinge issues that cause display cracks"
+        },
+        {
+          "claim": "澳大利亚用户称开合不足20次即裂屏",
+          "evidence": "an\niPhone Duo\nowner in Australia said his device cracked after being opened fewer than 20 times"
+        },
+        {
+          "claim": "苹果已为该用户换机",
+          "evidence": "Apple replaced the broken device right away"
+        },
+        {
+          "claim": "问题范围未知",
+          "evidence": "It isn't known how widespread the issue is"
+        },
+        {
+          "claim": "中国演示机碎屏图片背景多不明",
+          "evidence": "The backstory for most of the images is unknown"
+        },
+        {
+          "claim": "评测者折叠测试样本小",
+          "evidence": "but that's a small sample"
+        },
+        {
+          "claim": "正常使用铰链故障应属一年保修",
+          "evidence": "Hinge failures from normal use should be covered under the one-year warranty"
+        }
+      ]
+    },
+    "expected": "unsupported evidence"
+  },
+  {
+    "case": 522,
+    "article": {
+      "title": "报告称 2026 年国内大模型均价翻倍，每秒吞吐量也翻倍",
+      "output_schema": "review-1",
+      "task_kind": "review",
+      "review_draft": {
+        "points": [
+          "8月国内平均TTFT为1.26秒，高于2025年均值0.78秒；报告称这与参数量、上下文长度和调用量增加同步发生。",
+          "被监测模型中上下文达1M的占47.8%，200K及以上合计95.7%，较2025年底提高超76个百分点。",
+          "报告称同一开源模型在不同平台TPS差距最大可接近一倍，部分第三方平台性能优于官方平台。"
+        ],
+        "short_summary": "信通院报告称，2026年国内词元均价13.46元，较2025下半年6.8元涨近1倍；8月平均TPS 78.23个/秒，较2025年均值翻倍。",
+        "summary": "中国信通院等机构10月23日联合发布报告称，2026年国内词元服务归一化均价13.46元，较2025下半年6.8元涨近1倍；8月国内平均TPS为78.23个/秒，较2025年均值38.25翻倍，仍低于国外112.82。",
+        "title": "信通院报告：2026年国内大模型词元均价13.46元，TPS翻倍至78.23",
+        "why": ""
+      },
+      "text": "国内 2025 下半年归一化均价为 6.8 元，而今年以来均价为 13.46 元，涨幅接近 1 倍\n[证据片段边界]\n8 月份国内各模型平均 TPS（每秒输出词元数）达到 78.23（个 / 秒）\n[证据片段边界]\n国内 2025 下半年归一化均价为 6.8 元，而今年以来均价为 13.46 元，涨幅接近 1 倍\n[证据片段边界]\nTTFT 上升并非单纯的性能退化，而是伴随着模型参数量增加、上下文长度增加、调用量增加等多种因素同步产生的结果\n[证据片段边界]\n上下文长度达到 1M（1 百万词元）的模型占比 47.8%，200K 及以上的合计达 95.7%，相比 2025 年底的占比提高超过 76 个百分点\n[证据片段边界]\n部分第三方平台性能明显优于官方平台提供的模型服务，同一模型在不同平台间的 TPS 差距最大可接近一倍"
+    },
+    "result": {
+      "verdict": "reject",
+      "checks": [
+        {
+          "field": "title",
+          "pass": true,
+          "reason": "标题主体为信通院报告，数字13.46元、78.23个/秒及TPS翻倍均与原文一致；但标题称“词元均价”而原文为“归一化均价”，属可接受的简称，未改变意义。",
+          "evidence": "国内 2025 下半年归一化均价为 6.8 元，而今年以来均价为 13.46 元，涨幅接近 1 倍"
+        },
+        {
+          "field": "summary",
+          "pass": true,
+          "reason": "摘要中的机构、日期、均价、涨幅、TPS及国外对比数字均与原文一致，未发现无依据推断。",
+          "evidence": "8 月份国内各模型平均 TPS（每秒输出词元数）达到 78.23（个 / 秒）"
+        },
+        {
+          "field": "short_summary",
+          "pass": true,
+          "reason": "短摘要数字与原文一致，表述为“较2025下半年6.8元涨近1倍”，与原文“涨幅接近1倍”相符。",
+          "evidence": "国内 2025 下半年归一化均价为 6.8 元，而今年以来均价为 13.46 元，涨幅接近 1 倍"
+        },
+        {
+          "field": "points.0",
+          "pass": true,
+          "reason": "TTFT数字及归因表述与原文一致，原文明确称TTFT上升伴随参数量、上下文长度、调用量增加同步产生。",
+          "evidence": "TTFT 上升并非单纯的性能退化，而是伴随着模型参数量增加、上下文长度增加、调用量增加等多种因素同步产生的结果"
+        },
+        {
+          "field": "points.1",
+          "pass": true,
+          "reason": "上下文长度占比及提高幅度与原文一致。",
+          "evidence": "上下文长度达到 1M（1 百万词元）的模型占比 47.8%，200K 及以上的合计达 95.7%，相比 2025 年底的占比提高超过 76 个百分点"
+        },
+        {
+          "field": "points.2",
+          "pass": true,
+          "reason": "同一模型不同平台TPS差距及第三方优于官方的表述与原文一致。",
+          "evidence": "部分第三方平台性能明显优于官方平台提供的模型服务，同一模型在不同平台间的 TPS 差距最大可接近一倍"
+        },
+        {
+          "field": "why",
+          "pass": true,
+          "reason": "why为空，草稿未提供关注理由，无需核验推断。",
+          "evidence": ""
+        }
+      ],
+      "update_has_new_facts": false
+    },
+    "expected": "review_verdict_conflict"
+  },
+  {
+    "case": 523,
+    "article": {
+      "title": "DeepSeek 完成千亿元人民币新一轮融资，消息称“联想系”投资者入局",
+      "output_schema": "review-1",
+      "task_kind": "review",
+      "review_draft": {
+        "points": [
+          "融资从7月持续至10月，耗时超过近期其他AI企业融资项目",
+          "新投资者包括石溪资本、君联资本、吉利；砺思资本、拾象资本等现有股东追加投资",
+          "梁文锋9月向投资者披露，按当前收入计算的年化收入规模达10亿美元"
+        ],
+        "short_summary": "消息称DeepSeek完成150亿美元第二轮融资，估值约740亿美元，拟明年初上海IPO，宁德时代、腾讯续投。",
+        "summary": "据《华尔街日报》援引知情人士，DeepSeek完成第二轮私募融资，筹资150亿美元（约1003.23亿元人民币），规模接近最初目标两倍；融资前估值约740亿美元。消息称其争取明年初在上海上市，中信证券任IPO顾问。宁德时代、腾讯续投，君联资本、吉利等入局。",
+        "title": "消息称DeepSeek完成150亿美元第二轮融资，拟明年初上海IPO",
+        "why": ""
+      },
+      "text": "完成第二轮私募融资，筹资 150 亿美元\n[证据片段边界]\n投资者认购意愿强烈，推动融资规模扩大至接近最初目标的两倍\n[证据片段边界]\n宁德时代和腾讯 继上一轮投资后，再次参与注资。\n[证据片段边界]\nDeepSeek 本轮融资从 7 月持续至 10 月，耗时超过近期其他 AI 企业的融资项目\n[证据片段边界]\n新加入的投资者包括专注于半导体行业的私募股权投资机构石溪资本\n[证据片段边界]\nDeepSeek 创始人梁文锋 9 月向投资者披露，公司按当前收入水平计算的年化收入规模达到 10 亿美元"
+    },
+    "result": {
+      "verdict": "reject",
+      "checks": [
+        {
+          "field": "title",
+          "pass": true,
+          "reason": "草稿标题中的150亿美元、第二轮融资、明年初上海IPO均与原文一致，且以“消息称”标明传闻属性。",
+          "evidence": "完成第二轮私募融资，筹资 150 亿美元"
+        },
+        {
+          "field": "summary",
+          "pass": true,
+          "reason": "摘要中的150亿美元、约1003.23亿元人民币、接近最初目标两倍、融资前估值约740亿美元、明年初上海上市、中信证券任IPO顾问、宁德时代和腾讯续投、君联资本和吉利入局，均与原文一致，并保留“据《华尔街日报》援引知情人士”的归因。",
+          "evidence": "投资者认购意愿强烈，推动融资规模扩大至接近最初目标的两倍"
+        },
+        {
+          "field": "short_summary",
+          "pass": true,
+          "reason": "短摘要中的150亿美元、约740亿美元估值、明年初上海IPO、宁德时代和腾讯续投均与原文一致，并以“消息称”标明传闻属性。",
+          "evidence": "宁德时代和腾讯\n继上一轮投资后，再次参与注资。"
+        },
+        {
+          "field": "points.0",
+          "pass": true,
+          "reason": "融资从7月持续至10月、耗时超过近期其他AI企业融资项目，与原文一致。",
+          "evidence": "DeepSeek 本轮融资从 7 月持续至 10 月，耗时超过近期其他 AI 企业的融资项目"
+        },
+        {
+          "field": "points.1",
+          "pass": true,
+          "reason": "新投资者包括石溪资本、君联资本、吉利，砺思资本、拾象资本等现有股东追加投资，均与原文一致。",
+          "evidence": "新加入的投资者包括专注于半导体行业的私募股权投资机构石溪资本"
+        },
+        {
+          "field": "points.2",
+          "pass": true,
+          "reason": "梁文锋9月向投资者披露年化收入规模达10亿美元，与原文一致。",
+          "evidence": "DeepSeek 创始人梁文锋 9 月向投资者披露，公司按当前收入水平计算的年化收入规模达到 10 亿美元"
+        },
+        {
+          "field": "why",
+          "pass": true,
+          "reason": "why为空，无需核验。",
+          "evidence": ""
+        }
+      ],
+      "update_has_new_facts": false
+    },
+    "expected": "review_verdict_conflict"
+  },
+  {
+    "case": 524,
+    "article": {
+      "title": "NHTSA Wants Up to 8 Cyan Lights on Robotaxis Like Tesla’s Cybercab",
+      "output_schema": "dual-1",
+      "text": "ministration (NHTSA) wants to rewrite parts of the federal lighting standard for cars with no steering wheel or pedals, and it would let self-driving vehicles carry optional cyan lights that tell everyone \n[证据片段边界]\nComments will be open for 30 days after publication.\n[证据片段边界]\nIt doesn’t expect the changes to add costs and called the rule deregulatory, though it hasn’t put a dollar figure on the savings.\n[证据片段边界]\none or two lamps each on the front, sides and rear, mounted at least 15 inches off the ground, steady burning rather than flashing, and switched on only when nobody is expected to watch the road\n[证据片段边界]\nack the cyan lamps, NHTSA pointed to an updated SAE marker lamp standard, work at the United Nations, and Mercedes-Benz, which met with the\n[证据片段边界]\nroduce its robotaxi . NHTSA is auditing that claim and gave Tesla until October 30 to deliver sworn answers on how the Cybercab was certified . The agency noted "
+    },
+    "result": {
+      "title": "NHTSA拟允许无方向盘车辆选装青色自动驾驶标识灯",
+      "summary": "美国NHTSA提出修订联邦灯光标准，拟允许无方向盘或踏板车辆选装青色标识灯，并放宽转向灯、危险警示灯等手动控制要求。该提案将在《联邦公报》公布，公众评议期30天。NHTSA称不预期增加成本，但未给出节省金额。",
+      "short_summary": "NHTSA拟修订联邦灯光标准，允许无方向盘车辆选装青色自动驾驶标识灯，并放宽手动控制要求，公众评议期30天。",
+      "points": [
+        "青色灯须在前、侧、后各装一或两盏，离地至少15英寸，常亮不闪，仅在无人监控道路时开启。",
+        "NHTSA援引SAE标准、联合国工作及梅赛德斯-奔驰意见与2023至2025年在加州五辆车的测试作为依据。",
+        "提案未点名特斯拉，但NHTSA正审计Cybercab自我认证声明，要求特斯拉10月30日前提交宣誓答复。"
+      ],
+      "why": "",
+      "uncertainties": [
+        "提案尚未正式发布，最终规则内容可能变化。",
+        "NHTSA未量化成本节省。",
+        "特斯拉Cybercab合规声明仍在审计中，尚无结论。"
+      ],
+      "claims": [
+        {
+          "claim": "NHTSA提出修订联邦灯光标准，拟允许无方向盘或踏板车辆选装青色标识灯。",
+          "evidence": "NHTSA wants to rewrite parts of the federal lighting standard for cars with no steering wheel or pedals, and it would let self-driving vehicles carry optional cyan lights"
+        },
+        {
+          "claim": "提案将在《联邦公报》公布，公众评议期30天。",
+          "evidence": "Comments will be open for 30 days after publication."
+        },
+        {
+          "claim": "NHTSA称不预期增加成本，但未给出节省金额。",
+          "evidence": "It doesn’t expect the changes to add costs and called the rule deregulatory, though it hasn’t put a dollar figure on the savings."
+        },
+        {
+          "claim": "青色灯须在前、侧、后各装一或两盏，离地至少15英寸，常亮不闪，仅在无人监控道路时开启。",
+          "evidence": "one or two lamps each on the front, sides and rear, mounted at least 15 inches off the ground, steady burning rather than flashing, and switched on only when nobody is expected to watch the road"
+        },
+        {
+          "claim": "NHTSA援引SAE标准、联合国工作及梅赛德斯-奔驰意见与2023至2025年在加州五辆车的测试。",
+          "evidence": "NHTSA pointed to an updated SAE marker lamp standard, work at the United Nations, and Mercedes-Benz... Mercedes-Benz also tested the lamps on five vehicles in California from 2023 to 2025"
+        },
+        {
+          "claim": "提案未点名特斯拉，但NHTSA正审计Cybercab自我认证声明，要求特斯拉10月30日前提交宣誓答复。",
+          "evidence": "Tesla isn’t named in the proposal... NHTSA is auditing that claim and gave Tesla until October 30 to deliver sworn answers on how the Cybercab was certified."
+        }
+      ]
+    },
+    "expected": "unsupported evidence"
+  },
+  {
+    "case": 525,
+    "article": {
+      "title": "OpenAI 联合研究机构部署数千个 AI 智能体：32 分钟分析数百万个小鼠脑细胞，相当于人类数月时间",
+      "output_schema": "dual-1",
+      "text": "OpenAI 联合 PerturbAI 和斯克里普斯研究所（Scripps Research），利用数千个 AI 智能体分析数百万个小鼠脑细胞的生物学数据，整个分析过程仅耗时 32 分钟。\n[证据片段边界]\n研究团队估计，如果由人类研究人员逐项分析实验结果并检索相关文献，完成同等工作可能需要数月到一年。\n[证据片段边界]\n这项研究使用了专为生命科学研究设计的 GPT-Rosalind 模型\n[证据片段边界]\n相关研究论文已于 2026 年 10 月 16 日发布在 bioRxiv 预印本平台，目前尚未经过同行评审。\n[证据片段边界]\n研究团队强调，AI 提出的生物学联系和作用机制仍属于有待验证的研究假设，后续仍需通过实验确认。\n[证据片段边界]\n在 20 组配对报告中，生物学专家在 75% 的评审中更倾向于分布式智能体生成的报告；单个智能体的报告获得 16.7% 的评审偏好，其余 8.3% 的评审结果为平局。\n[证据片段边界]\n在最大规模的测试中，分布式智能体引用了 700 多篇文献，而单个智能体仅引用 11 篇。\n[证据片段边界]\n相关推理图谱、分析流程和代码已向研究人员开放"
+    },
+    "result": {
+      "title": "OpenAI与PerturbAI等用数千AI智能体分析小鼠脑细胞数据，论文为预印本",
+      "summary": "OpenAI联合PerturbAI和斯克里普斯研究所，用数千个AI智能体分析覆盖整个小鼠大脑的CRISPR图谱，耗时32分钟；团队估计人类完成同等工作需数月到一年。研究使用GPT-Rosalind模型，论文2026年10月16日发布于bioRxiv，尚未经同行评审，AI提出的机制仍属待验证假设。",
+      "short_summary": "OpenAI联合PerturbAI和斯克里普斯研究所，用数千AI智能体32分钟分析小鼠全脑CRISPR图谱；论文为bioRxiv预印本，未经同行评审，AI提出的机制仍属待验证假设。",
+      "points": [
+        "盲测20组配对报告中，专家在75%的评审中更倾向分布式智能体报告，单个智能体获16.7%偏好，8.3%为平局。",
+        "最大规模测试中分布式智能体引用700多篇文献，单个智能体仅引用11篇。",
+        "推理图谱、分析流程和代码已向研究人员开放。"
+      ],
+      "why": "",
+      "uncertainties": [
+        "论文为预印本，尚未经同行评审",
+        "AI提出的生物学联系和作用机制仍需实验验证",
+        "“数月到一年”为研究团队估计，非实测"
+      ],
+      "claims": [
+        {
+          "claim": "OpenAI联合PerturbAI和斯克里普斯研究所，用数千个AI智能体分析覆盖整个小鼠大脑的CRISPR图谱，耗时32分钟",
+          "evidence": "OpenAI 联合 PerturbAI 和斯克里普斯研究所（Scripps Research），利用数千个 AI 智能体分析数百万个小鼠脑细胞的生物学数据，整个分析过程仅耗时 32 分钟。"
+        },
+        {
+          "claim": "研究团队估计人类完成同等工作需数月到一年",
+          "evidence": "研究团队估计，如果由人类研究人员逐项分析实验结果并检索相关文献，完成同等工作可能需要数月到一年。"
+        },
+        {
+          "claim": "研究使用GPT-Rosalind模型",
+          "evidence": "这项研究使用了专为生命科学研究设计的 GPT-Rosalind 模型"
+        },
+        {
+          "claim": "论文2026年10月16日发布于bioRxiv，尚未经同行评审",
+          "evidence": "相关研究论文已于 2026 年 10 月 16 日发布在 bioRxiv 预印本平台，目前尚未经过同行评审。"
+        },
+        {
+          "claim": "AI提出的生物学联系和作用机制仍属待验证假设",
+          "evidence": "研究团队强调，AI 提出的生物学联系和作用机制仍属于有待验证的研究假设，后续仍需通过实验确认。"
+        },
+        {
+          "claim": "盲测中专家在75%的评审中更倾向分布式智能体报告，单个智能体获16.7%偏好，8.3%为平局",
+          "evidence": "在 20 组配对报告中，生物学专家在 75% 的评审中更倾向于分布式智能体生成的报告；单个智能体的报告获得 16.7% 的评审偏好，其余 8.3% 的评审结果为平局。"
+        },
+        {
+          "claim": "最大规模测试中分布式智能体引用700多篇文献，单个智能体仅引用11篇",
+          "evidence": "在最大规模的测试中，分布式智能体引用了 700 多篇文献，而单个智能体仅引用 11 篇。"
+        },
+        {
+          "claim": "推理图谱、分析流程和代码已向研究人员开放",
+          "evidence": "相关推理图谱、分析流程和代码已向研究人员开放"
+        }
+      ]
+    },
+    "expected": "short_summary_missing_or_over_80"
+  },
+  {
+    "case": 527,
+    "article": {
+      "title": "OpenAI 联合研究机构部署数千个 AI 智能体：32 分钟分析数百万个小鼠脑细胞，相当于人类数月时间",
+      "output_schema": "dual-1",
+      "text": "OpenAI 联合 PerturbAI 和斯克里普斯研究所（Scripps Research），利用数千个 AI 智能体分析数百万个小鼠脑细胞的生物学数据，整个分析过程仅耗时 32 分钟。\n[证据片段边界]\n研究团队估计，如果由人类研究人员逐项分析实验结果并检索相关文献，完成同等工作可能需要数月到一年。\n[证据片段边界]\n这项研究使用了专为生命科学研究设计的 GPT-Rosalind 模型，分析一份覆盖整个小鼠大脑的 CRISPR 图谱。\n[证据片段边界]\n相关研究论文已于 2026 年 10 月 16 日发布在 bioRxiv 预印本平台，目前尚未经过同行评审。研究团队强调，AI 提出的生物学联系和作用机制仍属于有待验证的研究假设，后续仍需通过实验确认。\n[证据片段边界]\n在 20 组配对报告中，生物学专家在 75% 的评审中更倾向于分布式智能体生成的报告；单个智能体的报告获得 16.7% 的评审偏好，其余 8.3% 的评审结果为平局。\n[证据片段边界]\n在最大规模的测试中，分布式智能体引用了 700 多篇文献，而单个智能体仅引用 11 篇。\n[证据片段边界]\n相关推理图谱、分析流程和代码已向研究人员开放，可用于探索基因干预结果、比较不同细胞类型的反应，并筛选值得优先开展实验的研究方向。"
+    },
+    "result": {
+      "title": "OpenAI 联合 PerturbAI 与斯克里普斯研究所：数千 AI 智能体 32 分钟分析小鼠脑细胞数据",
+      "summary": "OpenAI 联合 PerturbAI 和斯克里普斯研究所，用数千个 AI 智能体分析数百万个小鼠脑细胞数据，耗时 32 分钟；团队估计人类完成同等工作需数月到一年。研究基于 GPT-Rosalind 模型，论文为未经同行评审的预印本，AI 提出的机制仍属待验证假设。",
+      "short_summary": "OpenAI 联合 PerturbAI 和斯克里普斯研究所，用数千 AI 智能体 32 分钟分析数百万小鼠脑细胞数据；论文为未经同行评审的预印本，AI 提出的机制仍属待验证假设。",
+      "points": [
+        "研究使用专为生命科学研究设计的 GPT-Rosalind 模型，分析覆盖整个小鼠大脑的 CRISPR 图谱。",
+        "盲测中，20 组配对报告里专家在 75% 的评审中更倾向分布式智能体报告，单个智能体获 16.7% 偏好，8.3% 为平局。",
+        "最大规模测试中分布式智能体引用 700 多篇文献，单个智能体仅引用 11 篇。",
+        "研究论文 2026 年 10 月 16 日发布于 bioRxiv 预印本平台，尚未经同行评审；推理图谱、分析流程和代码已向研究人员开放。"
+      ],
+      "why": "",
+      "uncertainties": [
+        "论文为预印本、未经同行评审，AI 提出的生物学联系和作用机制仍需实验确认。",
+        "“数月到一年”为研究团队估计，非实测对照结果。"
+      ],
+      "claims": [
+        {
+          "claim": "OpenAI 联合 PerturbAI 和斯克里普斯研究所，用数千个 AI 智能体分析数百万个小鼠脑细胞数据，耗时 32 分钟。",
+          "evidence": "OpenAI 联合 PerturbAI 和斯克里普斯研究所（Scripps Research），利用数千个 AI 智能体分析数百万个小鼠脑细胞的生物学数据，整个分析过程仅耗时 32 分钟。"
+        },
+        {
+          "claim": "研究团队估计人类完成同等工作需数月到一年。",
+          "evidence": "研究团队估计，如果由人类研究人员逐项分析实验结果并检索相关文献，完成同等工作可能需要数月到一年。"
+        },
+        {
+          "claim": "研究使用 GPT-Rosalind 模型分析覆盖整个小鼠大脑的 CRISPR 图谱。",
+          "evidence": "这项研究使用了专为生命科学研究设计的 GPT-Rosalind 模型，分析一份覆盖整个小鼠大脑的 CRISPR 图谱。"
+        },
+        {
+          "claim": "论文为未经同行评审的预印本，AI 提出的机制仍属待验证假设。",
+          "evidence": "相关研究论文已于 2026 年 10 月 16 日发布在 bioRxiv 预印本平台，目前尚未经过同行评审。研究团队强调，AI 提出的生物学联系和作用机制仍属于有待验证的研究假设，后续仍需通过实验确认。"
+        },
+        {
+          "claim": "盲测中专家在 75% 的评审中更倾向分布式智能体报告，单个智能体获 16.7% 偏好，8.3% 为平局。",
+          "evidence": "在 20 组配对报告中，生物学专家在 75% 的评审中更倾向于分布式智能体生成的报告；单个智能体的报告获得 16.7% 的评审偏好，其余 8.3% 的评审结果为平局。"
+        },
+        {
+          "claim": "最大规模测试中分布式智能体引用 700 多篇文献，单个智能体仅引用 11 篇。",
+          "evidence": "在最大规模的测试中，分布式智能体引用了 700 多篇文献，而单个智能体仅引用 11 篇。"
+        },
+        {
+          "claim": "推理图谱、分析流程和代码已向研究人员开放。",
+          "evidence": "相关推理图谱、分析流程和代码已向研究人员开放，可用于探索基因干预结果、比较不同细胞类型的反应，并筛选值得优先开展实验的研究方向。"
+        }
+      ]
+    },
+    "expected": "short_summary_missing_or_over_80"
+  },
+  {
+    "case": 528,
+    "article": {
+      "title": "沃尔沃、奔驰、大众等纷纷拥抱英伟达，推动欧洲自动驾驶业务发展",
+      "output_schema": "dual-1",
+      "text": "英伟达在柏林 GTC 大会上公布了自动驾驶业务在欧洲的最新布局。\n[证据片段边界]\nBolt、Lucid、奔驰、大众汽车商用车、沃尔沃汽车和 Einride 均计划采用英伟达 Hyperion 计算平台\n[证据片段边界]\n目前，上述项目均未在公共道路上实现全面商业化运营，仍处于研发、测试或准备部署阶段，其中多数尚待监管部门批准。\n[证据片段边界]\nBolt 计划在欧洲部署 至少 2.5 万辆具备 L4 级自动驾驶能力的 Lucid 汽车\n[证据片段边界]\n首阶段项目如获监管部门批准，将于 2027 年在马德里启动数据采集。待马德里阶段验证成功后，德国将成为下一步部署的重点市场。\n[证据片段边界]\n奔驰则将基于 Hyperion 和 Alpamayo 的研发工作 扩展至 L3 级和 L4 级自动驾驶系统\n[证据片段边界]\n大众汽车商用车展示了基于 Hyperion 打造的 ID. Buzz AD 自动驾驶车型平台\n[证据片段边界]\n沃尔沃汽车也将采用两项技术，希望未来车型能够自主应对复杂路线，实现 从出发地到目的地的自动驾驶\n[证据片段边界]\nEinride 将基于 Hyperion 开发新一代 Einride Driver 软件，用于自动驾驶货运卡车。研发工作还将结合 Halos、Alpamayo 和英伟达 Cosmos 世界模型，完成系统训练与验证。\n[证据片段边界]\n为目标的完整无人驾驶出租车技术方案 。 英伟达还为 Halos 安全系统增加了 Halos SAFE 安全评估框架。该框架采用统一的测试场景和性能指标，将仿"
+    },
+    "result": {
+      "title": "英伟达公布欧洲自动驾驶布局：多家车企计划采用Hyperion平台",
+      "summary": "英伟达在柏林GTC公布欧洲自动驾驶布局，Bolt、Lucid、奔驰、大众汽车商用车、沃尔沃汽车和Einride均计划采用Hyperion计算平台。相关项目尚未全面商业化，多处于研发、测试或准备部署阶段，多数待监管批准。Bolt计划在欧洲部署至少2.5万辆L4级Lucid汽车，首阶段如获批将于2027年在马德里启动数据采集。",
+      "short_summary": "英伟达公布欧洲自动驾驶布局，Bolt、Lucid、奔驰、大众商用车、沃尔沃和Einride计划采用Hyperion平台，项目多待监管批准。",
+      "points": [
+        "Bolt计划在欧洲部署至少2.5万辆具备L4级自动驾驶能力的Lucid汽车，首阶段如获监管批准将于2027年在马德里启动数据采集，德国为下一步重点市场",
+        "奔驰将基于Hyperion和Alpamayo的研发扩展至L3级和L4级自动驾驶系统；大众汽车商用车展示基于Hyperion的ID. Buzz AD平台；沃尔沃希望未来车型实现从出发地到目的地的自动驾驶",
+        "Einride将基于Hyperion开发新一代Einride Driver软件，结合Halos、Alpamayo和英伟达Cosmos世界模型完成系统训练与验证",
+        "英伟达为Halos安全系统增加Halos SAFE评估框架，并与dSPACE、IVEX和德国莱茵TÜV合作制定评估流程"
+      ],
+      "why": "",
+      "uncertainties": [
+        "各项目均未在公共道路上实现全面商业化运营，仍处于研发、测试或准备部署阶段",
+        "多数项目尚待监管部门批准",
+        "Bolt马德里数据采集及后续部署以获批为前提"
+      ],
+      "claims": [
+        {
+          "claim": "英伟达在柏林GTC公布欧洲自动驾驶布局，多家企业计划采用Hyperion计算平台",
+          "evidence": "英伟达在柏林 GTC 大会上公布了自动驾驶业务在欧洲的最新布局。"
+        },
+        {
+          "claim": "Bolt、Lucid、奔驰、大众汽车商用车、沃尔沃汽车和Einride均计划采用Hyperion",
+          "evidence": "Bolt、Lucid、奔驰、大众汽车商用车、沃尔沃汽车和 Einride 均计划采用英伟达 Hyperion 计算平台"
+        },
+        {
+          "claim": "相关项目尚未全面商业化，多处于研发、测试或准备部署阶段，多数待监管批准",
+          "evidence": "目前，上述项目均未在公共道路上实现全面商业化运营，仍处于研发、测试或准备部署阶段，其中多数尚待监管部门批准。"
+        },
+        {
+          "claim": "Bolt计划在欧洲部署至少2.5万辆L4级Lucid汽车",
+          "evidence": "Bolt 计划在欧洲部署\n至少 2.5 万辆具备 L4 级自动驾驶能力的 Lucid 汽车"
+        },
+        {
+          "claim": "首阶段如获监管批准将于2027年在马德里启动数据采集，德国为下一步重点市场",
+          "evidence": "首阶段项目如获监管部门批准，将于 2027 年在马德里启动数据采集。待马德里阶段验证成功后，德国将成为下一步部署的重点市场。"
+        },
+        {
+          "claim": "奔驰将相关研发扩展至L3和L4级自动驾驶系统",
+          "evidence": "奔驰则将基于 Hyperion 和 Alpamayo 的研发工作\n扩展至 L3 级和 L4 级自动驾驶系统"
+        },
+        {
+          "claim": "大众汽车商用车展示基于Hyperion的ID. Buzz AD平台",
+          "evidence": "大众汽车商用车展示了基于 Hyperion 打造的 ID. Buzz AD 自动驾驶车型平台"
+        },
+        {
+          "claim": "沃尔沃希望未来车型实现从出发地到目的地的自动驾驶",
+          "evidence": "沃尔沃汽车也将采用两项技术，希望未来车型能够自主应对复杂路线，实现\n从出发地到目的地的自动驾驶"
+        },
+        {
+          "claim": "Einride将基于Hyperion开发新一代Einride Driver软件，结合Halos、Alpamayo和Cosmos世界模型训练验证",
+          "evidence": "Einride 将基于 Hyperion 开发新一代 Einride Driver 软件，用于自动驾驶货运卡车。研发工作还将结合 Halos、Alpamayo 和英伟达 Cosmos 世界模型，完成系统训练与验证。"
+        },
+        {
+          "claim": "英伟达为Halos增加Halos SAFE评估框架，并与dSPACE、IVEX和德国莱茵TÜV合作制定评估流程",
+          "evidence": "英伟达还为 Halos 安全系统增加了 Halos SAFE 安全评估框架。……英伟达与 dSPACE、IVEX 和德国莱茵 TÜV 合作制定了评估流程。"
+        }
+      ]
+    },
+    "expected": "lead_summary_over_150"
+  },
+  {
+    "case": 530,
+    "article": {
+      "title": "NHTSA Wants Up to 8 Cyan Lights on Robotaxis Like Tesla’s Cybercab",
+      "output_schema": "review-1",
+      "task_kind": "review",
+      "review_draft": {
+        "points": [
+          "青色灯须在前、侧、后各装一或两盏，离地至少15英寸，常亮不闪，仅在无人预期监控道路时开启。",
+          "颜色采用SAE J578定义的青绿色；NHTSA援引SAE标准、联合国工作及梅赛德斯-奔驰意见与2023至2025年在加州五车测试。",
+          "提案未点名特斯拉，但改动与无方向盘、踏板的Cybercab高度吻合；NHTSA正审计特斯拉认证声明，要求10月30日前提交宣誓答复。"
+        ],
+        "short_summary": "NHTSA拟修订灯光标准，允许无方向盘或踏板车辆选装青色灯标示自动驾驶，手动控制要求仅限有人工控制车辆。",
+        "summary": "美国NHTSA提出修订联邦灯光标准，拟允许无方向盘或踏板车辆选装青色灯，标示车辆处于自动驾驶状态；相关手动控制要求仅适用于有人工驾驶控制的车辆。该提案计划于10月26日刊登，公开征求意见30天。",
+        "title": "NHTSA拟修订灯光标准：无方向盘车辆可选装青色灯",
+        "why": ""
+      },
+      "text": "ministration (NHTSA) wants to rewrite parts of the federal lighting standard for cars with no steering wheel or pedals, and it would let s\n[证据片段边界]\nUnder the new wording, those manual control rules would only apply to vehicles with manually operated driving controls.\n[证据片段边界]\nDriverless vehicles would still need a way to run their turn signals, hazard lights and high beams, but that system could be automated.\n[证据片段边界]\none or two lamps each on the front, sides and rear, mounted at least 15 inches off the ground, steady burning rather than flashing, and switched on only when nobody is expected to watch the road\n[证据片段边界]\nMercedes-Benz also tested the lamps on five vehicles in California from 2023 to 2025\n[证据片段边界]\nNHTSA is auditing that claim and gave Tesla until October 30 to deliver sworn answers on how the Cybercab was certified"
+    },
+    "result": {
+      "verdict": "pass",
+      "checks": [
+        {
+          "field": "title",
+          "pass": true,
+          "reason": "标题主体NHTSA、动作拟修订灯光标准、对象无方向盘车辆、可选装青色灯，均与原文一致；原文称提案将允许自动驾驶车辆选装青色灯，且针对无方向盘或踏板车辆。",
+          "evidence": "NHTSA wants to rewrite parts of the federal lighting standard for cars with no steering wheel or pedals"
+        },
+        {
+          "field": "summary",
+          "pass": true,
+          "reason": "主体NHTSA、拟修订联邦灯光标准、允许无方向盘或踏板车辆选装青色灯标示自动驾驶、手动控制要求仅适用于有人工驾驶控制车辆、计划10月26日刊登、征求意见30天，均与原文一致；未把提案说成正式发布。",
+          "evidence": "Under the new wording, those manual control rules would only apply to vehicles with manually operated driving controls."
+        },
+        {
+          "field": "short_summary",
+          "pass": true,
+          "reason": "短摘要与长摘要及原文一致：NHTSA拟修订灯光标准，允许无方向盘或踏板车辆选装青色灯标示自动驾驶，手动控制要求仅限有人工控制车辆；未添加无依据内容。",
+          "evidence": "Driverless vehicles would still need a way to run their turn signals, hazard lights and high beams, but that system could be automated."
+        },
+        {
+          "field": "points.0",
+          "pass": true,
+          "reason": "青色灯安装位置、数量、离地至少15英寸、常亮不闪、仅在无人预期监控道路时开启，均与原文逐项一致。",
+          "evidence": "one or two lamps each on the front, sides and rear, mounted at least 15 inches off the ground, steady burning rather than flashing, and switched on only when nobody is expected to watch the road"
+        },
+        {
+          "field": "points.1",
+          "pass": true,
+          "reason": "颜色采用SAE J578定义的青绿色，NHTSA援引SAE标准、联合国工作、梅赛德斯-奔驰意见及2023至2025年加州五车测试，均与原文一致。",
+          "evidence": "Mercedes-Benz also tested the lamps on five vehicles in California from 2023 to 2025"
+        },
+        {
+          "field": "points.2",
+          "pass": true,
+          "reason": "提案未点名特斯拉、改动与无方向盘和踏板的Cybercab高度吻合、NHTSA正审计认证声明并要求10月30日前提交宣誓答复，均与原文一致；未把相关证据等同于支持结论。",
+          "evidence": "NHTSA is auditing that claim and gave Tesla until October 30 to deliver sworn answers on how the Cybercab was certified"
+        },
+        {
+          "field": "why",
+          "pass": true,
+          "reason": "why为空，草稿未提供关注理由，无需检查推断；空内容不构成无依据推断。",
+          "evidence": ""
+        }
+      ],
+      "update_has_new_facts": false
+    },
+    "expected": "review_evidence_missing"
+  },
+  {
+    "case": 532,
+    "article": {
+      "title": "OpenAI 联合研究机构部署数千个 AI 智能体：32 分钟分析数百万个小鼠脑细胞，相当于人类数月时间",
+      "output_schema": "dual-1",
+      "text": "OpenAI 联合 PerturbAI 和斯克里普斯研究所（Scripps Research），利用数千个 AI 智能体分析数百万个小鼠脑细胞的生物学数据，整个分析过程仅耗时 32 分钟。\n[证据片段边界]\n研究团队估计，如果由人类研究人员逐项分析实验结果并检索相关文献，完成同等工作可能需要数月到一年。\n[证据片段边界]\n这项研究使用了专为生命科学研究设计的 GPT-Rosalind 模型，分析一份覆盖整个小鼠大脑的 CRISPR 图谱。\n[证据片段边界]\n相关研究论文已于 2026 年 10 月 16 日发布在 bioRxiv 预印本平台，目前尚未经过同行评审。\n[证据片段边界]\n研究团队强调，AI 提出的生物学联系和作用机制仍属于有待验证的研究假设，后续仍需通过实验确认。\n[证据片段边界]\n在最大规模的测试中，分布式智能体引用了 700 多篇文献，而单个智能体仅引用 11 篇。\n[证据片段边界]\n在 20 组配对报告中，生物学专家在 75% 的评审中更倾向于分布式智能体生成的报告；单个智能体的报告获得 16.7% 的评审偏好，其余 8.3% 的评审结果为平局。\n[证据片段边界]\n相关推理图谱、分析流程和代码已向研究人员开放，可用于探索基因干预结果、比较不同细胞类型的反应，并筛选值得优先开展实验的研究方向。"
+    },
+    "result": {
+      "title": "OpenAI 与 PerturbAI 等用数千智能体分析小鼠脑细胞数据",
+      "summary": "OpenAI 联合 PerturbAI 和斯克里普斯研究所，用数千个 AI 智能体分析数百万个小鼠脑细胞数据，耗时 32 分钟；团队估计人类完成同等工作需数月到一年。研究基于 GPT-Rosalind 模型，论文为未经同行评审的预印本，AI 提出的机制仍属待验证假设。",
+      "short_summary": "OpenAI 联合 PerturbAI 和斯克里普斯研究所，用数千个 AI 智能体 32 分钟分析数百万个小鼠脑细胞数据；论文为未经同行评审的预印本，AI 提出的机制仍属待验证假设。",
+      "points": [
+        "研究使用专为生命科学研究设计的 GPT-Rosalind 模型，分析覆盖整个小鼠大脑的 CRISPR 图谱。",
+        "分布式架构将任务拆分并行执行，每个智能体负责一种基因干预并检索文献；最大规模测试中分布式智能体引用 700 多篇文献，单个智能体仅 11 篇。",
+        "20 组配对报告盲测中，生物学专家在 75% 的评审中更倾向分布式智能体报告，单个智能体获 16.7% 偏好，8.3% 为平局。",
+        "研究论文于 2026 年 10 月 16 日发布在 bioRxiv 预印本平台，尚未经同行评审；推理图谱、分析流程和代码已向研究人员开放。"
+      ],
+      "why": "",
+      "uncertainties": [
+        "论文为预印本，尚未经同行评审。",
+        "AI 提出的生物学联系和作用机制仍属有待实验验证的研究假设。",
+        "“人类需数月到一年”为研究团队估计，非实测。"
+      ],
+      "claims": [
+        {
+          "claim": "OpenAI 联合 PerturbAI 和斯克里普斯研究所，用数千个 AI 智能体分析数百万个小鼠脑细胞数据，耗时 32 分钟。",
+          "evidence": "OpenAI 联合 PerturbAI 和斯克里普斯研究所（Scripps Research），利用数千个 AI 智能体分析数百万个小鼠脑细胞的生物学数据，整个分析过程仅耗时 32 分钟。"
+        },
+        {
+          "claim": "研究团队估计人类完成同等工作需数月到一年。",
+          "evidence": "研究团队估计，如果由人类研究人员逐项分析实验结果并检索相关文献，完成同等工作可能需要数月到一年。"
+        },
+        {
+          "claim": "研究使用 GPT-Rosalind 模型分析覆盖整个小鼠大脑的 CRISPR 图谱。",
+          "evidence": "这项研究使用了专为生命科学研究设计的 GPT-Rosalind 模型，分析一份覆盖整个小鼠大脑的 CRISPR 图谱。"
+        },
+        {
+          "claim": "论文于 2026 年 10 月 16 日发布在 bioRxiv 预印本平台，尚未经同行评审。",
+          "evidence": "相关研究论文已于 2026 年 10 月 16 日发布在 bioRxiv 预印本平台，目前尚未经过同行评审。"
+        },
+        {
+          "claim": "AI 提出的生物学联系和作用机制仍属有待验证的研究假设。",
+          "evidence": "研究团队强调，AI 提出的生物学联系和作用机制仍属于有待验证的研究假设，后续仍需通过实验确认。"
+        },
+        {
+          "claim": "最大规模测试中分布式智能体引用 700 多篇文献，单个智能体仅引用 11 篇。",
+          "evidence": "在最大规模的测试中，分布式智能体引用了 700 多篇文献，而单个智能体仅引用 11 篇。"
+        },
+        {
+          "claim": "20 组配对报告盲测中，专家在 75% 的评审中更倾向分布式智能体报告，单个智能体获 16.7% 偏好，8.3% 为平局。",
+          "evidence": "在 20 组配对报告中，生物学专家在 75% 的评审中更倾向于分布式智能体生成的报告；单个智能体的报告获得 16.7% 的评审偏好，其余 8.3% 的评审结果为平局。"
+        },
+        {
+          "claim": "推理图谱、分析流程和代码已向研究人员开放。",
+          "evidence": "相关推理图谱、分析流程和代码已向研究人员开放，可用于探索基因干预结果、比较不同细胞类型的反应，并筛选值得优先开展实验的研究方向。"
+        }
+      ]
+    },
+    "expected": "short_summary_missing_or_over_80"
+  },
+  {
+    "case": 533,
+    "article": {
+      "title": "沃尔沃、奔驰、大众等纷纷拥抱英伟达，推动欧洲自动驾驶业务发展",
+      "output_schema": "dual-1",
+      "text": "英伟达在柏林 GTC 大会上公布了自动驾驶业务在欧洲的最新布局。 Bolt、Lucid、奔驰、大众汽车商用车、沃尔沃汽车和 Einride 均计划采用英伟达 Hyperion 计算平台，开发无人驾驶出租车、厢式货车和货运卡车。\n[证据片段边界]\n目前，上述项目均未在公共道路上实现全面商业化运营，仍处于研发、测试或准备部署阶段，其中多数尚待监管部门批准。\n[证据片段边界]\nBolt 计划在欧洲部署 至少 2.5 万辆具备 L4 级自动驾驶能力的 Lucid 汽车 。首阶段项目如获监管部门批准，将于 2027 年在马德里启动数据采集。\n[证据片段边界]\n奔驰则将基于 Hyperion 和 Alpamayo 的研发工作 扩展至 L3 级和 L4 级自动驾驶系统\n[证据片段边界]\n的安全验证资料，供监管部门和合作伙伴核查。 英伟达与 dSPACE、IVEX 和德国莱茵 TÜV 合作制定了评估流程。参与 Halos SAFE 的企业还包括"
+    },
+    "result": {
+      "title": "英伟达公布欧洲自动驾驶布局：多家车企计划采用Hyperion平台",
+      "summary": "英伟达在柏林GTC公布欧洲自动驾驶布局，Bolt、Lucid、奔驰、大众汽车商用车、沃尔沃汽车和Einride均计划采用Hyperion计算平台，开发无人驾驶出租车、厢式货车和货运卡车；相关项目均未全面商业化，多处于研发、测试或准备部署阶段，多数尚待监管批准。",
+      "short_summary": "英伟达公布欧洲自动驾驶布局，Bolt、Lucid、奔驰、大众商用车、沃尔沃和Einride计划采用Hyperion平台，项目多处于研发测试阶段，尚待监管批准。",
+      "points": [
+        "Bolt计划在欧洲部署至少2.5万辆具备L4级自动驾驶能力的Lucid汽车，首阶段如获监管批准将于2027年在马德里启动数据采集",
+        "奔驰将基于Hyperion和Alpamayo的研发扩展至L3级和L4级自动驾驶系统",
+        "英伟达为Halos安全系统增加Halos SAFE安全评估框架，并与dSPACE、IVEX和德国莱茵TÜV合作制定评估流程"
+      ],
+      "why": "",
+      "uncertainties": [
+        "各项目均未在公共道路上实现全面商业化运营，多数尚待监管部门批准",
+        "Bolt马德里数据采集及后续德国部署均以监管批准和首阶段验证成功为前提"
+      ],
+      "claims": [
+        {
+          "claim": "英伟达在柏林GTC公布欧洲自动驾驶布局，多家企业计划采用Hyperion平台",
+          "evidence": "英伟达在柏林 GTC 大会上公布了自动驾驶业务在欧洲的最新布局。\nBolt、Lucid、奔驰、大众汽车商用车、沃尔沃汽车和 Einride 均计划采用英伟达 Hyperion 计算平台，开发无人驾驶出租车、厢式货车和货运卡车。"
+        },
+        {
+          "claim": "相关项目均未全面商业化，多处于研发、测试或准备部署阶段，多数尚待监管批准",
+          "evidence": "目前，上述项目均未在公共道路上实现全面商业化运营，仍处于研发、测试或准备部署阶段，其中多数尚待监管部门批准。"
+        },
+        {
+          "claim": "Bolt计划在欧洲部署至少2.5万辆L4级自动驾驶Lucid汽车，首阶段如获批准将于2027年在马德里启动数据采集",
+          "evidence": "Bolt 计划在欧洲部署\n至少 2.5 万辆具备 L4 级自动驾驶能力的 Lucid 汽车\n。首阶段项目如获监管部门批准，将于 2027 年在马德里启动数据采集。"
+        },
+        {
+          "claim": "奔驰将基于Hyperion和Alpamayo的研发扩展至L3级和L4级自动驾驶系统",
+          "evidence": "奔驰则将基于 Hyperion 和 Alpamayo 的研发工作\n扩展至 L3 级和 L4 级自动驾驶系统"
+        },
+        {
+          "claim": "英伟达为Halos安全系统增加Halos SAFE框架，并与dSPACE、IVEX和德国莱茵TÜV合作制定评估流程",
+          "evidence": "英伟达还为 Halos 安全系统增加了 Halos SAFE 安全评估框架。\n英伟达与 dSPACE、IVEX 和德国莱茵 TÜV 合作制定了评估流程。"
+        }
+      ]
+    },
+    "expected": "unsupported evidence"
+  },
+  {
+    "case": 536,
+    "article": {
+      "title": "DeepSeek、MiniMax 已顺利履行登记手续，完成开源和海外授权使用",
+      "output_schema": "dual-1",
+      "text": "晚（22 日）发文透露， 政策公布以来，DeepSeek、MiniMax 两家头部企业已顺利履行登记手续，并完成开源和海外授权使用 。 商务部新闻发言人此前就有关问题回答\n[证据片段边界]\n10 月 16 日，商务部、科技部就 修订《中国禁止出口限制出口技术目录》公开征求意见\n[证据片段边界]\n人工智能领域包括 大模型、智能体、算力集群、信息处理 相关 23 项技术；对已通过开源、发表学术论文等方式进入公共领域的技术，不纳入管理范围\n[证据片段边界]\n对人工智能类技术开源、中国企业在境外自建自营算力中心、赴境外开展芯片流片制造、利用境外资源开展联合研发、参与国际标准制定等情形的技术出口，适用自动许可等便利措施，基本实现“即报即出”\n[证据片段边界]\n对于企业利用限制类大模型对外提供 API 调用、APP / 网页交互、SaaS 应用、本地端侧轻量化部署等情形，不属于大模型技术出口管理范围"
+    },
+    "result": {
+      "title": "玉渊谭天称DeepSeek、MiniMax已履行登记并完成开源和海外授权使用",
+      "summary": "据IT之家10月23日报道，玉渊谭天22日发文称，在商务部、科技部就修订《中国禁止出口限制出口技术目录》公开征求意见后，DeepSeek、MiniMax两家头部企业已顺利履行登记手续，并完成开源和海外授权使用。该说法来自媒体转述，非独立验证。",
+      "short_summary": "玉渊谭天称，政策征求意见后，DeepSeek、MiniMax已履行登记并完成开源和海外授权使用。",
+      "points": [
+        "拟增列人工智能大模型、智能体、算力集群、信息处理相关23项技术；已通过开源、发表论文等方式进入公共领域的技术拟不纳入管理范围。",
+        "商务部称，对人工智能类技术开源、境外自建自营算力中心等情形的技术出口适用自动许可等便利措施，基本实现“即报即出”。",
+        "商务部称，限制类大模型对外提供API调用、APP/网页交互、SaaS应用、本地端侧轻量化部署不属于大模型技术出口管理范围。"
+      ],
+      "why": "",
+      "uncertainties": [
+        "DeepSeek、MiniMax履行登记及完成开源和海外授权使用的说法仅来自玉渊谭天转述，未见企业或主管部门独立确认。",
+        "《目录》修订仍处公开征求意见阶段，正式实施时间及最终范围未在证据中明确。"
+      ],
+      "claims": [
+        {
+          "claim": "玉渊谭天称DeepSeek、MiniMax已顺利履行登记手续并完成开源和海外授权使用",
+          "evidence": "政策公布以来，\nDeepSeek、MiniMax 两家头部企业已顺利履行登记手续，并完成开源和海外授权使用"
+        },
+        {
+          "claim": "两部门就修订《中国禁止出口限制出口技术目录》公开征求意见",
+          "evidence": "10 月 16 日，商务部、科技部就\n修订《中国禁止出口限制出口技术目录》公开征求意见"
+        },
+        {
+          "claim": "拟增列人工智能相关23项技术，已进入公共领域的技术拟不纳入管理范围",
+          "evidence": "人工智能领域包括\n大模型、智能体、算力集群、信息处理\n相关 23 项技术；对已通过开源、发表学术论文等方式进入公共领域的技术，不纳入管理范围"
+        },
+        {
+          "claim": "商务部称开源等情形的技术出口适用自动许可等便利措施",
+          "evidence": "对人工智能类技术开源、中国企业在境外自建自营算力中心、赴境外开展芯片流片制造、利用境外资源开展联合研发、参与国际标准制定等情形的技术出口，适用自动许可等便利措施，基本实现“即报即出”"
+        },
+        {
+          "claim": "商务部称限制类大模型对外提供API调用等情形不属于大模型技术出口管理范围",
+          "evidence": "对于企业利用限制类大模型对外提供 API 调用、APP / 网页交互、SaaS 应用、本地端侧轻量化部署等情形，不属于大模型技术出口管理范围"
+        }
+      ]
+    },
+    "expected": "unsupported evidence"
+  },
+  {
+    "case": 537,
+    "article": {
+      "title": "谷歌推出 ACE 服务：为 AI 智能体配“独立工位”，空闲时自动下班 / 唤醒不到 500 毫秒",
+      "output_schema": "dual-1",
+      "text": "谷歌昨日（10 月 22 日）发布公告，宣布推出智能体计算引擎（Agent Compute Engine，简称 ACE）\n[证据片段边界]\nACE 服务将为每个 AI 智能体提供独立的硬件隔离 microVM（微型虚拟机）\n[证据片段边界]\n让其能够安全地执行代码、调用工具、操控浏览器并完成多步骤任务\n[证据片段边界]\n智能体空闲时，其计算环境可自动挂起并释放资源；需要继续工作时，又能快速恢复文件和内存状态\n[证据片段边界]\n在 20 万个智能体的测试中，暂停与恢复耗时不到 500 毫秒\n[证据片段边界]\n沙箱内不会保存凭据\n[证据片段边界]\n该服务最初用于支撑 Gemini、Gemini 平台、Antigravity 以及谷歌内部的模型评估和强化学习流程\n[证据片段边界]\n未来，开发者可通过 Google Cloud 使用 ACE，自行控制智能体环境的镜像、身份、网络访问和生命周期\n[证据片段边界]\n而由谷歌负责底层资源调度与扩容\n[证据片段边界]\n并可通过共享内存和快照复制大幅提高单台服务器承载智能体的数量"
+    },
+    "result": {
+      "title": "谷歌发布ACE智能体计算服务",
+      "summary": "谷歌10月22日公告推出智能体计算引擎ACE，为每个AI智能体提供硬件隔离microVM，可执行代码、调用工具、操控浏览器。空闲时自动挂起释放资源，恢复时保留文件和内存状态。谷歌称20万智能体测试中暂停恢复不到500毫秒。该服务最初用于支撑Gemini等内部流程，未来开发者可通过Google Cloud使用。",
+      "short_summary": "谷歌公告推出ACE智能体计算服务，为每个智能体提供硬件隔离microVM，空闲自动挂起、快速恢复。谷歌称20万智能体测试中暂停恢复不到500毫秒。",
+      "points": [
+        "ACE沙箱内不保存凭据，谷歌称以降低智能体被滥用或数据泄露风险",
+        "ACE通过共享内存和快照复制提高单台服务器承载智能体数量",
+        "未来开发者可自行控制智能体环境的镜像、身份、网络访问和生命周期，底层调度扩容由谷歌负责"
+      ],
+      "why": "",
+      "uncertainties": [
+        "500毫秒等性能数据来自谷歌自述测试，未经独立验证",
+        "ACE面向开发者的Google Cloud开放时间未在证据中说明"
+      ],
+      "claims": [
+        {
+          "claim": "谷歌10月22日公告推出智能体计算引擎ACE",
+          "evidence": "谷歌昨日（10 月 22 日）发布公告，宣布推出智能体计算引擎（Agent Compute Engine，简称 ACE）"
+        },
+        {
+          "claim": "ACE为每个AI智能体提供硬件隔离microVM",
+          "evidence": "ACE 服务将为每个 AI 智能体提供独立的硬件隔离 microVM（微型虚拟机）"
+        },
+        {
+          "claim": "智能体可执行代码、调用工具、操控浏览器并完成多步骤任务",
+          "evidence": "让其能够安全地执行代码、调用工具、操控浏览器并完成多步骤任务"
+        },
+        {
+          "claim": "空闲时计算环境自动挂起释放资源，恢复时保留文件和内存状态",
+          "evidence": "智能体空闲时，其计算环境可自动挂起并释放资源；需要继续工作时，又能快速恢复文件和内存状态"
+        },
+        {
+          "claim": "谷歌称20万智能体测试中暂停与恢复耗时不到500毫秒",
+          "evidence": "在 20 万个智能体的测试中，暂停与恢复耗时不到 500 毫秒"
+        },
+        {
+          "claim": "ACE沙箱内不保存凭据",
+          "evidence": "沙箱内不会保存凭据"
+        },
+        {
+          "claim": "该服务最初用于支撑Gemini、Gemini平台、Antigravity及谷歌内部模型评估和强化学习流程",
+          "evidence": "该服务最初用于支撑 Gemini、Gemini 平台、Antigravity 以及谷歌内部的模型评估和强化学习流程"
+        },
+        {
+          "claim": "未来开发者可通过Google Cloud使用ACE并自行控制镜像、身份、网络访问和生命周期",
+          "evidence": "未来，开发者可通过 Google Cloud 使用 ACE，自行控制智能体环境的镜像、身份、网络访问和生命周期"
+        },
+        {
+          "claim": "底层资源调度与扩容由谷歌负责",
+          "evidence": "而由谷歌负责底层资源调度与扩容"
+        },
+        {
+          "claim": "ACE通过共享内存和快照复制提高单台服务器承载智能体数量",
+          "evidence": "并可通过共享内存和快照复制大幅提高单台服务器承载智能体的数量"
+        }
+      ]
+    },
+    "expected": "lead_summary_over_150"
+  },
+  {
+    "case": 540,
+    "article": {
+      "title": "DeepSeek、MiniMax 已顺利履行登记手续，完成开源和海外授权使用",
+      "output_schema": "dual-1",
+      "text": "晚（22 日）发文透露， 政策公布以来，DeepSeek、MiniMax 两家头部企业已顺利履行登记手续，并完成开源和海外授权使用 。 商务部新闻发言人此前就有关问题回答\n[证据片段边界]\n10 月 16 日，商务部、科技部就 修订《中国禁止出口限制出口技术目录》公开征求意见\n[证据片段边界]\n人工智能领域包括 大模型、智能体、算力集群、信息处理 相关 23 项技术\n[证据片段边界]\n对已通过开源、发表学术论文等方式进入公共领域的技术，不纳入管理范围。\n[证据片段边界]\n对人工智能类技术开源、中国企业在境外自建自营算力中心、赴境外开展芯片流片制造、利用境外资源开展联合研发、参与国际标准制定等情形的技术出口，适用自动许可等便利措施，基本实现“即报即出”\n[证据片段边界]\n绝大部分人工智能技术仍可以自由出口\n[证据片段边界]\n对于企业利用限制类大模型对外提供 API 调用、APP / 网页交互、SaaS 应用、本地端侧轻量化部署等情形，不属于大模型技术出口管理范围。"
+    },
+    "result": {
+      "title": "玉渊谭天称DeepSeek、MiniMax已履行登记并完成开源和海外授权使用",
+      "summary": "玉渊谭天称，政策公布以来，DeepSeek、MiniMax两家头部企业已顺利履行登记手续，并完成开源和海外授权使用。该说法来自媒体账号，非独立验证。",
+      "short_summary": "玉渊谭天称DeepSeek、MiniMax已履行登记手续，完成开源和海外授权使用。",
+      "points": [
+        "10月16日，商务部、科技部就修订《中国禁止出口限制出口技术目录》公开征求意见，人工智能领域涉及大模型、智能体、算力集群、信息处理相关23项技术。",
+        "征求意见稿提出，对已通过开源、发表学术论文等方式进入公共领域的技术，不纳入管理范围。",
+        "商务部称，对人工智能类技术开源、境外自建自营算力中心、境外芯片流片制造、联合研发、参与国际标准制定等情形的技术出口，适用自动许可等便利措施，基本实现“即报即出”。",
+        "商务部称，措施正式实施后，绝大部分人工智能技术仍可自由出口；限制类大模型对外提供API调用、APP/网页交互、SaaS应用、本地端侧轻量化部署不属于大模型技术出口管理范围。"
+      ],
+      "why": "",
+      "uncertainties": [
+        "DeepSeek、MiniMax履行登记及完成开源和海外授权使用的说法仅来自玉渊谭天，未见企业或主管部门独立确认。",
+        "《目录》修订仍处公开征求意见阶段，正式实施时间及最终范围未定。"
+      ],
+      "claims": [
+        {
+          "claim": "玉渊谭天称DeepSeek、MiniMax已履行登记手续并完成开源和海外授权使用",
+          "evidence": "政策公布以来，\nDeepSeek、MiniMax 两家头部企业已顺利履行登记手续，并完成开源和海外授权使用"
+        },
+        {
+          "claim": "10月16日商务部、科技部就修订《中国禁止出口限制出口技术目录》公开征求意见",
+          "evidence": "10 月 16 日，商务部、科技部就\n修订《中国禁止出口限制出口技术目录》公开征求意见"
+        },
+        {
+          "claim": "人工智能领域涉及大模型、智能体、算力集群、信息处理相关23项技术",
+          "evidence": "人工智能领域包括\n大模型、智能体、算力集群、信息处理\n相关 23 项技术"
+        },
+        {
+          "claim": "对已通过开源、发表学术论文等方式进入公共领域的技术不纳入管理范围",
+          "evidence": "对已通过开源、发表学术论文等方式进入公共领域的技术，不纳入管理范围。"
+        },
+        {
+          "claim": "商务部称开源等情形的技术出口适用自动许可等便利措施，基本实现“即报即出”",
+          "evidence": "对人工智能类技术开源、中国企业在境外自建自营算力中心、赴境外开展芯片流片制造、利用境外资源开展联合研发、参与国际标准制定等情形的技术出口，适用自动许可等便利措施，基本实现“即报即出”"
+        },
+        {
+          "claim": "商务部称措施正式实施后绝大部分人工智能技术仍可自由出口",
+          "evidence": "绝大部分人工智能技术仍可以自由出口"
+        },
+        {
+          "claim": "商务部称限制类大模型对外提供API调用等情形不属于大模型技术出口管理范围",
+          "evidence": "对于企业利用限制类大模型对外提供 API 调用、APP / 网页交互、SaaS 应用、本地端侧轻量化部署等情形，不属于大模型技术出口管理范围。"
+        }
+      ]
+    },
+    "expected": "unsupported evidence"
+  },
+  {
+    "case": 542,
+    "article": {
+      "title": "谷歌推出 ACE 服务：为 AI 智能体配“独立工位”，空闲时自动下班 / 唤醒不到 500 毫秒",
+      "output_schema": "review-1",
+      "task_kind": "review",
+      "review_draft": {
+        "points": [
+          "谷歌称在20万个智能体的测试中，暂停与恢复耗时不到500毫秒。",
+          "ACE最初用于支撑Gemini、Gemini平台、Antigravity及谷歌内部模型评估和强化学习流程。",
+          "未来开发者可通过Google Cloud使用ACE，自行控制镜像、身份、网络访问和生命周期，底层资源调度与扩容由谷歌负责。"
+        ],
+        "short_summary": "谷歌发布ACE智能体计算引擎，为每个AI智能体提供硬件隔离microVM，空闲时自动挂起并快速恢复。",
+        "summary": "谷歌10月22日发布公告，推出Google Cloud智能体计算引擎ACE，为每个AI智能体提供硬件隔离microVM，可执行代码、调用工具、操控浏览器；空闲时自动挂起释放资源，需要时快速恢复文件和内存状态。",
+        "title": "谷歌发布ACE智能体计算引擎",
+        "why": ""
+      },
+      "text": "谷歌昨日（10 月 22 日）发布公告，宣布推出智能体计算引擎（Agent Compute Engine，简称 ACE）\n[证据片段边界]\nIT之家 10 月 23 日消息，谷歌昨日（10 月 22 日）发布公告，宣布推出智能体计算引擎（Agent Compute Engine，简称 ACE）， 是一款专为 AI 智能体打造的 Goo\n[证据片段边界]\nACE 服务的亮点在于“持久且可暂停”，智能体空闲时，其计算环境可自动挂起并释放资源；需要继续工作时，又能快速恢复文件和内存状态。\n[证据片段边界]\n在 20 万个智能体的测试中，暂停与恢复耗时不到 500 毫秒\n[证据片段边界]\n该服务最初用于支撑 Gemini、Gemini 平台、Antigravity 以及谷歌内部的模型评估和强化学习流程。\n[证据片段边界]\n未来，开发者可通过 Google Cloud 使用 ACE，自行控制智能体环境的镜像、身份、网络访问和生命周期，而由谷歌负责底层资源调度与扩容。"
+    },
+    "result": {
+      "verdict": "pass",
+      "checks": [
+        {
+          "field": "title",
+          "pass": true,
+          "reason": "草稿标题称谷歌发布ACE智能体计算引擎，与原文“谷歌昨日（10 月 22 日）发布公告，宣布推出智能体计算引擎（Agent Compute Engine，简称 ACE）”一致，主体、动作、名称均无误。",
+          "evidence": "谷歌昨日（10 月 22 日）发布公告，宣布推出智能体计算引擎（Agent Compute Engine，简称 ACE）"
+        },
+        {
+          "field": "summary",
+          "pass": true,
+          "reason": "摘要中的发布日期、发布主体、服务归属、硬件隔离microVM、功能范围、空闲挂起与恢复状态均可在原文找到对应表述，未添加无依据推断。",
+          "evidence": "谷歌昨日（10 月 22 日）发布公告，宣布推出智能体计算引擎（Agent Compute Engine，简称 ACE），是一款专为 AI 智能体打造的 Google Cloud 计算服务"
+        },
+        {
+          "field": "short_summary",
+          "pass": true,
+          "reason": "短摘要准确概括ACE为Google Cloud智能体计算引擎，提供硬件隔离microVM，并支持空闲挂起和快速恢复，与原文一致。",
+          "evidence": "ACE 服务的亮点在于“持久且可暂停”，智能体空闲时，其计算环境可自动挂起并释放资源；需要继续工作时，又能快速恢复文件和内存状态。"
+        },
+        {
+          "field": "points.0",
+          "pass": true,
+          "reason": "要点称谷歌称20万个智能体测试中暂停与恢复耗时不到500毫秒，原文明确为谷歌自述的测试结果，数字、单位、归因均一致。",
+          "evidence": "在 20 万个智能体的测试中，暂停与恢复耗时不到 500 毫秒"
+        },
+        {
+          "field": "points.1",
+          "pass": true,
+          "reason": "要点列出的初始用途与原文完全一致，包括Gemini、Gemini平台、Antigravity及内部模型评估和强化学习流程。",
+          "evidence": "该服务最初用于支撑 Gemini、Gemini 平台、Antigravity 以及谷歌内部的模型评估和强化学习流程。"
+        },
+        {
+          "field": "points.2",
+          "pass": true,
+          "reason": "要点关于未来开发者可通过Google Cloud使用ACE并自行控制镜像、身份、网络访问和生命周期，底层调度扩容由谷歌负责，与原文一致。",
+          "evidence": "未来，开发者可通过 Google Cloud 使用 ACE，自行控制智能体环境的镜像、身份、网络访问和生命周期，而由谷歌负责底层资源调度与扩容。"
+        },
+        {
+          "field": "why",
+          "pass": true,
+          "reason": "why字段为空，草稿未提供关注理由，无需核验推断；空内容不构成事实错误。",
+          "evidence": ""
+        }
+      ],
+      "update_has_new_facts": false
+    },
+    "expected": "review_evidence_missing"
+  },
+  {
+    "case": 544,
+    "article": {
+      "title": "Show HN: Pear – A Windows Steam Launcher for Apple Silicon Macs",
+      "output_schema": "dual-1",
+      "text": "Pear is a free, open-source macOS app that sets up a Windows Steam environment on Apple Silicon.\n[证据片段边界]\nPear is a free, open-source macOS app that sets up a Windows Steam environment on Apple Silicon. It handles runtime setup and launching Steam.\n[证据片段边界]\nYou sign in through Valve's Steam client, then install and play games you own.\n[证据片段边界]\nThe current release is 0.1.1 and requires Apple Silicon, macOS 15 or later, and Rosetta.\n[证据片段边界]\nOnly Megabonk has been tested.\n[证据片段边界]\nI first tried to play Megabonk on my Mac with Wine 11.0 and DXMT 0.80.\n[证据片段边界]\nAfter successfully playing it, I thought it would be great to make a packaged app - a one-click installer - so non-developer users can also easily play Windows Steam games on mac.\n[证据片段边界]\nI also wrote about the development process and architecture, with gameplay and app demo videos."
+    },
+    "result": {
+      "title": "开发者自述发布 Pear：面向 Apple Silicon Mac 的 Windows Steam 启动器",
+      "summary": "开发者自述发布免费开源 macOS 应用 Pear，在 Apple Silicon 上搭建 Windows Steam 环境并启动 Steam，用户经 Valve 客户端登录后安装游玩已购游戏。当前版本 0.1.1，需 Apple Silicon、macOS 15 或更高版本及 Rosetta；仅测试过 Megabonk。",
+      "short_summary": "开发者自述发布免费开源应用 Pear，在 Apple Silicon Mac 上搭建 Windows Steam 环境；版本 0.1.1，需 macOS 15 及 Rosetta，仅测试过 Megabonk。",
+      "points": [
+        "开发者称其先在 Mac 上用 Wine 11.0 与 DXMT 0.80 试玩 Megabonk，随后萌生制作一键安装包的想法",
+        "开发者称 Pear 负责运行时环境搭建与启动 Steam，游戏安装和游玩通过 Valve 的 Steam 客户端完成",
+        "开发者公开了 GitHub 源码及介绍开发过程与架构的博客，并附游戏与应用的演示视频"
+      ],
+      "why": "",
+      "uncertainties": [
+        "仅 Megabonk 一款游戏经过测试，其他 Windows Steam 游戏的兼容性无证据",
+        "未说明 Wine 11.0 与 DXMT 0.80 是否随 Pear 打包或需用户自行配置",
+        "未提供性能、稳定性或用户反馈数据"
+      ],
+      "claims": [
+        {
+          "claim": "开发者自述发布免费开源 macOS 应用 Pear",
+          "evidence": "Pear is a free, open-source macOS app that sets up a Windows Steam environment on Apple Silicon."
+        },
+        {
+          "claim": "Pear 在 Apple Silicon 上搭建 Windows Steam 环境并启动 Steam",
+          "evidence": "Pear is a free, open-source macOS app that sets up a Windows Steam environment on Apple Silicon. It handles runtime setup and launching Steam."
+        },
+        {
+          "claim": "用户经 Valve 的 Steam 客户端登录后安装游玩已购游戏",
+          "evidence": "You sign in through Valve's Steam client, then install and play games you own."
+        },
+        {
+          "claim": "当前版本 0.1.1，需 Apple Silicon、macOS 15 或更高版本及 Rosetta",
+          "evidence": "The current release is 0.1.1 and requires Apple Silicon, macOS 15 or later, and Rosetta."
+        },
+        {
+          "claim": "仅测试过 Megabonk",
+          "evidence": "Only Megabonk has been tested."
+        },
+        {
+          "claim": "开发者称其先在 Mac 上用 Wine 11.0 与 DXMT 0.80 试玩 Megabonk",
+          "evidence": "I first tried to play Megabonk on my Mac with Wine 11.0 and DXMT 0.80."
+        },
+        {
+          "claim": "开发者称随后萌生制作一键安装包的想法",
+          "evidence": "After successfully playing it, I thought it would be great to make a packaged app - a one-click installer - so non-developer users can also easily play Windows Steam games on mac."
+        },
+        {
+          "claim": "开发者公开 GitHub 源码及介绍开发过程与架构的博客，并附演示视频",
+          "evidence": "I also wrote about the development process and architecture, with gameplay and app demo videos."
+        }
+      ]
+    },
+    "expected": "lead_summary_over_150"
+  },
+  {
+    "case": 548,
+    "article": {
+      "title": "Show HN: Pear – A Windows Steam Launcher for Apple Silicon Macs",
+      "output_schema": "dual-1",
+      "text": "Pear is a free, open-source macOS app that sets up a Windows Steam environment on Apple Silicon. It handles runtime setup and launching Steam.\n[证据片段边界]\nYou sign in through Valve's Steam client, then install and play games you own.\n[证据片段边界]\nThe current release is 0.1.1 and requires Apple Silicon, macOS 15 or later, and Rosetta. Only Megabonk has been tested.\n[证据片段边界]\nI first tried to play Megabonk on my Mac with Wine 11.0 and DXMT 0.80. After successfully playing it, I thought it would be great to make a packaged app - a one-click installer - so non-developer users can also easily play Windows Steam games on mac.\n[证据片段边界]\nI also wrote about the development process and architecture, with gameplay and app demo videos."
+    },
+    "result": {
+      "title": "开发者自述推出 Pear：面向 Apple Silicon Mac 的 Windows Steam 启动器",
+      "summary": "开发者称，Pear 是免费开源 macOS 应用，可在 Apple Silicon 上搭建 Windows Steam 环境并启动 Steam；用户经 Valve 客户端登录后安装并游玩已购游戏。当前版本 0.1.1，需 Apple Silicon、macOS 15 或更高版本及 Rosetta，仅测试过 Megabonk。",
+      "short_summary": "开发者自述推出免费开源应用 Pear，在 Apple Silicon Mac 上搭建 Windows Steam 环境；版本 0.1.1，仅测试过 Megabonk。",
+      "points": [
+        "开发者称其先用 Wine 11.0 和 DXMT 0.80 在 Mac 上试玩 Megabonk，成功后萌生制作一键安装包的想法。",
+        "开发者表示还撰写了开发过程与架构文章，并附游戏及应用演示视频。"
+      ],
+      "why": "",
+      "uncertainties": [
+        "仅开发者自述，未见独立验证",
+        "仅测试过 Megabonk，其他游戏兼容性未知",
+        "未说明 Rosetta 的具体用途或版本要求"
+      ],
+      "claims": [
+        {
+          "claim": "Pear 是免费开源 macOS 应用，可在 Apple Silicon 上搭建 Windows Steam 环境并启动 Steam",
+          "evidence": "Pear is a free, open-source macOS app that sets up a Windows Steam environment on Apple Silicon. It handles runtime setup and launching Steam."
+        },
+        {
+          "claim": "用户经 Valve 的 Steam 客户端登录后安装并游玩已购游戏",
+          "evidence": "You sign in through Valve's Steam client, then install and play games you own."
+        },
+        {
+          "claim": "当前版本 0.1.1，需 Apple Silicon、macOS 15 或更高版本及 Rosetta，仅测试过 Megabonk",
+          "evidence": "The current release is 0.1.1 and requires Apple Silicon, macOS 15 or later, and Rosetta. Only Megabonk has been tested."
+        },
+        {
+          "claim": "开发者先用 Wine 11.0 和 DXMT 0.80 在 Mac 上试玩 Megabonk，成功后想制作一键安装包",
+          "evidence": "I first tried to play Megabonk on my Mac with Wine 11.0 and DXMT 0.80.\nAfter successfully playing it, I thought it would be great to make a packaged app - a one-click installer - so non-developer users can also easily play Windows Steam games on mac."
+        },
+        {
+          "claim": "开发者还撰写了开发过程与架构文章，并附游戏及应用演示视频",
+          "evidence": "I also wrote about the development process and architecture, with gameplay and app demo videos."
+        }
+      ]
+    },
+    "expected": "lead_summary_over_150"
+  },
+  {
+    "case": 549,
+    "article": {
+      "title": "SpaceX 推出超级智能合作伙伴网络，英伟达等 130 余家公司参与早期计划",
+      "output_schema": "dual-1",
+      "text": "SpaceX 与包括英伟达、阿波罗、Snowflake、Databricks 和贝恩公司在内的 130 多家公司共同启动了 Super Intelligence Partner Network（超级智能合作伙伴网络）早期计划\n[证据片段边界]\n该计划将参与者分为： 转型合作伙伴（Transformation Partners）—— 协助客户将 Grok 整合进复杂运营 市场合作伙伴（Marketplace Partners）—— 负责开发专业软件集成\n[证据片段边界]\nSpaceX 的这一计划旨在帮助企业利用其 Grok AI 平台构建、集成和扩展应用。\n[证据片段边界]\nSpaceX 高管强调，企业客户正从简单的 AI 实验转向全面自主工作流程。\n[证据片段边界]\n截至十月，Grok Bot 的每周付费用户数已攀升至 80 万以上，是上个月数字的两倍\n[证据片段边界]\nShotwell 将这款智能体软件描述为“始终在线的团队伙伴”，部署于软件工程、销售、市场营销和 IT 运营领域。"
+    },
+    "result": {
+      "title": "SpaceX 启动超级智能合作伙伴网络早期计划，英伟达等 130 余家公司参与",
+      "summary": "据彭博社报道，SpaceX 与英伟达、阿波罗、Snowflake、Databricks、贝恩等 130 多家公司启动超级智能合作伙伴网络早期计划，分转型合作伙伴与市场合作伙伴两类，旨在助企业用 Grok AI 平台构建、集成和扩展应用。SpaceX 总裁称截至十月 Grok Bot 每周付费用户超 80 万，为上月两倍。",
+      "short_summary": "SpaceX 与英伟达等 130 多家公司启动超级智能合作伙伴网络早期计划，助企业用 Grok 平台构建应用；SpaceX 称 Grok Bot 周付费用户超 80 万。",
+      "points": [
+        "计划参与者分为转型合作伙伴（协助客户将 Grok 整合进复杂运营）与市场合作伙伴（开发专业软件集成）两类",
+        "SpaceX 高管称企业客户正从简单 AI 实验转向全面自主工作流程",
+        "Grok Bot 被描述为“始终在线的团队伙伴”，部署于软件工程、销售、市场营销和 IT 运营领域"
+      ],
+      "why": "",
+      "uncertainties": [
+        "报道未说明计划启动的具体日期与参与公司的具体角色分工",
+        "Grok Bot 用户数据来自 SpaceX 高管在财报电话会议上的说法，未经独立验证"
+      ],
+      "claims": [
+        {
+          "claim": "SpaceX 与英伟达等 130 多家公司启动超级智能合作伙伴网络早期计划",
+          "evidence": "SpaceX 与包括英伟达、阿波罗、Snowflake、Databricks 和贝恩公司在内的 130 多家公司共同启动了\nSuper Intelligence Partner Network（超级智能合作伙伴网络）早期计划"
+        },
+        {
+          "claim": "计划分转型合作伙伴与市场合作伙伴两类",
+          "evidence": "该计划将参与者分为：\n转型合作伙伴（Transformation Partners）—— 协助客户将 Grok 整合进复杂运营\n市场合作伙伴（Marketplace Partners）—— 负责开发专业软件集成"
+        },
+        {
+          "claim": "计划旨在帮助企业利用 Grok AI 平台构建、集成和扩展应用",
+          "evidence": "SpaceX 的这一计划旨在帮助企业利用其 Grok AI 平台构建、集成和扩展应用。"
+        },
+        {
+          "claim": "SpaceX 高管称企业客户正从简单 AI 实验转向全面自主工作流程",
+          "evidence": "SpaceX 高管强调，企业客户正从简单的 AI 实验转向全面自主工作流程。"
+        },
+        {
+          "claim": "SpaceX 总裁称截至十月 Grok Bot 每周付费用户超 80 万，为上月两倍",
+          "evidence": "截至十月，Grok Bot 的每周付费用户数已攀升至 80 万以上，是上个月数字的两倍"
+        },
+        {
+          "claim": "Grok Bot 被描述为“始终在线的团队伙伴”，部署于软件工程、销售、市场营销和 IT 运营领域",
+          "evidence": "Shotwell 将这款智能体软件描述为“始终在线的团队伙伴”，部署于软件工程、销售、市场营销和 IT 运营领域。"
+        }
+      ]
+    },
+    "expected": "lead_summary_over_150"
+  },
+  {
+    "case": 550,
+    "article": {
+      "title": "Show HN: Pear – A Windows Steam Launcher for Apple Silicon Macs",
+      "output_schema": "dual-1",
+      "text": "Pear is a free, open-source macOS app that sets up a Windows Steam environment on Apple Silicon. It handles runtime setup and launching Steam.\n[证据片段边界]\nYou sign in through Valve's Steam client, then install and play games you own.\n[证据片段边界]\nThe current release is 0.1.1 and requires Apple Silicon, macOS 15 or later, and Rosetta. Only Megabonk has been tested.\n[证据片段边界]\nI first tried to play Megabonk on my Mac with Wine 11.0 and DXMT 0.80. After successfully playing it, I thought it would be great to make a packaged app - a one-click installer - so non-developer users can also easily play Windows Steam games on mac.\n[证据片段边界]\nI also wrote about the development process and architecture, with gameplay and app demo videos."
+    },
+    "result": {
+      "title": "开发者自述推出 Pear：面向 Apple Silicon Mac 的 Windows Steam 启动器",
+      "summary": "开发者称，Pear 是免费开源 macOS 应用，可在 Apple Silicon 上搭建 Windows Steam 环境并启动 Steam；用户经 Valve 客户端登录后安装并游玩已购游戏。当前版本 0.1.1，需 Apple Silicon、macOS 15 或更高版本及 Rosetta，仅测试过 Megabonk。",
+      "short_summary": "开发者自述发布免费开源应用 Pear，在 Apple Silicon Mac 上搭建 Windows Steam 环境；0.1.1 版仅测试过 Megabonk。",
+      "points": [
+        "开发者称其先用 Wine 11.0 和 DXMT 0.80 在 Mac 上试玩 Megabonk，随后想到制作一键安装的打包应用。",
+        "开发者表示还撰写了开发过程与架构文章，并提供游戏画面和应用演示视频。"
+      ],
+      "why": "",
+      "uncertainties": [
+        "仅开发者自述，未提供独立验证",
+        "仅测试过 Megabonk，其他游戏兼容性未知",
+        "未说明 Wine 11.0 与 DXMT 0.80 是否随 Pear 打包或需用户自行配置"
+      ],
+      "claims": [
+        {
+          "claim": "Pear 是免费开源 macOS 应用，可在 Apple Silicon 上搭建 Windows Steam 环境并启动 Steam",
+          "evidence": "Pear is a free, open-source macOS app that sets up a Windows Steam environment on Apple Silicon. It handles runtime setup and launching Steam."
+        },
+        {
+          "claim": "用户经 Valve 的 Steam 客户端登录后安装并游玩已购游戏",
+          "evidence": "You sign in through Valve's Steam client, then install and play games you own."
+        },
+        {
+          "claim": "当前版本 0.1.1，需 Apple Silicon、macOS 15 或更高版本及 Rosetta，仅测试过 Megabonk",
+          "evidence": "The current release is 0.1.1 and requires Apple Silicon, macOS 15 or later, and Rosetta. Only Megabonk has been tested."
+        },
+        {
+          "claim": "开发者先用 Wine 11.0 和 DXMT 0.80 在 Mac 上试玩 Megabonk，随后想到制作一键安装的打包应用",
+          "evidence": "I first tried to play Megabonk on my Mac with Wine 11.0 and DXMT 0.80.\nAfter successfully playing it, I thought it would be great to make a packaged app - a one-click installer - so non-developer users can also easily play Windows Steam games on mac."
+        },
+        {
+          "claim": "开发者称还撰写了开发过程与架构文章，并提供游戏画面和应用演示视频",
+          "evidence": "I also wrote about the development process and architecture, with gameplay and app demo videos."
+        }
+      ]
+    },
+    "expected": "lead_summary_over_150"
+  },
+  {
+    "case": 552,
+    "article": {
+      "title": "让你安心用 AI 网购 / 订票 / 点外卖：1Password 推出智能体密码授权功能",
+      "output_schema": "dual-1",
+      "text": "密码管理服务商 1Password 昨日（10 月 22 日）发布博文，宣布推出 1Password for Agents 平台\n[证据片段边界]\n该功能面向个人及家庭版用户推出，首批支持 Meta Muse、OpenAI ChatGPT Work 与 Dots、Anthropic Claude Duet、Grok Bot 及 Town 等主流 AI 智能体。\n[证据片段边界]\n让个人 AI 智能体全程不接触、不存储用户的密码或验证码情况下，代用户完成网站登录。\n[证据片段边界]\n会先通过独有的数字密钥向 1Password 证明自身身份。 用户随后会在自己的设备上收到通知，看到智能体请求使用哪个账号凭据、用于什么任务，并自行选择批准或拒绝。\n[证据片段边界]\n用户批准后，1Password 直接将用户名、密码或一次性验证码填入登录表单；登录完成后，智能体即可继续执行任务，但密码始终留在 1Password 保险库中。\n[证据片段边界]\n1Password 强调，智能体不会获得整个密码库的访问权限，未被明确授权的其他密码仍受端到端加密保护。"
+    },
+    "result": {
+      "title": "1Password 推出智能体密码授权功能",
+      "summary": "1Password 于10月22日发布博文，宣布推出 1Password for Agents 平台，面向个人及家庭版用户，首批支持 Meta Muse、OpenAI ChatGPT Work 与 Dots、Anthropic Claude Duet、Grok Bot 及 Town 等 AI 智能体。官方称智能体不接触、不存储用户密码或验证码，登录需用户在自己设备上批准，密码始终留在保险库中。",
+      "short_summary": "1Password 宣布推出 1Password for Agents，面向个人及家庭版用户，首批支持多款 AI 智能体；官方称智能体不接触、不存储密码或验证码，登录需用户批准。",
+      "points": [
+        "官方称智能体先以独有数字密钥向 1Password 证明身份，用户随后在设备上看到请求使用的账号凭据与任务并选择批准或拒绝",
+        "官方称批准后由 1Password 直接填入用户名、密码或一次性验证码，智能体不会获得整个密码库访问权限，其他密码仍受端到端加密保护"
+      ],
+      "why": "",
+      "uncertainties": [
+        "上述机制与安全效果均为 1Password 官方说法，未见独立验证",
+        "报道未说明该功能的具体上线日期或地区范围"
+      ],
+      "claims": [
+        {
+          "claim": "1Password 于10月22日发布博文，宣布推出 1Password for Agents 平台",
+          "evidence": "密码管理服务商 1Password 昨日（10 月 22 日）发布博文，宣布推出 1Password for Agents 平台"
+        },
+        {
+          "claim": "该功能面向个人及家庭版用户，首批支持 Meta Muse、OpenAI ChatGPT Work 与 Dots、Anthropic Claude Duet、Grok Bot 及 Town 等 AI 智能体",
+          "evidence": "该功能面向个人及家庭版用户推出，首批支持 Meta Muse、OpenAI ChatGPT Work 与 Dots、Anthropic Claude Duet、Grok Bot 及 Town 等主流 AI 智能体。"
+        },
+        {
+          "claim": "官方称智能体不接触、不存储用户密码或验证码",
+          "evidence": "让个人 AI 智能体全程不接触、不存储用户的密码或验证码情况下，代用户完成网站登录。"
+        },
+        {
+          "claim": "官方称智能体先以独有数字密钥向 1Password 证明身份，用户随后在设备上看到请求使用的账号凭据与任务并选择批准或拒绝",
+          "evidence": "会先通过独有的数字密钥向 1Password 证明自身身份。\n用户随后会在自己的设备上收到通知，看到智能体请求使用哪个账号凭据、用于什么任务，并自行选择批准或拒绝。"
+        },
+        {
+          "claim": "官方称批准后由 1Password 直接填入用户名、密码或一次性验证码，密码始终留在保险库中",
+          "evidence": "用户批准后，1Password 直接将用户名、密码或一次性验证码填入登录表单；登录完成后，智能体即可继续执行任务，但密码始终留在 1Password 保险库中。"
+        },
+        {
+          "claim": "官方称智能体不会获得整个密码库访问权限，其他密码仍受端到端加密保护",
+          "evidence": "1Password 强调，智能体不会获得整个密码库的访问权限，未被明确授权的其他密码仍受端到端加密保护。"
+        }
+      ]
+    },
+    "expected": "lead_summary_over_150"
+  },
+  {
+    "case": 554,
+    "article": {
+      "title": "SpaceX 推出超级智能合作伙伴网络，英伟达等 130 余家公司参与早期计划",
+      "output_schema": "review-1",
+      "task_kind": "review",
+      "review_draft": {
+        "points": [
+          "计划将参与者分为转型合作伙伴与市场合作伙伴：前者协助客户将 Grok 整合进复杂运营，后者负责开发专业软件集成。",
+          "SpaceX 总裁 Gwynne Shotwell 称，截至十月，Grok Bot 每周付费用户数已超 80 万，是上个月数字的两倍。",
+          "Shotwell 将这款智能体软件描述为“始终在线的团队伙伴”，部署于软件工程、销售、市场营销和 IT 运营领域。"
+        ],
+        "short_summary": "SpaceX 与英伟达等 130 多家公司启动超级智能合作伙伴网络早期计划，助企业用 Grok 平台构建、集成和扩展应用。",
+        "summary": "据彭博社报道，SpaceX 与英伟达、阿波罗、Snowflake、Databricks、贝恩等 130 多家公司启动超级智能合作伙伴网络早期计划，旨在帮助企业利用 Grok AI 平台构建、集成和扩展应用。",
+        "title": "SpaceX 启动超级智能合作伙伴网络早期计划，英伟达等 130 余家公司参与",
+        "why": ""
+      },
+      "text": "SpaceX 与包括英伟达、阿波罗、Snowflake、Databricks 和贝恩公司在内的 130 多家公司共同启动了 Super Intelligence Partner Network（超级智能合作伙伴网络）早期计划\n[证据片段边界]\nSpaceX 与包括英伟达、阿波罗、Snowflake、Databricks 和贝恩公司在内的 130 多家公司共同启动了 Super Intelligence Partner Network（超级智能合作伙伴网络）早期计划\n[证据片段边界]\nSpaceX 的这一计划旨在帮助企业利用其 Grok AI 平台构建、集成和扩展应用。\n[证据片段边界]\n转型合作伙伴（Transformation Partners）—— 协助客户将 Grok 整合进复杂运营 市场合作伙伴（Marketplace Partners）—— 负责开发专业软件集成\n[证据片段边界]\n截至十月，Grok Bot 的每周付费用户数已攀升至 80 万以上，是上个月数字的两倍\n[证据片段边界]\nShotwell 将这款智能体软件描述为“始终在线的团队伙伴”，部署于软件工程、销售、市场营销和 IT 运营领域。"
+    },
+    "result": {
+      "verdict": "reject",
+      "checks": [
+        {
+          "field": "title",
+          "pass": true,
+          "reason": "标题主体SpaceX、事件为启动超级智能合作伙伴网络早期计划、英伟达等130余家公司参与，均与原文一致，未添加无依据限定。",
+          "evidence": "SpaceX 与包括英伟达、阿波罗、Snowflake、Databricks 和贝恩公司在内的 130 多家公司共同启动了\nSuper Intelligence Partner Network（超级智能合作伙伴网络）早期计划"
+        },
+        {
+          "field": "summary",
+          "pass": true,
+          "reason": "长摘要准确转述彭博社报道、参与公司、计划名称及目的，主体、范围与原文一致。",
+          "evidence": "SpaceX 与包括英伟达、阿波罗、Snowflake、Databricks 和贝恩公司在内的 130 多家公司共同启动了\nSuper Intelligence Partner Network（超级智能合作伙伴网络）早期计划"
+        },
+        {
+          "field": "short_summary",
+          "pass": true,
+          "reason": "短摘要保留核心主体、参与规模、计划性质及目的，与长摘要和原文一致。",
+          "evidence": "SpaceX 的这一计划旨在帮助企业利用其 Grok AI 平台构建、集成和扩展应用。"
+        },
+        {
+          "field": "points.0",
+          "pass": true,
+          "reason": "要点准确复述两类合作伙伴的划分及各自职责，未改变原文含义。",
+          "evidence": "转型合作伙伴（Transformation Partners）—— 协助客户将 Grok 整合进复杂运营\n市场合作伙伴（Marketplace Partners）—— 负责开发专业软件集成"
+        },
+        {
+          "field": "points.1",
+          "pass": true,
+          "reason": "要点保留截至十月、每周付费用户超80万、为上个月两倍等数字和时间限定，与原文一致。",
+          "evidence": "截至十月，Grok Bot 的每周付费用户数已攀升至 80 万以上，是上个月数字的两倍"
+        },
+        {
+          "field": "points.2",
+          "pass": true,
+          "reason": "要点准确引用Shotwell对智能体软件的描述及部署领域，与原文一致。",
+          "evidence": "Shotwell 将这款智能体软件描述为“始终在线的团队伙伴”，部署于软件工程、销售、市场营销和 IT 运营领域。"
+        },
+        {
+          "field": "why",
+          "pass": true,
+          "reason": "why为空，草稿未提供关注理由，无需检查推断内容。",
+          "evidence": ""
+        }
+      ],
+      "update_has_new_facts": false
+    },
+    "expected": "review_verdict_conflict"
+  },
+  {
+    "case": 557,
+    "article": {
+      "title": "At MIT, Martha Minow speaks on sustaining democracy, both by using and overcoming AI",
+      "output_schema": "dual-1",
+      "text": "describing how artificial intelligence is undermining it, but could be used to help reinforce traditional U.S. governance\n[证据片段边界]\nfour key “ingredients” of democracy: education, reliable and accessible information, security from violence, and fairness\n[证据片段边界]\na turnaround, I believe, is genuinely possible if people at MIT and elsewhere pour time and talent towards real and much-needed solutions\n[证据片段边界]\nRecent Gallup polling, Minow observed, shows 77 percent of people saying that the founders of the U.S. would be disappointed in the contemporary condition of the country.\n[证据片段边界]\nModern media technology has led to a 75 percent reduction in journalists in recent decades, Minow observed, with an attendant rise in corruption in places without local media.\n[证据片段边界]\nCivic-minded technologists, she proposed, should work towards establishing a widely-used “information commons,” or many forms of them\n[证据片段边界]\nI know a lot of judges, and every one of them has a credible threat of violence against them. In America. This is not acceptable.\n[证据片段边界]\nut present trends. “I worry about the loss of the Enlightenment,” Minow said. “I wo"
+    },
+    "result": {
+      "title": "米诺在MIT谈AI与民主：既侵蚀公民基础，也可用于加固治理",
+      "summary": "哈佛法学学者Martha Minow在MIT康普顿讲座称，AI正侵蚀民主的公民基础，但也可用于加固美国传统治理；她提出教育、可靠信息、安全与公平四项民主要素，并称MIT等地人士若投入时间与才能，扭转局面“确实可能”。",
+      "short_summary": "哈佛学者Martha Minow在MIT讲座称AI侵蚀民主公民基础，也可用于加固美国传统治理，并称扭转局面“确实可能”。",
+      "points": [
+        "米诺援引盖洛普民调称，77%受访者认为美国建国者会对国家现状失望。",
+        "她称近几十年记者数量减少75%，无本地媒体地区腐败随之上升，提议建设“信息 commons”。",
+        "她警告法官普遍面临可信暴力威胁，称“我们正处在边缘”，并称最担忧启蒙运动信念流失。"
+      ],
+      "why": "",
+      "uncertainties": [
+        "民调、记者减少75%等数据均为米诺演讲中的引述，简报未提供原始来源核验。",
+        "“信息 commons”为演讲提议，无具体方案或实施证据。"
+      ],
+      "claims": [
+        {
+          "claim": "米诺在MIT康普顿讲座谈AI既侵蚀民主也可用于加固美国传统治理",
+          "evidence": "describing how artificial intelligence is undermining it, but could be used to help reinforce traditional U.S. governance"
+        },
+        {
+          "claim": "她提出教育、可靠信息、安全与公平四项民主要素",
+          "evidence": "four key “ingredients” of democracy: education, reliable and accessible information, security from violence, and fairness"
+        },
+        {
+          "claim": "她称MIT等地人士投入时间与才能，扭转局面“确实可能”",
+          "evidence": "a turnaround, I believe, is genuinely possible if people at MIT and elsewhere pour time and talent towards real and much-needed solutions"
+        },
+        {
+          "claim": "她援引盖洛普民调称77%的人认为美国建国者会对现状失望",
+          "evidence": "Recent Gallup polling, Minow observed, shows 77 percent of people saying that the founders of the U.S. would be disappointed in the contemporary condition of the country."
+        },
+        {
+          "claim": "她称近几十年记者减少75%，无本地媒体地区腐败上升",
+          "evidence": "Modern media technology has led to a 75 percent reduction in journalists in recent decades, Minow observed, with an attendant rise in corruption in places without local media."
+        },
+        {
+          "claim": "她提议建设广泛使用的“信息 commons”",
+          "evidence": "Civic-minded technologists, she proposed, should work towards establishing a widely-used “information commons,” or many forms of them"
+        },
+        {
+          "claim": "她警告法官普遍面临可信暴力威胁",
+          "evidence": "I know a lot of judges, and every one of them has a credible threat of violence against them. In America. This is not acceptable."
+        },
+        {
+          "claim": "她称最担忧启蒙运动信念流失",
+          "evidence": "I worry about the loss of the Enlightenment."
+        }
+      ]
+    },
+    "expected": "unsupported evidence"
+  },
+  {
+    "case": 560,
+    "article": {
+      "title": "Q&A: How AI came to model the “messy” human mind",
+      "output_schema": "dual-1",
+      "text": "Generative artificial intelligence models are rooted in ideas of mid-20th century engineers\n[证据片段边界]\nwho thought some amount of irrationality was essential for a machine that could think like a human\n[证据片段边界]\nTo mimic creative thinking, these AI pioneers intentionally injected randomness into algorithms designed to deterministically solve problems\n[证据片段边界]\nhe traces the origins of AI hallucinations back to this early research and suggests there will be inevitable tradeoffs between creativity and predictability\n[证据片段边界]\nMany early neural networks were built by psychologists, who thought that by enabling scientists to build a model of the brain, artificial neural networks allowed scientists to observe what is happening inside, including how brains make productive mistakes.\n[证据片段边界]\nThey wanted a system that, on occasion, gave answers that deviated from their expectations.\n[证据片段边界]\nBut now there are legal and monetary reasons why OpenAI or Anthropic doesn’t want a chatbot that gives unexpected or creative answers.\n[证据片段边界]\nBy the time he died, a shift toward symbolic AI was already underway.\n[证据片段边界]\nAround 2012, neural networks started to outperform and outpace a statistical form of machine learning"
+    },
+    "result": {
+      "title": "MIT历史学者：早期AI曾有意注入随机性以模拟人类思维",
+      "summary": "MIT历史学者Benjamin Lindquist在《Past and Present》新论文中称，生成式AI根植于20世纪中期工程师的想法，他们认为一定程度的非理性对能像人一样思考的机器必不可少；为模拟创造性思维，这些先驱有意在确定性算法中注入随机性，并将AI幻觉起源追溯至早期研究，认为创造力与可预测性之间存在不可避免的取舍。",
+      "short_summary": "MIT历史学者Lindquist新论文称，早期AI先驱为模拟创造性思维，有意在确定性算法中注入随机性，并将AI幻觉起源追溯至早期研究，认为创造力与可预测性存在取舍。",
+      "points": [
+        "Lindquist指出，早期神经网络多由心理学家构建，他们希望借此观察大脑如何产生“有成效的错误”，而非把系统当作黑箱。",
+        "他称，早期倡导者看重系统偶尔给出偏离预期的答案，而如今法律与金钱因素促使企业抑制这类“怪异”输出。",
+        "他提到，Frank Rosenblatt于1971年去世时，符号AI的转向已在进行；神经网络在1980年代转向认知科学，约2012年开始超越一种统计机器学习方法。"
+      ],
+      "why": "",
+      "uncertainties": [
+        "论文具体论证与同行评议情况未在证据中呈现",
+        "“约2012年超越统计机器学习”为受访者表述，未给出具体基准或数据",
+        "企业抑制输出一事为受访者推断，未提供企业方证据"
+      ],
+      "claims": [
+        {
+          "claim": "MIT历史学者Benjamin Lindquist在《Past and Present》新论文中提出，生成式AI根植于20世纪中期工程师的想法",
+          "evidence": "Generative artificial intelligence models are rooted in ideas of mid-20th century engineers"
+        },
+        {
+          "claim": "这些早期工程师认为一定程度的非理性对能像人一样思考的机器必不可少",
+          "evidence": "who thought some amount of irrationality was essential for a machine that could think like a human"
+        },
+        {
+          "claim": "为模拟创造性思维，AI先驱有意在确定性算法中注入随机性",
+          "evidence": "To mimic creative thinking, these AI pioneers intentionally injected randomness into algorithms designed to deterministically solve problems"
+        },
+        {
+          "claim": "他将AI幻觉起源追溯至早期研究，并认为创造力与可预测性之间存在不可避免的取舍",
+          "evidence": "he traces the origins of AI hallucinations back to this early research and suggests there will be inevitable tradeoffs between creativity and predictability"
+        },
+        {
+          "claim": "早期神经网络多由心理学家构建，他们希望观察大脑如何产生有成效的错误",
+          "evidence": "Many early neural networks were built by psychologists, who thought that by enabling scientists to build a model of the brain, artificial neural networks allowed scientists to observe what is happening inside, including how brains make productive mistakes."
+        },
+        {
+          "claim": "他称早期倡导者看重系统偶尔给出偏离预期的答案",
+          "evidence": "They wanted a system that, on occasion, gave answers that deviated from their expectations."
+        },
+        {
+          "claim": "他称如今法律与金钱因素促使企业抑制这类怪异输出",
+          "evidence": "But now there are legal and monetary reasons why OpenAI or Anthropic doesn’t want a chatbot that gives unexpected or creative answers."
+        },
+        {
+          "claim": "他提到Rosenblatt于1971年去世时，符号AI的转向已在进行",
+          "evidence": "By the time he died, a shift toward symbolic AI was already underway."
+        },
+        {
+          "claim": "他称神经网络在1980年代转向认知科学，约2012年开始超越一种统计机器学习方法",
+          "evidence": "Around 2012, neural networks started to outperform and outpace a statistical form of machine learning"
+        }
+      ]
+    },
+    "expected": "lead_summary_over_150"
+  },
+  {
+    "case": 561,
+    "article": {
+      "title": "Show HN: Sonah, code reviewer that reads your agent's session, not only the diff",
+      "output_schema": "dual-1",
+      "text": "After getting frustrated by Claude rewriting key functions and still making the test pass\n[证据片段边界]\nSonah is basically a code reviewer that not only reads the code and diff but also the agent session that wrote the code\n[证据片段边界]\nto understand the assumptions, and decisions your agent took along the way. And highlight important parts of the code that need your attention.\n[证据片段边界]\nSonah uses your existing claude code/codex subscription (claude preferred for higher context window).\n[证据片段边界]\nnpm install -g getsonah sonah doctor cd your-project && sonah review --format html --output ~/review.html"
+    },
+    "result": {
+      "title": "开发者自述推出 Sonah：读取编码代理会话的代码审查工具",
+      "summary": "开发者自述因不满 Claude 改写关键函数后测试仍通过，构建了代码审查工具 Sonah。其称该工具除读取代码与 diff 外，还读取编写代码的代理会话，以理解代理的假设与决策，并标出需关注的代码部分；使用现有 Claude Code/Codex 订阅，称 Claude 因上下文窗口更大而更受偏好。",
+      "short_summary": "开发者自述推出 Sonah，称其除代码与 diff 外还读取编码代理会话，以理解代理假设与决策并标出需关注代码；使用现有 Claude Code/Codex 订阅。",
+      "points": [
+        "开发者称 Sonah 使用用户现有的 Claude Code 或 Codex 订阅，并称因上下文窗口更大而更偏好 Claude。",
+        "开发者给出安装与使用方式：npm 全局安装 getsonah，运行 sonah doctor，再在项目目录执行 sonah review 并输出 HTML 文件。"
+      ],
+      "why": "",
+      "uncertainties": [
+        "仅为开发者自述，未提供独立验证或效果数据",
+        "未说明支持范围、限制或与现有工具的对比",
+        "未说明定价、许可或数据隐私处理方式"
+      ],
+      "claims": [
+        {
+          "claim": "开发者自述因不满 Claude 改写关键函数后测试仍通过而构建 Sonah",
+          "evidence": "After getting frustrated by Claude rewriting key functions and still making the test pass"
+        },
+        {
+          "claim": "Sonah 除读取代码与 diff 外还读取编写代码的代理会话",
+          "evidence": "Sonah is basically a code reviewer that not only reads the code and diff but also the agent session that wrote the code"
+        },
+        {
+          "claim": "Sonah 旨在理解代理的假设与决策并标出需关注的代码部分",
+          "evidence": "to understand the assumptions, and decisions your agent took along the way. And highlight important parts of the code that need your attention."
+        },
+        {
+          "claim": "Sonah 使用现有 Claude Code/Codex 订阅，称 Claude 因上下文窗口更大而更受偏好",
+          "evidence": "Sonah uses your existing claude code/codex subscription (claude preferred for higher context window)."
+        },
+        {
+          "claim": "开发者给出 npm 安装及 sonah doctor、sonah review 的使用方式",
+          "evidence": "npm install -g getsonah\nsonah doctor\ncd your-project && sonah review --format html --output ~/review.html"
+        }
+      ]
+    },
+    "expected": "short_summary_missing_or_over_80"
+  },
+  {
+    "case": 562,
+    "article": {
+      "title": "At MIT, Martha Minow speaks on sustaining democracy, both by using and overcoming AI",
+      "output_schema": "review-1",
+      "task_kind": "review",
+      "review_draft": {
+        "points": [
+          "米诺以教育、可靠且可获取的信息、免于暴力的安全和公平四项“要素”评估美国民主状况。",
+          "她援引近期盖洛普民调称，77%的人认为美国建国者对国家现状会感到失望。",
+          "她称近几十年来记者人数减少75%，在缺乏本地媒体的地方腐败随之上升。"
+        ],
+        "short_summary": "米诺在MIT讲座称AI正削弱民主基础，但也可用于巩固美国传统治理，主张改进AI工具以培养而非替代思考。",
+        "summary": "哈佛法学学者米诺在MIT康普顿讲座指出，AI正削弱民主的公民基础，但也可用于巩固美国传统治理；她主张改进AI工具以培养而非替代人的思考。",
+        "title": "米诺在MIT谈AI时代维护民主：既需善用也需克服AI",
+        "why": "推断：讲座将AI治理与公民教育、信息生态并置，显示其关注点在于技术设计如何影响民主认知基础。"
+      },
+      "text": "Legal scholar Martha Minow delivered this fall’\n[证据片段边界]\nLegal scholar Martha Minow delivered this fall’s Compton Lecture at MIT on Thursday, examining the civic foundations of democracy — and describing how artificial intelligence is undermining it, but could be used to help reinforce traditional U.S. governance.\n[证据片段边界]\ndescribing how artificial intelligence is undermining it, but could be used to help reinforce traditional U.S. governance\n[证据片段边界]\nfour key “ingredients” of democracy: education, reliable and accessible information, security from violence, and fairness\n[证据片段边界]\nRecent Gallup polling, Minow observed, shows 77 percent of people saying that the founders of the U.S. would be disappointed in the contemporary condition of the country.\n[证据片段边界]\nModern media technology has led to a 75 percent reduction in journalists in recent decades, Minow observed, with an attendant rise in corruption in places without local media.\n[证据片段边界]\nHer remarks assessed the state of the U.S. in terms of what she called four key “ingredients” of democracy: education, reliable and accessible information, security from violence, and fairness. Minow evaluated how AI has, among other things, influenced these areas of life"
+    },
+    "result": {
+      "verdict": "pass",
+      "checks": [
+        {
+          "field": "title",
+          "pass": true,
+          "reason": "标题与原文一致：米诺在MIT谈AI时代维护民主，既需善用也需克服AI；主体、地点、主题均对应，无数字或限定偏差。",
+          "evidence": "At MIT, Martha Minow speaks on sustaining democracy, both by using and overcoming AI"
+        },
+        {
+          "field": "summary",
+          "pass": true,
+          "reason": "摘要准确概括原文：哈佛法学学者米诺在MIT康普顿讲座指出AI削弱民主公民基础但可用于巩固美国传统治理，并主张改进AI工具培养而非替代思考；主体、归因、范围均与原文一致。",
+          "evidence": "Legal scholar Martha Minow delivered this fall’s Compton Lecture at MIT on Thursday, examining the civic foundations of democracy — and describing how artificial intelligence is undermining it, but could be used to help reinforce traditional U.S. governance."
+        },
+        {
+          "field": "short_summary",
+          "pass": true,
+          "reason": "短摘要与长摘要及原文一致，无新增或遗漏改变意义的限定。",
+          "evidence": "describing how artificial intelligence is undermining it, but could be used to help reinforce traditional U.S. governance"
+        },
+        {
+          "field": "points.0",
+          "pass": true,
+          "reason": "要点准确列出教育、可靠且可获取的信息、免于暴力的安全和公平四项要素，与原文逐字对应。",
+          "evidence": "four key “ingredients” of democracy: education, reliable and accessible information, security from violence, and fairness"
+        },
+        {
+          "field": "points.1",
+          "pass": true,
+          "reason": "要点准确引用盖洛普民调77%及建国者失望表述，数字、主体、归因均与原文一致。",
+          "evidence": "Recent Gallup polling, Minow observed, shows 77 percent of people saying that the founders of the U.S. would be disappointed in the contemporary condition of the country."
+        },
+        {
+          "field": "points.2",
+          "pass": true,
+          "reason": "要点准确转述记者人数减少75%及缺乏本地媒体地方腐败上升，数字、范围、归因均与原文一致。",
+          "evidence": "Modern media technology has led to a 75 percent reduction in journalists in recent decades, Minow observed, with an attendant rise in corruption in places without local media."
+        },
+        {
+          "field": "why",
+          "pass": true,
+          "reason": "why明确标注为推断，且基于原文将AI治理与公民教育、信息生态并置的事实，有事实依据，未将相关证据等同于结论。",
+          "evidence": "Her remarks assessed the state of the U.S. in terms of what she called four key “ingredients” of democracy: education, reliable and accessible information, security from violence, and fairness. Minow evaluated how AI has, among other things, influenced these areas of life"
+        }
+      ],
+      "update_has_new_facts": false
+    },
+    "expected": "review_evidence_missing"
+  },
+  {
+    "case": 569,
+    "article": {
+      "title": "Show HN: Most feature complete Apple notes MCP bridge",
+      "output_schema": "dual-1",
+      "text": "swift and other more features. Previous reminder\n[证据片段边界]\nWith version check (avoid update confliction)\n[证据片段边界]\nsmart list support\n[证据片段边界]\nmostly swift\n[证据片段边界]\nPrevious reminders mcp:"
+    },
+    "result": {
+      "title": "开发者自述发布 Apple Notes MCP 桥接工具，称功能最完整",
+      "summary": "Hacker News 的 Show HN 帖中，开发者自述发布 Apple Notes MCP 桥接工具，称其为功能最完整的版本，具备版本检查以避免更新冲突、智能列表支持，且以 Swift 为主实现。帖文另附此前 Apple Reminders MCP 项目链接。上述功能与“最完整”均为开发者自述，未获独立验证。",
+      "short_summary": "Show HN 帖中开发者自述发布 Apple Notes MCP 桥接工具，称功能最完整，含版本检查、智能列表支持，以 Swift 为主。",
+      "points": [
+        "帖文附有此前 Apple Reminders MCP 项目链接"
+      ],
+      "why": "",
+      "uncertainties": [
+        "未说明版本号、发布日期与支持范围",
+        "“功能最完整”为开发者自述，无第三方对比或验证",
+        "版本检查与智能列表的具体实现细节未披露"
+      ],
+      "claims": [
+        {
+          "claim": "开发者自述发布 Apple Notes MCP 桥接工具，称其为功能最完整的版本",
+          "evidence": "Show HN: Most feature complete Apple notes MCP bridge"
+        },
+        {
+          "claim": "具备版本检查以避免更新冲突",
+          "evidence": "With version check (avoid update confliction)"
+        },
+        {
+          "claim": "支持智能列表",
+          "evidence": "smart list support"
+        },
+        {
+          "claim": "以 Swift 为主实现",
+          "evidence": "mostly swift"
+        },
+        {
+          "claim": "帖文附此前 Apple Reminders MCP 项目链接",
+          "evidence": "Previous reminders mcp:"
+        }
+      ]
+    },
+    "expected": "lead_summary_over_150"
+  },
+  {
+    "case": 570,
+    "article": {
+      "title": "Show HN: Most feature complete Apple notes MCP bridge",
+      "output_schema": "dual-1",
+      "text": "swift and other more features. Previous reminder\n[证据片段边界]\nWith version check (avoid update confliction)\n[证据片段边界]\nsmart list support\n[证据片段边界]\nmostly swift\n[证据片段边界]\nPrevious reminders mcp:"
+    },
+    "result": {
+      "title": "Show HN：开发者自述推出功能较完整的 Apple Notes MCP 桥接工具",
+      "summary": "开发者自述发布 Apple Notes MCP 桥接工具，称其为功能较完整的版本，含版本检查以避免更新冲突、智能列表支持，且以 Swift 为主。",
+      "short_summary": "开发者自述发布 Apple Notes MCP 桥接工具，含版本检查、智能列表支持，以 Swift 为主。",
+      "points": [
+        "开发者还提到此前有 reminders MCP 项目，并给出其 GitHub 链接"
+      ],
+      "why": "",
+      "uncertainties": [
+        "“功能较完整”为开发者自述，未提供独立对比或验证",
+        "未说明支持范围、平台版本要求及发布时间等细节"
+      ],
+      "claims": [
+        {
+          "claim": "开发者自述发布 Apple Notes MCP 桥接工具，称其为功能较完整的版本",
+          "evidence": "Show HN: Most feature complete Apple notes MCP bridge"
+        },
+        {
+          "claim": "含版本检查以避免更新冲突",
+          "evidence": "With version check (avoid update confliction)"
+        },
+        {
+          "claim": "支持智能列表",
+          "evidence": "smart list support"
+        },
+        {
+          "claim": "以 Swift 为主",
+          "evidence": "mostly swift"
+        },
+        {
+          "claim": "开发者还提到此前有 reminders MCP 项目",
+          "evidence": "Previous reminders mcp:"
+        }
+      ]
+    },
+    "expected": "unsupported evidence"
+  },
+  {
+    "case": 577,
+    "article": {
+      "title": "Show HN: Most feature complete Apple notes MCP bridge",
+      "output_schema": "dual-1",
+      "text": "swift and other more features. Previous reminder\n[证据片段边界]\nWith version check (avoid update confliction)\n[证据片段边界]\nsmart list support, mostly swift and other more features.\n[证据片段边界]\nPrevious reminders mcp:"
+    },
+    "result": {
+      "title": "Show HN：开发者自述推出功能较完整的 Apple Notes MCP 桥接工具",
+      "summary": "开发者自述发布 Apple Notes MCP 桥接工具，称其为功能较完整的版本，含版本检查以避免更新冲突、智能列表支持，且以 Swift 为主。",
+      "short_summary": "开发者自述发布 Apple Notes MCP 桥接工具，含版本检查、智能列表支持，以 Swift 为主。",
+      "points": [
+        "开发者还提到此前有 reminders MCP 项目，并给出其 GitHub 链接"
+      ],
+      "why": "",
+      "uncertainties": [
+        "“功能较完整”为开发者自述，未提供独立对比或验证",
+        "未说明具体版本号、发布时间及支持范围"
+      ],
+      "claims": [
+        {
+          "claim": "开发者自述发布 Apple Notes MCP 桥接工具，称其为功能较完整的版本",
+          "evidence": "Show HN: Most feature complete Apple notes MCP bridge"
+        },
+        {
+          "claim": "含版本检查以避免更新冲突",
+          "evidence": "With version check (avoid update confliction)"
+        },
+        {
+          "claim": "支持智能列表，且以 Swift 为主",
+          "evidence": "smart list support, mostly swift and other more features."
+        },
+        {
+          "claim": "开发者还提到此前有 reminders MCP 项目",
+          "evidence": "Previous reminders mcp:"
+        }
+      ]
+    },
+    "expected": "unsupported evidence"
+  },
+  {
+    "case": 579,
+    "article": {
+      "title": "Show HN: ParaGraFX – An iOS app for reading and illustrating ePub books",
+      "output_schema": "dual-1",
+      "text": "Now this work has finally culminated in an app I call ParaGraFX\n[证据片段边界]\nwith download tools for Project Gutenberg, Standard Ebooks, and The Internet Archive\n[证据片段边界]\nand illustrations powered by fal.ai and OpenAI\n[证据片段边界]\nThis app is free to download and use for reading EPUBs, but since images cost money to generate, they are paid for with credits.\n[证据片段边界]\nThe first 3 credits are free, and additional credits are available for purchase starting at $1.99 for 10 credits.\n[证据片段边界]\nadditional credits are available for purchase starting at $1.99 for 10 credits\n[证据片段边界]\nwith the Fast tier costing 1 credit per image, and 5 credits for the Best tier, which uses OpenAI's top image model\n[证据片段边界]\nin one of three dozen styles\n[证据片段边界]\nfrom Romantic oil painting, Japanese woodblock print and Art Deco poster to Byzantine mosaic, a cross-stitch sampler, 16-bit pixel art, or 1980s teletext block graphics\n[证据片段边界]\nYou can modify the generated illustration by either editing the original prompt, or providing custom instructions"
+    },
+    "result": {
+      "title": "开发者自述推出iOS应用ParaGraFX：为ePub图书生成插图",
+      "summary": "开发者自述推出iOS应用ParaGraFX，可下载古登堡计划、Standard Ebooks和互联网档案馆的公版书并生成插图，插图由fal.ai和OpenAI提供。应用免费下载，阅读免费，生成图片需积分：前3个免费且限Fast档，之后10积分1.99美元起；Fast档每图1积分，Best档5积分。",
+      "short_summary": "开发者自述推出iOS应用ParaGraFX，可下载公版ePub并生成插图，插图由fal.ai和OpenAI提供。应用免费下载，生成图片需积分，前3个免费且限Fast档，10积分1.99美元起。",
+      "points": [
+        "提供约36种插图风格，包括浪漫主义油画、日本木版画、装饰艺术海报、拜占庭马赛克、十字绣、16位像素画和1980年代图文电视块图形。",
+        "图片质量分4档，Fast档每图1积分，Best档5积分并使用OpenAI顶级图像模型。",
+        "用户可编辑原始提示词或添加自定义指令来修改生成的插图。"
+      ],
+      "why": "",
+      "uncertainties": [
+        "插图效果与风格数量均为开发者自述，未提供独立验证",
+        "未说明各积分档位对应的具体图像质量差异"
+      ],
+      "claims": [
+        {
+          "claim": "开发者自述推出iOS应用ParaGraFX",
+          "evidence": "Now this work has finally culminated in an app I call ParaGraFX"
+        },
+        {
+          "claim": "可下载古登堡计划、Standard Ebooks和互联网档案馆的公版书",
+          "evidence": "with download tools for Project Gutenberg, Standard Ebooks, and The Internet Archive"
+        },
+        {
+          "claim": "插图由fal.ai和OpenAI提供",
+          "evidence": "and illustrations powered by fal.ai and OpenAI"
+        },
+        {
+          "claim": "应用免费下载，阅读免费，生成图片需积分",
+          "evidence": "This app is free to download and use for reading EPUBs, but since images cost money to generate, they are paid for with credits."
+        },
+        {
+          "claim": "前3个积分免费且限Fast档",
+          "evidence": "The first 3 credits are free, and additional credits are available for purchase starting at $1.99 for 10 credits."
+        },
+        {
+          "claim": "10积分1.99美元起",
+          "evidence": "additional credits are available for purchase starting at $1.99 for 10 credits"
+        },
+        {
+          "claim": "Fast档每图1积分，Best档5积分并使用OpenAI顶级图像模型",
+          "evidence": "with the Fast tier costing 1 credit per image, and 5 credits for the Best tier, which uses OpenAI's top image model"
+        },
+        {
+          "claim": "提供约36种插图风格",
+          "evidence": "in one of three dozen styles"
+        },
+        {
+          "claim": "风格包括浪漫主义油画、日本木版画、装饰艺术海报、拜占庭马赛克、十字绣、16位像素画和1980年代图文电视块图形",
+          "evidence": "from Romantic oil painting, Japanese woodblock print and Art Deco poster to Byzantine mosaic, a cross-stitch sampler, 16-bit pixel art, or 1980s teletext block graphics"
+        },
+        {
+          "claim": "用户可编辑原始提示词或添加自定义指令来修改插图",
+          "evidence": "You can modify the generated illustration by either editing the original prompt, or providing custom instructions"
+        }
+      ]
+    },
+    "expected": "short_summary_missing_or_over_80"
+  },
+  {
+    "case": 580,
+    "article": {
+      "title": "Show HN: Corgi, a helpful {agent, terminal} multiplexer",
+      "output_schema": "dual-1",
+      "text": "Inspired by Herdr, I've built an agent multiplexer\n[证据片段边界]\nI've been using as my daily driver for a few weeks now\n[证据片段边界]\nI show you what the agents are up to, along with a running feed of their activity. There's also a simple shortcut (F1) to go to the next unread agent.\n[证据片段边界]\nI've added unified launcher for Codex/Claude Code/Pi.\n[证据片段边界]\nfast search and resume over sessions, inline usage tracking etc.\n[证据片段边界]\nLinks can be copied with a click, so no need to drag-select over many lines - cmd+v just pastes images (even on SSH) - images have a thumbnail preview.\n[证据片段边界]\nBuilt-in CPU/Memory/GPU usage tracking, broken down by workspace\n[证据片段边界]\nIt just reuses the agents to organize things for you: what is this http link? what is this worktree about? what is each agent doing?\n[证据片段边界]\nI've been on a frustrating sick leave for a while now. I created Corgi to challenge myself, and see if I can go back. The answer is more mixed than I had hoped, but I am happy with the result\n[证据片段边界]\nThere's still a lot to improve and some rough edges"
+    },
+    "result": {
+      "title": "Show HN：开发者自述推出 Corgi 智能体与终端复用器",
+      "summary": "开发者自述受 Herdr 启发构建 Corgi，已自用数周，可展示智能体活动流、F1 跳转下一未读智能体，统一启动 Codex/Claude Code/Pi，并支持会话搜索恢复、用量跟踪及终端链接复制、图片粘贴预览、按工作区统计 CPU/内存/GPU。其称复用智能体整理链接、工作树与任务，但仍有粗糙处。",
+      "short_summary": "开发者自述受 Herdr 启发构建 Corgi 智能体与终端复用器，已自用数周，支持活动流、F1 跳转未读智能体、统一启动 Codex/Claude Code/Pi 及终端体验改进，称仍有粗糙处。",
+      "points": [
+        "开发者称 Corgi 复用智能体来整理 HTTP 链接、工作树用途及各智能体任务，并假设用户可获廉价推理资源",
+        "开发者称因长期病假创建 Corgi 以挑战自我，结果比预期更复杂，但满意并感谢这段经历"
+      ],
+      "why": "推断：开发者强调人体工学与日常自用，可能意在吸引终端多智能体工作流用户反馈。",
+      "uncertainties": [
+        "仅有开发者自述，无独立验证或第三方评测",
+        "未说明发布时间、版本号、平台支持与开源许可",
+        "未给出性能、资源占用或稳定性数据"
+      ],
+      "claims": [
+        {
+          "claim": "开发者自述受 Herdr 启发构建 Corgi 智能体与终端复用器",
+          "evidence": "Inspired by Herdr, I've built an agent multiplexer"
+        },
+        {
+          "claim": "开发者称已将其作为日常主力工具使用数周",
+          "evidence": "I've been using as my daily driver for a few weeks now"
+        },
+        {
+          "claim": "Corgi 展示智能体活动流并支持 F1 跳转下一未读智能体",
+          "evidence": "I show you what the agents are up to, along with a running feed of their activity.\nThere's also a simple shortcut (F1) to go to the next unread agent."
+        },
+        {
+          "claim": "Corgi 提供 Codex/Claude Code/Pi 统一启动器",
+          "evidence": "I've added unified launcher for Codex/Claude Code/Pi."
+        },
+        {
+          "claim": "Corgi 支持会话快速搜索与恢复、内联用量跟踪",
+          "evidence": "fast search and resume over sessions, inline usage tracking etc."
+        },
+        {
+          "claim": "Corgi 支持点击复制链接、cmd+v 粘贴图片（含 SSH）及缩略图预览",
+          "evidence": "Links can be copied with a click, so no need to drag-select over many lines\n- cmd+v just pastes images (even on SSH)\n- images have a thumbnail preview."
+        },
+        {
+          "claim": "Corgi 内置按工作区细分的 CPU/内存/GPU 使用跟踪",
+          "evidence": "Built-in CPU/Memory/GPU usage tracking, broken down by workspace"
+        },
+        {
+          "claim": "开发者称 Corgi 复用智能体整理链接、工作树与各智能体任务",
+          "evidence": "It just reuses the agents to organize things for you: what is this http link? what is this worktree about? what is each agent doing?"
+        },
+        {
+          "claim": "开发者称因长期病假创建 Corgi，结果比预期更复杂但仍满意",
+          "evidence": "I've been on a frustrating sick leave for a while now.\nI created Corgi to challenge myself, and see if I can go back.\nThe answer is more mixed than I had hoped, but I am happy with the result"
+        },
+        {
+          "claim": "开发者称仍有不少改进空间和粗糙之处",
+          "evidence": "There's still a lot to improve and some rough edges"
+        }
+      ]
+    },
+    "expected": "lead_summary_over_150"
+  },
+  {
+    "case": 581,
+    "article": {
+      "title": "Show HN: Orbit – A local macOS workspace for side projects",
+      "output_schema": "dual-1",
+      "text": "I've been working on Orbit, a macOS app\n[证据片段边界]\nkeeps your repos, tasks, notes, assets and docs together\n[证据片段边界]\nIt checks your project's dependencies for outdated packages and known security advisories\n[证据片段边界]\nIt's all stored locally on your Mac\n[证据片段边界]\nthere's MCP support too, so an AI client can read the project info and update tasks and docs\n[证据片段边界]\nWindows support is coming soon!"
+    },
+    "result": {
+      "title": "开发者自述推出本地 macOS 工作区 Orbit",
+      "summary": "开发者自述推出 macOS 应用 Orbit，将仓库、任务、笔记、素材和文档集中存放，并检查项目依赖的过期包与已知安全公告；数据全部本地存储，支持 MCP 供 AI 客户端读取项目信息、更新任务和文档，Windows 支持即将推出。",
+      "short_summary": "开发者自述推出 macOS 应用 Orbit，集中管理仓库、任务、笔记、素材和文档，检查依赖过期包与安全公告，数据本地存储并支持 MCP，Windows 版即将推出。",
+      "points": [],
+      "why": "",
+      "uncertainties": [
+        "依赖检查与 MCP 功能均为开发者自述，无独立验证",
+        "未说明依赖检查的数据来源、覆盖范围与更新频率",
+        "未给出 Windows 版具体时间"
+      ],
+      "claims": [
+        {
+          "claim": "开发者自述推出 macOS 应用 Orbit",
+          "evidence": "I've been working on Orbit, a macOS app"
+        },
+        {
+          "claim": "Orbit 将仓库、任务、笔记、素材和文档集中存放",
+          "evidence": "keeps your repos, tasks, notes, assets and docs together"
+        },
+        {
+          "claim": "Orbit 检查项目依赖的过期包与已知安全公告",
+          "evidence": "It checks your project's dependencies for outdated packages and known security advisories"
+        },
+        {
+          "claim": "数据全部本地存储",
+          "evidence": "It's all stored locally on your Mac"
+        },
+        {
+          "claim": "支持 MCP，AI 客户端可读取项目信息并更新任务和文档",
+          "evidence": "there's MCP support too, so an AI client can read the project info and update tasks and docs"
+        },
+        {
+          "claim": "Windows 支持即将推出",
+          "evidence": "Windows support is coming soon!"
+        }
+      ]
+    },
+    "expected": "short_summary_missing_or_over_80"
+  },
+  {
+    "case": 583,
+    "article": {
+      "title": "Show HN: Corgi, a helpful {agent, terminal} multiplexer",
+      "output_schema": "dual-1",
+      "text": "Inspired by Herdr, I've built an agent multiplexer that I've been using as my daily driver for a few weeks now.\n[证据片段边界]\nI show you what the agents are up to, along with a running feed of their activity. There's also a simple shortcut (F1) to go to the next unread agent.\n[证据片段边界]\nI use multiple accounts, so I've added unified launcher for Codex/Claude Code/Pi.\n[证据片段边界]\nTheres some careful ergonomics there: fast search and resume over sessions, inline usage tracking etc.\n[证据片段边界]\n- Links can be copied with a click, so no need to drag-select over many lines - cmd+v just pastes images (even on SSH) - images have a thumbnail preview.\n[证据片段边界]\n- Built-in CPU/Memory/GPU usage tracking, broken down by workspace\n[证据片段边界]\nI assume you have access to cheap inference (Luna/Haiku/etc). It just reuses the agents to organize things for you: what is this http link? what is this worktree about? what is each agent doing?"
+    },
+    "result": {
+      "title": "Show HN：Corgi，一款面向 agent 与终端的复用器",
+      "summary": "开发者自述受 Herdr 启发，构建了一款 agent 复用器，已作为日常主力工具使用数周；可展示各 agent 动态与活动流，按 F1 跳至下一个未读 agent，并提供 Codex、Claude Code、Pi 的统一启动器。",
+      "short_summary": "开发者自述受 Herdr 启发构建 agent 复用器，已自用数周，可展示 agent 动态、按 F1 跳转未读 agent，并统一启动 Codex、Claude Code、Pi。",
+      "points": [
+        "开发者称支持多账号，提供会话快速搜索与恢复、内联用量追踪。",
+        "终端体验改进包括单击复制链接、cmd+v 粘贴图片（含 SSH）、图片缩略图预览，以及按工作区统计 CPU、内存、GPU 使用。",
+        "开发者称其复用 agent 来整理链接、worktree 和 agent 任务，并假设用户可获取廉价推理资源。"
+      ],
+      "why": "",
+      "uncertainties": [
+        "仅为开发者自述，未提供独立验证或性能数据。",
+        "未说明支持平台、版本状态与发布时间。",
+        "“已使用数周”为开发者及其朋友的自述体验。"
+      ],
+      "claims": [
+        {
+          "claim": "开发者自述受 Herdr 启发构建了一款 agent 复用器",
+          "evidence": "Inspired by Herdr, I've built an agent multiplexer that I've been using as my daily driver for a few weeks now."
+        },
+        {
+          "claim": "可展示各 agent 动态与活动流，按 F1 跳至下一个未读 agent",
+          "evidence": "I show you what the agents are up to, along with a running feed of their activity.\nThere's also a simple shortcut (F1) to go to the next unread agent."
+        },
+        {
+          "claim": "提供 Codex、Claude Code、Pi 的统一启动器",
+          "evidence": "I use multiple accounts, so I've added unified launcher for Codex/Claude Code/Pi."
+        },
+        {
+          "claim": "支持会话快速搜索与恢复、内联用量追踪",
+          "evidence": "Theres some careful ergonomics there: fast search and resume over sessions, inline usage tracking etc."
+        },
+        {
+          "claim": "终端改进包括单击复制链接、cmd+v 粘贴图片（含 SSH）、图片缩略图预览",
+          "evidence": "- Links can be copied with a click, so no need to drag-select over many lines\n- cmd+v just pastes images (even on SSH)\n- images have a thumbnail preview."
+        },
+        {
+          "claim": "按工作区统计 CPU、内存、GPU 使用",
+          "evidence": "- Built-in CPU/Memory/GPU usage tracking, broken down by workspace"
+        },
+        {
+          "claim": "复用 agent 整理链接、worktree 和 agent 任务，并假设可获取廉价推理资源",
+          "evidence": "I assume you have access to cheap inference (Luna/Haiku/etc).\nIt just reuses the agents to organize things for you: what is this http link? what is this worktree about? what is each agent doing?"
+        }
+      ]
+    },
+    "expected": "short_summary_missing_or_over_80"
+  },
+  {
+    "case": 584,
+    "article": {
+      "title": "Show HN: Orbit – A local macOS workspace for side projects",
+      "output_schema": "dual-1",
+      "text": "I've been working on Orbit, a macOS app that keeps your repos, tasks, notes, assets and docs together.\n[证据片段边界]\nIt checks your project's dependencies for outdated packages and known security advisories\n[证据片段边界]\nIt's all stored locally on your Mac\n[证据片段边界]\nthere's MCP support too, so an AI client can read the project info and update tasks and docs\n[证据片段边界]\n(Windows support is coming soon!)\n[证据片段边界]\nI also didn't like having to bounce between Obsidian, Trello and Google Drive to find everything.\n[证据片段边界]\nwhich was super important for me as I have a tonne of old projects that I haven't touched in a while"
+    },
+    "result": {
+      "title": "Show HN：Orbit——面向副项目的本地 macOS 工作区",
+      "summary": "开发者自述推出 macOS 应用 Orbit，将仓库、任务、笔记、素材和文档集中存放于本地 Mac，并可检查依赖的过期包与已知安全公告，另支持 MCP 供 AI 客户端读取项目信息、更新任务和文档；Windows 版称即将推出。",
+      "short_summary": "开发者自述推出 macOS 应用 Orbit，本地集中管理项目仓库、任务、笔记、素材和文档，可检查依赖过期包与安全公告，支持 MCP，Windows 版称即将推出。",
+      "points": [
+        "开发者称其因在多个副项目间切换、需在 Obsidian、Trello 和 Google Drive 间来回查找而开发该应用",
+        "开发者称其有大量长期未动的旧项目，依赖检查对其很重要"
+      ],
+      "why": "",
+      "uncertainties": [
+        "依赖检查的实际覆盖范围与准确性未说明",
+        "MCP 支持的具体能力与限制未说明",
+        "Windows 版仅有“即将推出”表述，无时间表"
+      ],
+      "claims": [
+        {
+          "claim": "开发者自述推出 macOS 应用 Orbit，将仓库、任务、笔记、素材和文档集中存放于本地 Mac",
+          "evidence": "I've been working on Orbit, a macOS app that keeps your repos, tasks, notes, assets and docs together."
+        },
+        {
+          "claim": "可检查依赖的过期包与已知安全公告",
+          "evidence": "It checks your project's dependencies for outdated packages and known security advisories"
+        },
+        {
+          "claim": "数据全部存储在本地 Mac",
+          "evidence": "It's all stored locally on your Mac"
+        },
+        {
+          "claim": "支持 MCP，AI 客户端可读取项目信息并更新任务和文档",
+          "evidence": "there's MCP support too, so an AI client can read the project info and update tasks and docs"
+        },
+        {
+          "claim": "Windows 版称即将推出",
+          "evidence": "(Windows support is coming soon!)"
+        },
+        {
+          "claim": "开发者称因在多个副项目间切换、需在 Obsidian、Trello 和 Google Drive 间来回查找而开发",
+          "evidence": "I also didn't like having to bounce between Obsidian, Trello and Google Drive to find everything."
+        },
+        {
+          "claim": "开发者称有大量长期未动的旧项目，依赖检查对其很重要",
+          "evidence": "which was super important for me as I have a tonne of old projects that I haven't touched in a while"
+        }
+      ]
+    },
+    "expected": "short_summary_missing_or_over_80"
+  },
+  {
+    "case": 596,
+    "article": {
+      "title": "南京物理AI上大分！三位图灵奖得主发声，50个应用场景亮相",
+      "output_schema": "review-1",
+      "task_kind": "review",
+      "review_draft": {
+        "points": [
+          "国家数据标注先行先试苏皖城市联盟（长三角数据标注联合创新中心）在开幕式成立，南京、无锡、苏州、淮安、扬州、镇江、宿迁与芜湖、马鞍山、滁州十城携手。",
+          "全国信标委批复设立具身智能标准工作组；《人工智能世界模型》国家标准预研工作启动。",
+          "江苏发布“物理AI与世界模型高质量数据集行动计划”，并推出九项典型创新成果。"
+        ],
+        "short_summary": "据量子位报道，2026物理AI与世界模型大会10月20日在南京启幕，发布50个典型应用场景，并签约总规模50亿元的物理AI与世界模型投资基金。",
+        "summary": "据量子位报道，2026物理AI与世界模型大会10月20日在南京启幕，由江苏省数据集团、南京大数据集团、中国人工智能学会主办。大会发布2026年50个典型应用场景，覆盖产业发展、社会治理、科学研究、民生服务、消费提质五大领域；全国首个物理AI与世界模型投资基金战略合作签约，总规模50亿元。",
+        "title": "南京物理AI大会：50个应用场景与50亿元基金亮相",
+        "why": ""
+      },
+      "text": "南京物理AI上大分！三位图灵奖得主发声，50个应用场景亮相\n[证据片段边界]\n理AI与世界模型大会 在南京正式启幕。 大会由江苏省数据集团、南京大数据集团、中国人工智能学会共同主办。线上线下同步联动的会场中，不同代际、不同\n[证据片段边界]\n发布2026年“物理AI与世界模型”50个典型应用场景\n[证据片段边界]\n地生根，从理念走向实践。 数据底座层面，国家数据标注先行先试苏皖城市联盟（长三角数据标注联合创新中心）在开幕式上正式成立。 南京、无锡、苏州、淮安、扬州、镇江、宿\n[证据片段边界]\n党委书记、副院长朱秀梅现场宣读成立公告；《人工智能世界模型》国家标准预研工作正式启动，为行业规范发展筑牢制度底座。 产业与资\n[证据片段边界]\n江苏同步发布“物理AI与世界模型高质量数据集行动计划”，集中推出九项“物理AI与世界模型”典型创新成果"
+    },
+    "result": {
+      "verdict": "pass",
+      "checks": [
+        {
+          "field": "title",
+          "pass": true,
+          "reason": "标题中的南京、物理AI大会、50个应用场景与50亿元基金均与原文一致，未添加无依据限定。",
+          "evidence": "南京物理AI上大分！三位图灵奖得主发声，50个应用场景亮相"
+        },
+        {
+          "field": "summary",
+          "pass": true,
+          "reason": "时间、地点、主办方、50个应用场景及五大领域、50亿元基金均与原文一致，无推断或遗漏关键限定。",
+          "evidence": "10月20日，以“建模物理世界・智启美好未来”为主题的2026物理AI与世界模型大会在南京正式启幕。大会由江苏省数据集团、南京大数据集团、中国人工智能学会共同主办。"
+        },
+        {
+          "field": "short_summary",
+          "pass": true,
+          "reason": "短摘要与长摘要及原文一致，时间、地点、场景数量、基金规模均准确。",
+          "evidence": "发布2026年“物理AI与世界模型”50个典型应用场景"
+        },
+        {
+          "field": "points.0",
+          "pass": true,
+          "reason": "联盟名称、成立场合及十城名单均与原文逐字一致。",
+          "evidence": "国家数据标注先行先试苏皖城市联盟（长三角数据标注联合创新中心）在开幕式上正式成立。南京、无锡、苏州、淮安、扬州、镇江、宿迁与芜湖、马鞍山、滁州十城携手"
+        },
+        {
+          "field": "points.1",
+          "pass": true,
+          "reason": "标准工作组批复设立及国家标准预研启动均与原文一致。",
+          "evidence": "全国信标委批复设立具身智能标准工作组……《人工智能世界模型》国家标准预研工作正式启动"
+        },
+        {
+          "field": "points.2",
+          "pass": true,
+          "reason": "行动计划名称及九项典型创新成果与原文一致。",
+          "evidence": "江苏同步发布“物理AI与世界模型高质量数据集行动计划”，集中推出九项“物理AI与世界模型”典型创新成果"
+        },
+        {
+          "field": "why",
+          "pass": true,
+          "reason": "why为空，草稿未包含关注理由，无需检查推断。",
+          "evidence": ""
+        }
+      ],
+      "update_has_new_facts": false
+    },
+    "expected": "review_evidence_missing"
+  },
+  {
+    "case": 597,
+    "article": {
+      "title": "Turning Database Grading into RL Rewards: Post-Training Agents with ThinkingBox",
+      "output_schema": "dual-1",
+      "text": "We then used the same kind of executable signal as a reward on training tasks outside ThinkingBox-Bench.\n[证据片段边界]\nFor Qwen3.8-27B, average success rose from 51.70% to 60.78%\n[证据片段边界]\ntasks completed correctly on all twenty attempts rose from 38 to 107 with 50 GRPO steps\n[证据片段边界]\n453 (89.35%) → 446 (87.97%)\n[证据片段边界]\nThe final Qwen3.8-27B curated training pool contained 187 tasks.\n[证据片段边界]\nNo ThinkingBox-Bench task was included in the RL training pool.\n[证据片段边界]\n$925.80 → $855.58\n[证据片段边界]\n$24.36 → $8.00\n[证据片段边界]\nexcludes training run and policy-probe cost for curating the training dataset"
+    },
+    "result": {
+      "title": "微软与Hugging Face：ThinkingBox将数据库终态校验转为RL奖励，Qwen3.8-27B重复成功率提升",
+      "summary": "微软与Hugging Face联合博客称，ThinkingBox将数据库终态可执行校验作为GRPO奖励，在基准外任务上训练Qwen3.8-27B 50步后，pass@1由51.70%升至60.78%，20次全对任务由38增至107；pass@20由453降至446。",
+      "short_summary": "微软与Hugging Face称，ThinkingBox以数据库终态校验作GRPO奖励训练Qwen3.8-27B 50步，pass@1由51.70%升至60.78%，20次全对任务由38增至107。",
+      "points": [
+        "训练池为基准外187个任务，未纳入ThinkingBox-Bench任何任务；基准被留作分布外评测。",
+        "按博客估算，20次评测总成本由925.80美元降至855.58美元，每个可靠任务成本由24.36美元降至8.00美元，不含训练与筛选成本。"
+      ],
+      "why": "推断：博客将提升归因于可执行终态奖励与离线策略相对难度筛选，但未做消融，无法独立区分各因素贡献。",
+      "uncertainties": [
+        "结果来自企业自述博客，未经独立复现。",
+        "训练池与基准共享框架、模拟用户和部分工具，迁移结论范围受限。",
+        "成本为比较性服务指数，非实际账单。"
+      ],
+      "claims": [
+        {
+          "claim": "微软与Hugging Face联合博客称ThinkingBox将数据库终态可执行校验作为GRPO奖励",
+          "evidence": "We then used the same kind of executable signal as a reward on training tasks outside ThinkingBox-Bench."
+        },
+        {
+          "claim": "Qwen3.8-27B训练50步后pass@1由51.70%升至60.78%",
+          "evidence": "For Qwen3.8-27B, average success rose from 51.70% to 60.78%"
+        },
+        {
+          "claim": "20次全对任务由38增至107",
+          "evidence": "tasks completed correctly on all twenty attempts rose from 38 to 107 with 50 GRPO steps"
+        },
+        {
+          "claim": "pass@20由453降至446",
+          "evidence": "453 (89.35%)\n→\n446 (87.97%)"
+        },
+        {
+          "claim": "训练池为基准外187个任务，未纳入基准任务",
+          "evidence": "The final Qwen3.8-27B curated training pool contained 187 tasks."
+        },
+        {
+          "claim": "基准任务未进入训练池",
+          "evidence": "No ThinkingBox-Bench task was included in the RL training pool."
+        },
+        {
+          "claim": "20次评测总成本由925.80美元降至855.58美元",
+          "evidence": "$925.80\n→\n$855.58"
+        },
+        {
+          "claim": "每个可靠任务成本由24.36美元降至8.00美元",
+          "evidence": "$24.36\n→\n$8.00"
+        },
+        {
+          "claim": "成本估算不含训练与筛选成本",
+          "evidence": "excludes training run and policy-probe cost for curating the training dataset"
+        }
+      ]
+    },
+    "expected": "short_summary_missing_or_over_80"
+  },
+  {
+    "case": 600,
+    "article": {
+      "title": "Show HN: Ployz – a Rust imperative orchestrator and cloud-like UX",
+      "output_schema": "dual-1",
+      "text": "I tagged the 0.3 beta today.\n[证据片段边界]\n( https://ployz.dev ) gives you Railway's UX on Linux servers you rent - start with a sing\n[证据片段边界]\nstart with a single server and grow from there\n[证据片段边界]\nere. The code is at https://github.com/getployz/ployz . I've always wante\n[证据片段边界]\nA single flat mesh (any service can contact any other service, simply)\n[证据片段边界]\nZFS volumes (instant snapshots, host-to-host syncing, instant branching soon)\n[证据片段边界]\nNo separate management servers to run.\n[证据片段边界]\nIt's fully drivable from the CLI, MCP, or sidebar.\n[证据片段边界]\nIt's also a bet that AI will be much better at managing a system of simple imperative primitives than a declarative system like Kubernetes.\n[证据片段边界]\ninstant branching soon"
+    },
+    "result": {
+      "title": "开发者自述发布 Ployz 0.3 beta：面向自租 Linux 服务器的 Rust 编排器",
+      "summary": "开发者 Nick 在 Show HN 自述发布 Ployz 0.3 beta，称其为 Rust 命令式编排器，在自租 Linux 服务器上提供类似 Railway 的体验，可从单台服务器起步扩展；代码在 GitHub。其称具备单一扁平服务网格、ZFS 卷快照与主机间同步，无需独立管理服务器，并可从 CLI、MCP 或侧边栏操作。",
+      "short_summary": "开发者自述发布 Ployz 0.3 beta，称其为 Rust 命令式编排器，在自租 Linux 服务器上提供类似 Railway 的体验，可从单台服务器起步扩展。",
+      "points": [
+        "开发者称其设计押注 AI 更擅长管理简单命令式原语系统，而非 Kubernetes 式声明式系统。",
+        "开发者称 ZFS 卷的即时分支功能即将推出。"
+      ],
+      "why": "",
+      "uncertainties": [
+        "产品实际效果与稳定性仅有开发者自述，无独立验证。",
+        "“类似 Railway 的体验”为开发者主观定位，未给出具体对比依据。",
+        "“即时分支即将推出”无时间表。"
+      ],
+      "claims": [
+        {
+          "claim": "开发者 Nick 在 Show HN 自述发布 Ployz 0.3 beta",
+          "evidence": "I tagged the 0.3 beta today."
+        },
+        {
+          "claim": "Ployz 为 Rust 命令式编排器，在自租 Linux 服务器上提供类似 Railway 的体验",
+          "evidence": "Ployz (\\nhttps://ployz.dev\\n) gives you Railway's UX on Linux servers you rent"
+        },
+        {
+          "claim": "可从单台服务器起步扩展",
+          "evidence": "start with a single server and grow from there"
+        },
+        {
+          "claim": "代码在 GitHub",
+          "evidence": "The code is at\\nhttps://github.com/getployz/ployz"
+        },
+        {
+          "claim": "具备单一扁平服务网格",
+          "evidence": "A single flat mesh (any service can contact any other service, simply)"
+        },
+        {
+          "claim": "具备 ZFS 卷快照与主机间同步",
+          "evidence": "ZFS volumes (instant snapshots, host-to-host syncing, instant branching soon)"
+        },
+        {
+          "claim": "无需独立管理服务器",
+          "evidence": "No separate management servers to run."
+        },
+        {
+          "claim": "可从 CLI、MCP 或侧边栏操作",
+          "evidence": "It's fully drivable from the CLI, MCP, or sidebar."
+        },
+        {
+          "claim": "开发者称其押注 AI 更擅长管理简单命令式原语系统",
+          "evidence": "It's also a bet that AI will be much better at managing a system of simple imperative primitives than a declarative system like Kubernetes."
+        },
+        {
+          "claim": "ZFS 卷即时分支即将推出",
+          "evidence": "instant branching soon"
+        }
+      ]
+    },
+    "expected": "lead_summary_over_150"
+  },
+  {
+    "case": 601,
+    "article": {
+      "title": "Show HN: An automated news site Distribute Software",
+      "output_schema": "dual-1",
+      "text": "ike building a fully automated news site monitoring different\n[证据片段边界]\nbuilding a fully automated news site monitoring different newsrooms, desks, feeds etc on the web. Creating an aggregator of aggregators.\n[证据片段边界]\nthe new Deepseek API for search, classifiers from Cloudflare (and mostly hosted here)\n[证据片段边界]\nWith almost 0 work. Amazing what you can spin up in an evening these days."
+    },
+    "result": {
+      "title": "开发者自述搭建全自动新闻聚合站",
+      "summary": "开发者称在Hacker News展示自建全自动新闻站，监控网络上的新闻编辑室、栏目与信息源，做“聚合器的聚合器”，使用Deepseek新API做搜索、Cloudflare分类器且主要托管于Cloudflare，称几乎零工作量、一晚可搭成。",
+      "short_summary": "开发者自述搭建全自动新闻聚合站，监控多类新闻源，用Deepseek新API搜索、Cloudflare分类器，称一晚可成。",
+      "points": [],
+      "why": "",
+      "uncertainties": [
+        "未说明站点名称、访问地址与上线状态",
+        "未提供实际运行效果或独立验证",
+        "“几乎零工作量”为开发者自述"
+      ],
+      "claims": [
+        {
+          "claim": "开发者在Hacker News展示自建全自动新闻站",
+          "evidence": "Show HN: An automated news site Distribute Software"
+        },
+        {
+          "claim": "站点监控网络上的新闻编辑室、栏目与信息源，做聚合器的聚合器",
+          "evidence": "building a fully automated news site monitoring different newsrooms, desks, feeds etc on the web. Creating an aggregator of aggregators."
+        },
+        {
+          "claim": "使用Deepseek新API做搜索、Cloudflare分类器且主要托管于Cloudflare",
+          "evidence": "the new Deepseek API for search, classifiers from Cloudflare (and mostly hosted here)"
+        },
+        {
+          "claim": "开发者称几乎零工作量、一晚可搭成",
+          "evidence": "With almost 0 work. Amazing what you can spin up in an evening these days."
+        }
+      ]
+    },
+    "expected": "unsupported evidence"
+  },
+  {
+    "case": 604,
+    "article": {
+      "title": "Advanced Research, Spacewalk Preps End Week as NASA Announces Artemis Status",
+      "output_schema": "dual-1",
+      "text": "d eventually, Mars. Now the agency is accelerating its effort to return crews to the lunar surface by 2028 . Tune in to NASA+ \n[证据片段边界]\nwere back on bioprinting duty continuing to convert vascular cell samples into newly printed blood vessels\n[证据片段边界]\nMenon and Kutryk will exit the Quest airlock on Thursday, Oct. 29, to install a roll-out solar array on the station’s truss structure.\n[证据片段边界]\nWatkins and Delaney also trained to operate the Canadarm2 robotic arm to assist the spacewalkers next week.\n[证据片段边界]\nFlight engineer Joshua Kutryk of CSA (Canadian Space Agency) swapped sample hardware inside a specialized research furnace\n[证据片段边界]\ncompleted a plasma crystal study that explored the interaction of highly charged gases and microscopic particles"
+    },
+    "result": {
+      "title": "NASA称加速2028年前重返月面，空间站开展生物打印与出舱准备",
+      "summary": "NASA任务博客称，Expedition 75乘组在空间站用3D生物打印机制备血管、操作悬浮炉，并准备10月29日出舱安装卷展式太阳能阵列；NASA同时称正加速在2028年前让乘组重返月球表面。",
+      "short_summary": "NASA博客称空间站乘组开展生物打印与悬浮炉研究，并准备10月29日出舱；NASA称正加速2028年前重返月面。",
+      "points": [
+        "Delaney与Menon继续将血管细胞样本转化为新打印血管；Kutryk更换悬浮炉样品硬件，Watkins测试备用水质检测硬件与气体流量控制器。",
+        "Menon与Kutryk计划10月29日从Quest气闸出舱，在桁架结构安装卷展式太阳能阵列；Watkins与Delaney训练操作Canadarm2协助。",
+        "Roscosmos三名宇航员完成等离子晶体研究，并维护辐射探测设备、采集血压。"
+      ],
+      "why": "",
+      "uncertainties": [
+        "NASA“加速2028年前重返月面”为机构表述，未给出具体任务节点或独立验证。",
+        "出舱与安装计划为博文所述安排，是否按期执行未见后续证据。"
+      ],
+      "claims": [
+        {
+          "claim": "NASA称正加速在2028年前让乘组重返月球表面",
+          "evidence": "Now the agency is accelerating its effort to return crews to the lunar surface by 2028."
+        },
+        {
+          "claim": "乘组用3D生物打印机制备新打印血管",
+          "evidence": "were back on bioprinting duty continuing to convert vascular cell samples into newly printed blood vessels"
+        },
+        {
+          "claim": "Menon与Kutryk计划10月29日从Quest气闸出舱安装卷展式太阳能阵列",
+          "evidence": "Menon and Kutryk will exit the Quest airlock on Thursday, Oct. 29, to install a roll-out solar array on the station’s truss structure."
+        },
+        {
+          "claim": "Watkins与Delaney训练操作Canadarm2协助出舱",
+          "evidence": "Watkins and Delaney also trained to operate the Canadarm2 robotic arm to assist the spacewalkers next week."
+        },
+        {
+          "claim": "Kutryk更换悬浮炉样品硬件",
+          "evidence": "Flight engineer Joshua Kutryk of CSA (Canadian Space Agency) swapped sample hardware inside a specialized research furnace"
+        },
+        {
+          "claim": "Roscosmos三名宇航员完成等离子晶体研究",
+          "evidence": "completed a plasma crystal study that explored the interaction of highly charged gases and microscopic particles"
+        }
+      ]
+    },
+    "expected": "unsupported evidence"
+  }
+]
