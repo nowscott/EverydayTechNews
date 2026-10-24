@@ -24,7 +24,7 @@ record-run.py 用独立的非阻塞锁避免重叠，原业务锁仍保留。开
 
 ## 密码与验证
 
-在安全终端通过标准输入生成新 scrypt 哈希（apps/nas-dashboard/server/password.ts），原子更新 dashboard.env 中 DASHBOARD_PASSWORD_HASH，重新创建容器。重启后旧会话失效。登录会话8小时、HttpOnly、SameSite=Strict；每IP15分钟最多8次失败，全局最多50次失败。当前为局域网HTTP；如接入HTTPS代理，需配置 DASHBOARD_SECURE_COOKIE=true 和正确的同源主机协议，不能直接开放公网。
+在安全终端通过标准输入生成新 scrypt 哈希（apps/nas-dashboard/server/password.ts），原子更新 dashboard.env 中 DASHBOARD_PASSWORD_HASH，重新创建容器。重启后旧会话失效。登录会话180天、HttpOnly、SameSite=Strict；每IP15分钟最多8次失败，全局最多50次失败。当前为局域网HTTP；如接入HTTPS代理，需配置 DASHBOARD_SECURE_COOKIE=true 和正确的同源主机协议，不能直接开放公网。
 
 验证桌面和手机宽度、筛选/分页/详情、脱敏与登录；核对真实数据库数量、费用和发送状态。只读隔离验证应在无业务写入的短窗口内，对数据库、WAL、durable/state和发送文件做前后哈希，查询调用数和账本行数。观察到并行业务任务时，应明确区分自然调度写入，不能归因于看板，也不能声称哈希不变。
 
@@ -36,3 +36,12 @@ record-run.py 用独立的非阻塞锁避免重叠，原业务锁仍保留。开
 备份当前compose.yaml、compose.env、installation.json。新建看板目录下bodies（0700、与业务相同UID），构建v1.1镜像后替换DASHBOARD_IMAGE并使用新compose.yaml执行up -d --wait。新增body-collector只读挂载两个业务目录，唯一可写挂载为看板自己的bodies；它无dashboard.env、SMTP或模型凭据。collector使用既有NAS本机7890代理访问固定允许的新闻发布方，host网络不开放监听端口。网页进程仍只读挂载全部业务与正文缓存。
 
 回滚到v1.0时先停止body-collector，再恢复备份的compose.yaml与镜像配置；保留bodies目录和既有业务状态。新抓取的正文只供本地阅读，不进入旧业务的选题、评分、发信或归档发布流程。
+
+
+## Token 与费用（v1.3.0）
+
+独立页面仅统计高级版，默认今日，支持近7天、本月及最多31天自定义区间。输入/输出只累加账本已知数值，缓存命中包含在输入中；缺失、损坏或无效用量显示未知。缓存命中率仅使用输入与缓存数据均有效的调用。费用使用历史cost，不按当前价格重算；cost未知时单独累计reserved，估算不代表账单实付。
+
+`GET /api/usage`（需登录，只读）接收`from`、`to`、`stage`（generation/review/edition_review/unknown）、`status`、`q`、`page`。返回标准读取证据及data中的summary、daily、stages、statuses、items和分页字段；统计覆盖全部筛选结果。数量字段input/output/total/cache_hit的单位为Token，避免与凭据脱敏规则冲突。summary包含missing_usage/missing_input/missing_output/missing_cache与unknown_cost_calls；available=false时summary=null，不把读取异常当作零消耗。
+
+重复调用按同一非空job完整历史的最小调用id判断；日期和其他筛选不改变首次记录。无job的旧记录标为无法判断。精确时间来自已保存的call_diagnostic，缺失时仅显示账本日期；失败原因复用已有受控诊断或validation_error。接口不返回原始提示、模型响应、任务全文或凭据。

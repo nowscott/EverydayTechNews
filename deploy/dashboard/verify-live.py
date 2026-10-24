@@ -83,6 +83,54 @@ def verify(root, base, ordinary, premium):
             assert 'preview_text' in detail['data']
             assert all(not re.search(r'(?<!\*)[A-Za-z0-9._%+-]+@',r.get('recipient') or '') for r in detail['data']['receipts'])
         assert get('/api/runs'+params)['data']['business']['component']==c
+    # Independent usage oracle: all calls, all pages, cache subset and repeats.
+    first_ids={}
+    history=rows(premium,'SELECT id,job FROM calls ORDER BY id')
+    for call in history:
+        if call['job']: first_ids.setdefault(call['job'],call['id'])
+    for span in (1,7):
+        start=(dt.date.fromisoformat(today)-dt.timedelta(days=span-1)).isoformat()
+        ledger=rows(premium,'SELECT id,job,usage,cost,reserved FROM calls WHERE day>=? AND day<=?',(start,today))
+        payload=get('/api/usage?from='+start+'&to='+today)
+        assert payload['read_state']=='ok' and payload['data']['available']
+        actual=payload['data']['summary']
+        valid=lambda v:isinstance(v,int) and not isinstance(v,bool) and 0<=v<=9007199254740991
+        expected=dict(calls=len(ledger),input=0,output=0,cache_hit=0,missing_usage=0,missing_input=0,missing_output=0,missing_cache=0,estimated_cny=0,unknown_cost_calls=0,unknown_reserved_cny=0,repeat_calls=0,repeat_estimated_cny=0,repeat_unknown_cost_calls=0,repeat_unclassified_calls=0)
+        cache_input=0
+        for call in ledger:
+            try: u=json.loads(call['usage'] or '{}')
+            except (ValueError,TypeError): u={}
+            if not isinstance(u,dict): u={}
+            inp=u.get('prompt_tokens');out=u.get('completion_tokens');hit=u.get('prompt_cache_hit_tokens')
+            for key,value in [('input',inp),('output',out)]:
+                if valid(value): expected[key]+=value
+                else: expected['missing_'+key]+=1
+            if not valid(inp) or not valid(out): expected['missing_usage']+=1
+            if valid(inp) and valid(hit) and hit<=inp: expected['cache_hit']+=hit;cache_input+=inp
+            else: expected['missing_cache']+=1
+            if call['cost'] is None: expected['unknown_cost_calls']+=1;expected['unknown_reserved_cny']+=call['reserved'] or 0
+            else: expected['estimated_cny']+=call['cost']
+            if not call['job']: expected['repeat_unclassified_calls']+=1
+            elif call['id']!=first_ids[call['job']]:
+                expected['repeat_calls']+=1;expected['repeat_estimated_cny']+=call['cost'] or 0
+                if call['cost'] is None: expected['repeat_unknown_cost_calls']+=1
+        expected['total']=expected['input']+expected['output']
+        expected['cache_rate']=expected['cache_hit']/cache_input if cache_input else None
+        for key,value in expected.items():
+            assert actual[key] is None if value is None else abs(actual[key]-value)<1e-8, (key,actual[key],value)
+        assert len(payload['data']['daily'])==span
+        assert sum(v['calls'] for v in payload['data']['stages'])==len(ledger)
+        ids=[v['id'] for v in payload['data']['items']]
+        for page in range(2,(len(ledger)+29)//30+1):
+            data=get('/api/usage?from='+start+'&to='+today+'&page='+str(page))['data']
+            assert data['summary']==actual
+            ids.extend(v['id'] for v in data['items'])
+        assert sorted(ids)==sorted(v['id'] for v in ledger)
+        for stage in ['generation','review','edition_review','unknown']:
+            filtered=get('/api/usage?from='+start+'&to='+today+'&stage='+stage)['data']
+            assert all(v['stage']==stage for v in filtered['items'])
+            assert filtered['summary']['calls']==next(v['calls'] for v in payload['data']['stages'] if v['stage']==stage)
+        checks.append({'component':'premium_usage','from':start,'to':today,'summary':actual,'all_pages_verified':True})
     after={c:snapshot(p) for c,p in [('ordinary',ordinary),('premium',premium)]}
     unchanged=before==after
     if not unchanged: raise RuntimeError('business_files_changed_during_read_test_rerun_in_idle_window')
