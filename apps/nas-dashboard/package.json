@@ -14,7 +14,7 @@
     "password": "node server/password.ts"
   },
   "dependencies": {
-    "cheerio": "1.2.1",
+    "cheerio": "1.2.0",
     "react": "19.2.7",
     "react-dom": "19.2.7"
   },
