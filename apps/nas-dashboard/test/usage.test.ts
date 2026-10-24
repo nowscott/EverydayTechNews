@@ -70,3 +70,14 @@ test('usage API requires login, rejects mutations, preserves unit fields and rep
   assert.equal((await fetch(base+'/api/usage?stage=bogus',{headers})).status,400);assert.equal((await fetch(base+'/api/usage',{headers,method:'POST'})).status,405);
  }finally{await new Promise<void>(r=>server.close(()=>r()));f.close();}
 });
+
+test('legacy validation reasons use only the safe saved reason; busy source never reports zero',()=>{
+ const f=fixture();try{
+  f.db.exec('CREATE TABLE responses(call_id,data,validation_error)');
+  f.call(1,'2026-10-24',null,u,.2,'invalid_response');
+  f.db.prepare('INSERT INTO responses VALUES(?,?,?)').run(1,'PRIVATE_MODEL_RESPONSE','response_validation_failed');
+  const v=f.read();assert.equal(v.data.items[0].error_code,'response_validation_failed');assert(!JSON.stringify(v).includes('PRIVATE_MODEL_RESPONSE'));
+  f.db.exec('BEGIN EXCLUSIVE');
+  try{const unavailable=f.read();assert.equal(unavailable.data.available,false);assert.equal(unavailable.data.summary,null);}finally{f.db.exec('ROLLBACK');}
+ }finally{f.close();}
+});
