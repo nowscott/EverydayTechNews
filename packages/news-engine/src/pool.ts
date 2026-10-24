@@ -30,15 +30,15 @@ export function candidates(store: Store, cutoff: string, target = Number.MAX_SAF
   const articles: Row[] = []; const reasons: Row[] = [];
   for (const a of rows(store, cutoff)) {
     const exclusion = articleExclusion(a);
-    if (exclusion) { reasons.push({ id: a.id, title: a.title, ...exclusion }); continue; }
+    if (exclusion) { reasons.push({ id: a.id, content_fingerprint:a.content_fingerprint, title: a.title, ...exclusion }); continue; }
     let reason: string | null = null;
     if (['electrek_tesla', 'teslanorth_tesla'].includes(a.source) && a.content_origin !== 'media_article_html') reason = 'media_article_body_unverified';
     else if (floor && Date.parse(a.published_at) < Date.parse(floor)) reason = 'expires_before_next_edition';
     else if (a.evidence_expired_or_missing) reason = 'evidence_expired_or_missing';
     else if (!a.original_article_published_at && ['hn_submission', 'atom_update_not_publication', 'discovery_time_not_publication'].includes(a.published_time_kind)) reason = 'article_publication_unconfirmed';
-    if (reason) { reasons.push({ id: a.id, reason }); continue; }
+    if (reason) { reasons.push({ id: a.id, content_fingerprint:a.content_fingerprint, reason }); continue; }
     const matches = prior.filter(x => duplicate(a, x));
-    if (matches.some(x => a.content_fingerprint === x.content_fingerprint)) { reasons.push({ id: a.id, reason: 'already_sent_unchanged' }); continue; }
+    if (matches.some(x => a.content_fingerprint === x.content_fingerprint)) { reasons.push({ id: a.id, content_fingerprint:a.content_fingerprint, reason: 'already_sent_unchanged' }); continue; }
     if (matches.length) { a.prior_versions = matches.map(x => ({ url: x.url, fingerprint: x.content_fingerprint })); a.prior_evidence = matches.map(x => rows(store, cutoff).find(old => old.content_fingerprint === x.content_fingerprint)).filter(x => x && x.text && !x.evidence_expired_or_missing); a.update_review_required = true; }
     a.output_schema = 'dual-1';
     const job = store.one('SELECT result FROM jobs WHERE key=?', cacheKey(a, policy()));
@@ -49,7 +49,7 @@ export function candidates(store: Store, cutoff: string, target = Number.MAX_SAF
   for (const a of chosen) {
     if (a.update_review_required) {
       if (!a.prior_evidence?.length) {
-        rejected.push({ id: a.id, reason: 'update_prior_evidence_missing' }); continue;
+        rejected.push({ id: a.id, content_fingerprint:a.content_fingerprint, reason: 'update_prior_evidence_missing' }); continue;
       }
     }
     a.domain_analysis = analyzeDomain(a); a.domain = a.domain_analysis.primary;
@@ -171,11 +171,11 @@ function recordsReady(store: Store, articles: Row[], deadline: string, rejected:
   const records: Row[] = []; const p = policy();
   for (const a of articles) {
     const key = cacheKey(a, p); const job = store.one('SELECT * FROM jobs WHERE key=?', key);
-    if (!job?.result) { rejected.push({ id: a.id, reason: 'ai_not_ready', job_status: job?.status ?? 'not_queued' }); continue; }
+    if (!job?.result) { rejected.push({ id: a.id, content_fingerprint:a.content_fingerprint, reason: 'ai_not_ready', job_status: job?.status ?? 'not_queued' }); continue; }
     const g = JSON.parse(job.result);
-    if (!g.generated_at || !Number.isFinite(Date.parse(g.generated_at)) || Date.parse(g.generated_at) > Date.parse(deadline)) { rejected.push({ id: a.id, reason: 'generated_after_deadline' }); continue; }
-    try { validate(g, a); } catch { rejected.push({ id: a.id, reason: 'saved_result_failed_current_validation' }); continue; }
-    if (!isApproved(a, g, p, deadline)) { rejected.push({ id: a.id, reason: 'ai_review_not_passed' }); continue; }
+    if (!g.generated_at || !Number.isFinite(Date.parse(g.generated_at)) || Date.parse(g.generated_at) > Date.parse(deadline)) { rejected.push({ id: a.id, content_fingerprint:a.content_fingerprint, reason: 'generated_after_deadline' }); continue; }
+    try { validate(g, a); } catch { rejected.push({ id: a.id, content_fingerprint:a.content_fingerprint, reason: 'saved_result_failed_current_validation' }); continue; }
+    if (!isApproved(a, g, p, deadline)) { rejected.push({ id: a.id, content_fingerprint:a.content_fingerprint, reason: 'ai_review_not_passed' }); continue; }
     const exclusion = articleExclusion(a) ?? titleExclusion(g.title);
     if (exclusion) { rejected.push({ id: a.id, ...exclusion }); continue; }
     a.domain = analyzeDomain(a).primary; a.job_key = key; records.push({ article: a, result: g, status: job.status, calls: store.all('SELECT * FROM calls WHERE job=?', key), ai_review: 'passed' });
@@ -235,12 +235,12 @@ export async function launchSample(store: Store, revision: SampleRevision = 'ini
     if (completed.filter(r => r.article.domain === analyzeDomain(a).primary).length >= Number((preferences().domain_policy as Row).maximum_per_domain)) continue;
     let job = store.one('SELECT * FROM jobs WHERE key=?', a.job_key)!;
     while (!job.result && job.attempts < p.max_attempts) {
-      if (!attempted.has(job.key) && attempted.size >= Number(preferences().new_versions_per_day)) { spec.rejected.push({ id: a.id, reason: 'daily_new_version_limit' }); break processing; }
+      if (!attempted.has(job.key) && attempted.size >= Number(preferences().new_versions_per_day)) { spec.rejected.push({ id: a.id, content_fingerprint:a.content_fingerprint, reason: 'daily_new_version_limit' }); break processing; }
       const before = store.one('SELECT COUNT(*) n FROM calls')!.n;
       const blocked = await paidRequest(store, job.key, a, p, permit); job = store.one('SELECT * FROM jobs WHERE key=?', a.job_key)!;
       const after = store.one('SELECT COUNT(*) n FROM calls')!.n; if (after > before) attempted.add(job.key);
       if (blocked) {
-        spec.rejected.push({ id: a.id, reason: blocked });
+        spec.rejected.push({ id: a.id, content_fingerprint:a.content_fingerprint, reason: blocked });
         if (['budget_exhausted', 'billing_period_changed', 'missing_api_key', 'official_rules_unconfirmed', 'rules_expired_or_future', 'test_permit_expired', 'trial_expired'].includes(blocked)) break processing;
         break;
       }
@@ -339,7 +339,7 @@ export function refreshDeliveryIssue(store: Store, id: string, now: Date): strin
   if (retained.length === original.articles.length) return id;
   const revision = id + '-r-' + digest(pyjson(retained.map((a: Row) => a.id))).slice(0, 12);
   if (existsSync(store.root + '/issues/' + revision + '/edition.json')) return revision;
-  const rejected = [...original.rejected, ...original.articles.filter((a: Row) => !retained.includes(a)).map((a: Row) => ({ id: a.id, reason: 'expired_before_delivery' }))]; const records = recordsReady(store, retained, original.generation_cutoff, rejected);
+  const rejected = [...original.rejected, ...original.articles.filter((a: Row) => !retained.includes(a)).map((a: Row) => ({ id: a.id, content_fingerprint:a.content_fingerprint, reason: 'expired_before_delivery' }))]; const records = recordsReady(store, retained, original.generation_cutoff, rejected);
   freezeIssue(store, { ...original, id: revision, parent_issue: id, frozen_at: stamp(now), collection_cutoff: stamp(now),
     articles: records.map(r => r.article), rejected, kind: records.length >= Number(preferences().edition_minimum) ? 'newsletter' : 'diagnostic' }, records);
   return revision;
