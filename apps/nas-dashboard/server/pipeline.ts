@@ -18,6 +18,7 @@ const reasonNames:Record<string,string>={publisher_not_allowlisted:'来源未适
 export const reasonLabel=(code:string)=>reasonNames[code]??code;
 export function eligibilityReason(a:Row,assessment?:Row){
  if(a.evidence_expired_or_missing)return 'evidence_expired_or_missing';
+ if(['old_submission','shared_title_filter'].includes(a.body_probe_status))return a.body_probe_status;
  if(a.body_probe_status==='publisher_not_allowlisted')return 'publisher_not_allowlisted';
  if(a.body_probe_status==='body_fetch_failed')return 'body_fetch_failed';
  if(!a.original_article_published_at&&['hn_submission','atom_update_not_publication','discovery_time_not_publication'].includes(a.published_time_kind))return 'article_publication_unconfirmed';
