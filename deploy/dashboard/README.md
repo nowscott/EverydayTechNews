@@ -24,7 +24,7 @@ record-run.py 用独立的非阻塞锁避免重叠，原业务锁仍保留。开
 
 ## 密码与验证
 
-在安全终端通过标准输入生成新 scrypt 哈希（apps/nas-dashboard/server/password.ts），原子更新 dashboard.env 中 DASHBOARD_PASSWORD_HASH，重新创建容器。重启后旧会话失效。登录会话8小时、HttpOnly、SameSite=Strict；每IP15分钟最多8次失败，全局最多50次失败。当前为局域网HTTP；如接入HTTPS代理，需配置 DASHBOARD_SECURE_COOKIE=true 和正确的同源主机协议，不能直接开放公网。
+在安全终端通过标准输入生成新 scrypt 哈希（apps/nas-dashboard/server/password.ts），原子更新 dashboard.env 中 DASHBOARD_PASSWORD_HASH，重新创建容器。重启后旧会话失效。登录会话180天，令牌哈希保存在独立auth目录、HttpOnly、SameSite=Strict；每IP15分钟最多8次失败，全局最多50次失败。当前为局域网HTTP；如接入HTTPS代理，需配置 DASHBOARD_SECURE_COOKIE=true 和正确的同源主机协议，不能直接开放公网。
 
 验证桌面和手机宽度、筛选/分页/详情、脱敏与登录；核对真实数据库数量、费用和发送状态。只读隔离验证应在无业务写入的短窗口内，对数据库、WAL、durable/state和发送文件做前后哈希，查询调用数和账本行数。观察到并行业务任务时，应明确区分自然调度写入，不能归因于看板，也不能声称哈希不变。
 

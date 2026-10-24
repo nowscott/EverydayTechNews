@@ -41,7 +41,7 @@ export function select(input: Row[], cutoff: string, sample = false, target?: nu
   const clock = microtimestamp(cutoff);
   const rows = input.map(a => ({ ...a })).sort((a, b) => compareText(a._last_observed_at ?? a.fetched_at, b._last_observed_at ?? b.fetched_at));
   for (const a of rows) {
-    if (microtimestamp(a.fetched_at) > clock) { rejected.push({ id: a.id, title: a.title, reason: 'fetched_after_cutoff' }); continue; }
+    if (microtimestamp(a.fetched_at) > clock) { rejected.push({ id: a.id, content_fingerprint:a.content_fingerprint, title: a.title, reason: 'fetched_after_cutoff' }); continue; }
     latest.set(a.id, a);
   }
   const ordered = [...latest.values()].sort((a, b) => evidencePriority(b) - evidencePriority(a) || evaluate(b as Article, cutoff, preferences()).score - evaluate(a as Article, cutoff, preferences()).score || compareText(b.published_at, a.published_at));
@@ -57,7 +57,7 @@ export function select(input: Row[], cutoff: string, sample = false, target?: nu
     if (!reason && search('优惠|好价|促销|广告|秒杀|红包|IT早报|新闻汇总|Everything we launched|Top Stories:|Weekly Roundup|Week in Review|Best Deals|Rocket Report:', a.title)) reason = 'promotion_or_roundup';
     const matches = !reason ? selected.filter(b => duplicate(a, b)).map(b => b.id) : [];
     if (matches.length) reason = 'duplicate_or_event_review';
-    if (reason) { rejected.push({ id: a.id, title: a.title, reason, event_matches: matches }); continue; }
+    if (reason) { rejected.push({ id: a.id, content_fingerprint:a.content_fingerprint, title: a.title, reason, event_matches: matches }); continue; }
     a.topic = topic(a); a.event_group = a.id; selected.push(a);
   }
   const [chosen, extra] = choose(selected as Article[], cutoff, preferences(), { sample, target });

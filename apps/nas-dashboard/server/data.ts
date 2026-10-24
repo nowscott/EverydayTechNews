@@ -4,6 +4,7 @@ import { resolve, sep, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { cachedBody, articleUrl } from './body-cache.ts';
+import { assessmentIndex, eligibilityReason, reasonLabel, currentReview, processingStage, attempts } from './pipeline.ts';
 import { sanitizeEmail } from './mail-preview.ts';
 import { isEvidenceFailure } from './evidence.ts';
 import { redact, safeUrl } from './security.ts';
@@ -33,9 +34,9 @@ export class Reader {
       this.evidence.push({ source: name, state: 'ok', source_time: s.mtime.toISOString() }); return data;
     } catch (e: any) { this.evidence.push({ source: name, state: e.code === 'ENOENT' ? (options.optional ? 'not_recorded' : 'missing') : 'unreadable', source_time: null }); return null; }
   }
-  list(name: string): string[] {
+  list(name: string, optional=false): string[] {
     try { return readdirSync(this.path(name)).sort(); }
-    catch (e: any) { this.evidence.push({ source: name, state: e.code === 'ENOENT' ? 'missing' : 'unreadable', source_time: null }); return []; }
+    catch (e: any) { this.evidence.push({ source: name, state: e.code === 'ENOENT' ? (optional?'not_recorded':'missing') : 'unreadable', source_time: null }); return []; }
   }
   query(sql: string, ...args: any[]): Row[] {
     try {
@@ -107,7 +108,7 @@ function news(r: Reader, component: Component, from: string, to: string): Row[] 
       for (const match of (md ?? '').matchAll(/^- \[(.*?)\]\((.*?)\)/gm)) {
         const [,title,url] = match, g = grades.get(d+'\0'+url), raw = g?.status ?? 'ungraded';
         result.push({ id: digest(d+'\0'+url), component, date: d, title, url: safeUrl(url), source: 'IT之家', fetched_at: null, published_at: null,
-          date_basis: 'source_archive_day', score: g?.score ?? null, score_system: 'IT之家读者投票', score_detail: g ? parse(g.data) : null,
+          date_basis: 'source_archive_day', score: raw==='valid'?g?.score:null, score_time:null,score_missing_reason:raw==='valid'?null:reasonLabel(raw==='failed'?'grade_failed':raw==='filtered'?'filtered':'not_yet_graded'),processing_stage:raw==='valid'?'graded':raw==='failed'?'grade_failed':raw==='filtered'?'filtered':'collected',failure_reason:raw==='failed'?(parse(g?.data??null)?.error_code??'reason_not_recorded'):null, score_system: 'IT之家读者投票', score_detail: g ? parse(g.data) : null,
           stage: raw === 'valid' ? 'graded' : raw === 'failed' ? 'failed' : raw === 'filtered' ? 'filtered' : 'collected', raw_status: raw,
           rewrite: null, review: 'not_applicable', editions: selected.get(url) ?? [] });
       }
@@ -116,18 +117,20 @@ function news(r: Reader, component: Component, from: string, to: string): Row[] 
     }
     return result;
   }
-  const jobs = r.query("SELECT key,json_remove(article, '$.text', '$.description_clean', '$.ranking.config', '$.generation_policy') article,status,result,attempts FROM jobs WHERE COALESCE(json_extract(article,'$.task_kind'),'') NOT IN ('review','edition_review') AND COALESCE(json_extract(article,'$.output_schema'),'') NOT IN ('review-1','edition-review-1') ORDER BY rowid").map(j => ({...j, article: parse(j.article), result: parse(j.result)}));
+  const assessment=assessmentIndex(r,from);
+  const jobs = r.query("SELECT key,json_remove(article, '$.text', '$.description_clean', '$.ranking.config', '$.generation_policy') article,status,result,attempts FROM jobs ORDER BY rowid").map(j => ({...j, article: parse(j.article), result: parse(j.result)}));
   const byArticle = new Map<string, Row>();
-  for (const j of jobs) byArticle.set(j.article.id+'\0'+j.article.content_fingerprint, j);
+  for (const j of jobs.filter(j=>!['review','edition_review'].includes(j.article.task_kind)&&!['review-1','edition-review-1'].includes(j.article.output_schema))) byArticle.set(j.article.id+'\0'+j.article.content_fingerprint, j);
   const seen = new Set<string>();
   return r.query("SELECT id,fingerprint,json_remove(data, '$.text', '$.description_clean') data, MIN(julianday(json_extract(data,'$.fetched_at'))) first_fetch FROM articles GROUP BY id,json_extract(data,'$.content_fingerprint') HAVING date(first_fetch, '+8 hours') BETWEEN ? AND ?",from,to).flatMap(row => {
     const a = parse(row.data), date = dateOf(a.fetched_at);
     if (!date || date < from || date > to) return [];
     const key = a.id+'\0'+a.content_fingerprint; if (seen.has(key)) return []; seen.add(key);
-    const j = byArticle.get(key), v = j?.article ?? a, ranking = v.ranking;
+    const j = byArticle.get(key), v = j?.article ?? a, assessed=assessment.get(key), rankFromReport=assessed?.ranking&&Date.parse(assessed.scored_at)>=Date.parse(a.fetched_at), ranking=rankFromReport?assessed.ranking:v.ranking;
+    const reason=eligibilityReason(a,assessed),draft=j?.result??null,reviewJob=currentReview(a,draft,jobs),coarse=j?stage(j.status,!!j.result):'collected';
     return [{ id: digest(key), component, date, title: a.title, url: safeUrl(a.url), source: a.source_name ?? a.source,
       fetched_at: a.fetched_at, published_at: a.published_at, date_basis: 'first_fetch_day',
-      score: ranking?.score ?? null, score_system: ranking?.version ?? '未评分', score_detail: ranking ? { breakdown: ranking.breakdown, signals: ranking.signals, note: ranking.note } : null,
+      score: ranking?.score ?? null, score_time:rankFromReport?assessed.scored_at:v.queued_at??null,score_missing_reason:ranking?.score!=null?null:reasonLabel(reason),selection_reason:assessed?.reason??null,community_score:a.community_score??null,content_status:a.content_status,content_origin:a.content_origin,processing_stage:processingStage(coarse,reason,j,reviewJob),review_job_status:reviewJob?.status??null,job_key:j?.key??null,review_job_key:reviewJob?.key??null, score_system: ranking?.version ?? '未评分', score_detail: ranking ? { breakdown: ranking.breakdown, signals: ranking.signals, note: ranking.note } : null,
       stage: j ? stage(j.status, !!j.result) : 'collected', raw_status: j?.status ?? 'not_queued', rewrite: j?.result ?? null,
       article_id:a.id,content_fingerprint:a.content_fingerprint,
       review: j?.status === 'ai_approved' ? 'passed' : j?.status === 'ai_rejected' ? 'rejected' : j?.result ? 'pending' : 'not_started', editions: selected.get(a.url) ?? [] }];
@@ -229,6 +232,7 @@ export class Dashboard {
         issues: todayIssues.map(({data,...v})=>v), calls: component === 'premium' && !dbUnavailable ? calls.length : null,
         estimated_cny: component === 'premium' && !dbUnavailable ? calls.reduce((n,c)=>n+Number(c.cost??0),0) : null,
         unknown_reserved_cny: component === 'premium' && !dbUnavailable ? calls.reduce((n,c)=>n+(c.cost==null?Number(c.reserved??0):0),0) : null,
+        funnel:dbUnavailable?null:{date,news_date_basis:component==='ordinary'?'source_archive_day':'first_fetch_day',collected:all.length,usable_body:component==='premium'?all.filter(a=>a.content_status==='usable_excerpt').length:null,candidates:component==='premium'?all.filter(a=>a.job_key).length:null,rewritten:component==='premium'?all.filter(a=>a.rewrite).length:null,approved:component==='premium'?all.filter(a=>a.review==='passed').length:null,edition_items:todayIssues.reduce((n,i)=>n+i.count,0),accepted_receipts:current.filter(v=>v.status==='smtp_accepted').length,edition_date_basis:'collection_cutoff_day',calls_date_basis:'call_ledger_day',invalid_calls:calls.filter(c=>c.status==='invalid_response').length,unknown_cost_calls:calls.filter(c=>c.cost==null).length},
         sources, alerts, count_basis: component === 'ordinary' ? '新闻数按来源归档日期；未记录精确首次抓取时间。普通版不调用 AI。' : '新闻数按首次抓取日期，按文章及正文指纹去重；各阶段为这些新闻的当前状态。模型调用和费用按调用账本日期。',
         report_time: report?.at ?? r.evidence.find(e=>e.source==='status.json')?.source_time ?? null };
     }));
@@ -238,9 +242,9 @@ export class Dashboard {
     return this.read(component, r => {
       let rows = news(r,component,from,to);
       const sources = [...new Set(rows.map(a=>a.source))].sort();
-      if (id) { const row = rows.find(v=>v.id===id); if (!row) throw Error('not_found'); return {...row,original:this.original(r,component,row)}; }
+      if (id) { const row = rows.find(v=>v.id===id); if (!row) throw Error('not_found'); const history=component==='premium'?attempts(r,r.query('SELECT key,article,status,result,attempts FROM jobs').map((j:Row):Row=>({...j,article:parse(j.article)})).filter(j=>[row.job_key,row.review_job_key].includes(j.key))):[]; return {...row,attempts:history,original:this.original(r,component,row)}; }
       const q = (params.get('q') ?? '').toLowerCase(), source = params.get('source'), status = params.get('stage');
-      rows = rows.filter(a => a.title.toLowerCase().includes(q) && (!source || a.source === source) && (!status || a.stage === status));
+      rows = rows.filter(a => a.title.toLowerCase().includes(q) && (!source || a.source === source) && (!status || a.stage === status || a.processing_stage === status));
       rows.sort(params.get('sort') === 'score' ? (a,b)=>(b.score??-Infinity)-(a.score??-Infinity) : (a,b)=>String(b.fetched_at??b.date).localeCompare(String(a.fetched_at??a.date)));
       return { items: rows.slice((page-1)*30,page*30).map(({rewrite,score_detail,...v})=>v), total: rows.length, page, page_size: 30, sources, from,to };
     });
@@ -259,7 +263,7 @@ export class Dashboard {
           if(raw&&digest(raw)===entry.sha256)text=JSON.parse(raw).text;
         }
       }
-      if(typeof text==='string'&&text.trim())return {state:'available',kind:/_article_html$/.test(a.content_origin??'')?'article_text':'excerpt',url:row.url,text:text.slice(0,100000),fetched_at:a.body_fetched_at??a.fetched_at,origin:a.content_origin,background_state:cache?.state??'pending'};
+      if(typeof text==='string'&&text.trim())return {state:'available',kind:/_article_html$/.test(a.content_origin??'')?'article_text':'excerpt',url:row.url,text:text.slice(0,100000),fetched_at:a.body_fetched_at??a.fetched_at,origin:a.content_origin,background_state:cache?.state??'pending',material_kind:a.material_kind??null};
     }
     if(cache)return cache;
     try{articleUrl(row.url);}catch{return {state:'unsupported',url:row.url,reason:'publisher_not_supported'};}
@@ -288,7 +292,7 @@ export class Dashboard {
     });
   }
   feature(component: Component, id: string, index: number) {
-    return this.read(component,r=>{const saved=r.query('SELECT data FROM issues WHERE id=?',id)[0];if(!saved)throw Error('not_found');const issue=parse(saved.data),row=frozenRows(r,component,issue)[index];if(!row)throw Error('not_found');return {...row,original:this.original(r,component,row)};});
+    return this.read(component,r=>{const saved=r.query('SELECT data FROM issues WHERE id=?',id)[0];if(!saved)throw Error('not_found');const issue=parse(saved.data),row=frozenRows(r,component,issue)[index];if(!row)throw Error('not_found');const history=component==='premium'?attempts(r,r.query('SELECT key,article,status,result,attempts FROM jobs').map((j:Row):Row=>({...j,article:parse(j.article)})).filter(j=>[row.job_key,row.review_job_key].includes(j.key))):[]; return {...row,attempts:history,original:this.original(r,component,row)};});
   }
   preview(component: Component, id: string, receipt?: string) {
     return this.read(component,r=>mailVersion(r,component,id,receipt));

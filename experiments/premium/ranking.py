@@ -76,10 +76,10 @@ def choose(candidates,cutoff,sample=False,target=None):
         reason=None
         if a['ranking']['score']<minimum:reason='editorial_score_below_threshold'
         if reason:
-            rejected.append(dict(id=a['id'],title=a['title'],reason=reason,ranking=a['ranking']));continue
+            rejected.append(dict(**{k:a[k] for k in ['content_fingerprint'] if k in a},id=a['id'],title=a['title'],reason=reason,ranking=a['ranking']));continue
         a['ranking']['selection_order']=len(selected)+1
         a['ranking']['diversity_adjustment']=0
         selected.append(a);sources[a['source']]+=1;topics[a.get('topic')]+=1
         interests.update(a['ranking']['interests'])
-    rejected.extend(dict(id=a['id'],title=a['title'],reason='edition_capacity',ranking=a['ranking']) for a in pending)
+    rejected.extend(dict(**{k:a[k] for k in ['content_fingerprint'] if k in a},id=a['id'],title=a['title'],reason='edition_capacity',ranking=a['ranking']) for a in pending)
     return selected,rejected

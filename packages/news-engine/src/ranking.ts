@@ -32,7 +32,7 @@ export interface Ranking {
 }
 export type RankedArticle = Article & { ranking: Ranking };
 export interface Rejection {
-  id: string; title: string;
+  id: string; content_fingerprint?: string; title: string;
   reason: 'editorial_score_below_threshold' | 'edition_capacity';
   ranking: Ranking;
 }
@@ -107,12 +107,12 @@ export function choose(candidates: Article[], cutoff: string, config: EditorialC
     }
     const [a] = pending.splice(index, 1);
     if (a.ranking.score < minimum) {
-      rejected.push({ id: a.id, title: a.title, reason: 'editorial_score_below_threshold', ranking: a.ranking }); continue;
+      rejected.push({ id: a.id, content_fingerprint:a.content_fingerprint, title: a.title, reason: 'editorial_score_below_threshold', ranking: a.ranking }); continue;
     }
     a.ranking.selection_order = selected.length + 1; a.ranking.diversity_adjustment = 0;
     selected.push(a); sources.set(a.source, count(sources, a.source) + 1); topics.set(a.topic ?? null, count(topics, a.topic ?? null) + 1);
     for (const interest of a.ranking.interests) counts.set(interest, count(counts, interest) + 1);
   }
-  rejected.push(...pending.map(a => ({ id: a.id, title: a.title, reason: 'edition_capacity' as const, ranking: a.ranking })));
+  rejected.push(...pending.map(a => ({ id: a.id, content_fingerprint:a.content_fingerprint, title: a.title, reason: 'edition_capacity' as const, ranking: a.ranking })));
   return [selected, rejected];
 }

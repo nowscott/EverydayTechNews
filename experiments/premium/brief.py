@@ -259,7 +259,7 @@ def select(rows, cutoff, sample=False, target=None):
     latest={}
     for a in sorted(rows,key=lambda a:a.get('_last_observed_at',a['fetched_at'])):
         if datetime.fromisoformat(a['fetched_at'])>cutoff:
-            rejected.append(dict(id=a['id'],title=a['title'],reason='fetched_after_cutoff'));continue
+            rejected.append(dict(**{k:a[k] for k in ['content_fingerprint'] if k in a},id=a['id'],title=a['title'],reason='fetched_after_cutoff'));continue
         latest[a['id']]=a
     from ranking import evaluate
     rows=sorted(latest.values(),key=lambda a:(evidence_priority(a),evaluate(a,cutoff)['score'],a['published_at']),reverse=True)
@@ -276,7 +276,7 @@ def select(rows, cutoff, sample=False, target=None):
         if reason is None and re.search(r'优惠|好价|促销|广告|秒杀|红包|IT早报|新闻汇总|Everything we launched|Top Stories:|Weekly Roundup|Week in Review|Best Deals|Rocket Report:',a['title'],re.I): reason='promotion_or_roundup'
         matches=[b['id'] for b in selected if duplicate(a,b)] if reason is None else []
         if matches:reason='duplicate_or_event_review'
-        if reason: rejected.append(dict(id=a['id'],title=a['title'],reason=reason,event_matches=matches));continue
+        if reason: rejected.append(dict(**{k:a[k] for k in ['content_fingerprint'] if k in a},id=a['id'],title=a['title'],reason=reason,event_matches=matches));continue
         a['topic']=topic(a);a['event_group']=a['id'];selected.append(a)
     from ranking import choose
     selected,editorial_rejections=choose(selected,cutoff,sample,target)
@@ -345,7 +345,7 @@ def freeze(db, folder, issue_id, cutoff, sample):
         for a in rows:
             matches=[b for b in prior if duplicate(a,b)]
             if any(a['content_fingerprint']==b['content_fingerprint'] for b in matches):
-                rejected.append(dict(id=a['id'],title=a['title'],reason='already_issued_unchanged'));continue
+                rejected.append(dict(**{k:a[k] for k in ['content_fingerprint'] if k in a},id=a['id'],title=a['title'],reason='already_issued_unchanged'));continue
             if matches:
                 a['update_review_required']=True
                 a['prior_versions']=[dict(url=b['url'],fingerprint=b['content_fingerprint'],text=b['text']) for b in matches]
