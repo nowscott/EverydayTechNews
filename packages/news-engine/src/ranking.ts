@@ -10,6 +10,7 @@ export interface EditorialConfig {
   [key: string]: unknown;
 }
 export interface Article {
+  content_fingerprint?: string;
   id: string;
   title: string;
   text: string;
