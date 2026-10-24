@@ -1,15 +1,15 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { readFileSync, statSync } from 'node:fs';
 import { resolve, extname } from 'node:path';
-import { randomBytes } from 'node:crypto';
+import { Sessions, SESSION_SECONDS } from './sessions.ts';
 import { fileURLToPath } from 'node:url';
 import { Dashboard, type Config, type Component } from './data.ts';
 import { PREVIEW_CSP } from './mail-preview.ts';
 import { verifyPassword } from './security.ts';
 const base = resolve(fileURLToPath(new URL('..',import.meta.url)));
-export function createApp(config: Config, passwordHash: string, secure = false) {
+export function createApp(config: Config, passwordHash: string, secure = false, sessionFile?: string) {
   if (!/^scrypt:[a-f0-9]{32}:[a-f0-9]{128}$/.test(passwordHash)) throw Error('valid_dashboard_password_hash_required');
-  const dashboard = new Dashboard(config), sessions = new Map<string, number>(), attempts = new Map<string,{n:number;until:number}>();
+  const dashboard = new Dashboard(config), sessions = new Sessions(passwordHash,sessionFile), attempts = new Map<string,{n:number;until:number}>();
   let globalAttempts = {n:0,until:0};
   const cookie = (value: string, age: number) => `dashboard_session=${value}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${age}${secure?'; Secure':''}`;
   const send = (res: ServerResponse, code: number, body: any) => { res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body)); };
@@ -19,12 +19,11 @@ export function createApp(config: Config, passwordHash: string, secure = false) 
     res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
     try {
       const url=new URL(req.url??'/', 'http://dashboard.local'),path=url.pathname;
-      if(path==='/api/health'&&req.method==='GET')return send(res,200,{status:'ok',version:'1.2.1'});
+      if(path==='/api/health'&&req.method==='GET')return send(res,200,{status:'ok',version:'1.2.2'});
       if(path==='/api/login'&&req.method==='POST') {
         if(req.headers.origin && req.headers.origin !== `${secure?'https':'http'}://${req.headers.host}`)return send(res,403,{error:'origin_rejected'});
         const ip=req.socket.remoteAddress??'unknown',now=Date.now();
         for(const [key,v] of attempts)if(v.until<now)attempts.delete(key);
-        for(const [key,until]of sessions)if(until<now)sessions.delete(key);
         const entry=attempts.get(ip)??{n:0,until:now+15*60000};
         if(globalAttempts.until<now)globalAttempts={n:0,until:now+15*60000};
         if(entry.n>=8||globalAttempts.n>=50||attempts.size>1000){res.setHeader('Retry-After','900');return send(res,429,{error:'login_rate_limited'});}
@@ -33,15 +32,14 @@ export function createApp(config: Config, passwordHash: string, secure = false) 
         if(typeof password!=='string'||!verifyPassword(password,passwordHash)) {
           entry.n++;globalAttempts.n++;attempts.set(ip,entry);return send(res,401,{error:'invalid_password'});
         }
-        attempts.delete(ip);const token=randomBytes(32).toString('hex');
-        if(sessions.size>=100)sessions.delete(sessions.keys().next().value!);
-        sessions.set(token,now+8*3600000);res.setHeader('Set-Cookie',cookie(token,8*3600));return send(res,200,{authenticated:true});
+        attempts.delete(ip);const token=sessions.issue(now);
+        res.setHeader('Set-Cookie',cookie(token,SESSION_SECONDS));return send(res,200,{authenticated:true});
       }
       if(path.startsWith('/api/')) {
-        const token=session(req);if((sessions.get(token)??0)<=Date.now())return send(res,401,{error:'login_required'});
+        const token=session(req);if(!sessions.valid(token))return send(res,401,{error:'login_required'});
         if(path==='/api/logout'&&req.method==='POST') {
           if(req.headers.origin&&req.headers.origin!==`${secure?'https':'http'}://${req.headers.host}`)return send(res,403,{error:'origin_rejected'});
-          sessions.delete(token);res.setHeader('Set-Cookie',cookie('',0));return send(res,200,{authenticated:false});
+          sessions.revoke(token);res.setHeader('Set-Cookie',cookie('',0));return send(res,200,{authenticated:false});
         }
         if(req.method!=='GET')return send(res,405,{error:'read_only'});
         if(path==='/api/session')return send(res,200,{authenticated:true});
@@ -76,8 +74,8 @@ export function createApp(config: Config, passwordHash: string, secure = false) 
   });
 }
 if(process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url)){
-  const server=createApp({ordinary:process.env.DASHBOARD_ORDINARY_DATA??'/data/ordinary',premium:process.env.DASHBOARD_PREMIUM_DATA??'/data/premium',runtime:process.env.DASHBOARD_RUNTIME??'/data/runtime',ordinaryDeployment:process.env.DASHBOARD_ORDINARY_DEPLOYMENT,bodies:process.env.DASHBOARD_BODY_CACHE??'/data/bodies',premiumDeployment:process.env.DASHBOARD_PREMIUM_DEPLOYMENT},process.env.DASHBOARD_PASSWORD_HASH??'',process.env.DASHBOARD_SECURE_COOKIE==='true');
+  const server=createApp({ordinary:process.env.DASHBOARD_ORDINARY_DATA??'/data/ordinary',premium:process.env.DASHBOARD_PREMIUM_DATA??'/data/premium',runtime:process.env.DASHBOARD_RUNTIME??'/data/runtime',ordinaryDeployment:process.env.DASHBOARD_ORDINARY_DEPLOYMENT,bodies:process.env.DASHBOARD_BODY_CACHE??'/data/bodies',premiumDeployment:process.env.DASHBOARD_PREMIUM_DEPLOYMENT},process.env.DASHBOARD_PASSWORD_HASH??'',process.env.DASHBOARD_SECURE_COOKIE==='true',process.env.DASHBOARD_SESSION_FILE);
   server.requestTimeout=10000;server.headersTimeout=10000;server.maxRequestsPerSocket=200;
-  server.listen(Number(process.env.PORT??3080),process.env.DASHBOARD_HOST??'0.0.0.0',()=>console.log('NAS dashboard 1.2.1 listening'));
+  server.listen(Number(process.env.PORT??3080),process.env.DASHBOARD_HOST??'0.0.0.0',()=>console.log('NAS dashboard 1.2.2 listening'));
   for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>server.close(()=>process.exit(0)));
 }

@@ -43,7 +43,7 @@ def install(args):
         if not any(command + ' >> ' in line for line in cron.splitlines()):
             raise SystemExit('expected scheduler command not found; no changes made')
     root.mkdir(mode=0o700)
-    for name in ['runtime/ordinary','runtime/premium','deployment/ordinary','deployment/premium','bodies']:
+    for name in ['auth','runtime/ordinary','runtime/premium','deployment/ordinary','deployment/premium','bodies']:
         (root / name).mkdir(parents=True, mode=0o700)
     source = Path(__file__).resolve().parent
     for name in ['compose.yaml', 'record-run.py']:
@@ -74,7 +74,7 @@ def install(args):
     if latest != cron:
         raise SystemExit('crontab changed during installation; dashboard running, observer not installed; review current crontab')
     run(['crontab','-'], input=patched)
-    observer.atomic(root/'installation.json',{'version':'1.2.1','installed_at':dt.datetime.now(dt.timezone.utc).isoformat(),'image':args.image,'url':f'http://{args.bind}:{args.port}','source_commit':args.source_commit})
+    observer.atomic(root/'installation.json',{'version':'1.2.2','installed_at':dt.datetime.now(dt.timezone.utc).isoformat(),'image':args.image,'url':f'http://{args.bind}:{args.port}','source_commit':args.source_commit})
     print(json.dumps({'url':f'http://{args.bind}:{args.port}','password_file':str(root/'initial-password.txt'),'cron_backup':str(root/'crontab-before.txt')}))
 
 

@@ -47,3 +47,5 @@ feedback/YYYY-MM-DD.json是可选的人工收件确认记录。仅在文件不�
 新增GET /api/home?component=...、GET /api/issues/:id/articles/:index?component=...和GET /api/issues/:id/preview?component=...&receipt=...，均受原有登录保护。期刊详情增加preview元数据和脱敏收件版本，JSON不返回原始HTML。普通版优先选择最近一次SMTP接收的账本版本，高级版以原始HTML核对冻结SHA256；无可验证HTML时不以现有模板冒充历史发送。
 
 HTML经清理后在无allow权限的sandbox iframe中呈现；预览接口使用独立CSP，允许原有内联排版，禁止脚本、外部资源、表单和链接操作。原应用CSP只放行同源frame，其他保护保持不变。所有预览均只读，不调用模型、SMTP或外部新闻抓取。
+
+登录使用180天HttpOnly Cookie，服务端仅将随机令牌的哈希保存到看板独立auth目录，刷新和容器重启后保留。主动退出立即撤销会话，修改密码使旧会话失效；浏览器清除Cookie或180天到期后需重新登录。不在localStorage存储密码，不缓存业务API响应。

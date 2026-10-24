@@ -11,6 +11,7 @@ services:
       TZ: Asia/Shanghai
       DASHBOARD_ORDINARY_DATA: /data/ordinary
       DASHBOARD_PREMIUM_DATA: /data/premium
+      DASHBOARD_SESSION_FILE: /data/auth/sessions.json
       DASHBOARD_RUNTIME: /data/runtime
       DASHBOARD_BODY_CACHE: /data/bodies
       DASHBOARD_ORDINARY_DEPLOYMENT: /data/ordinary-deployment
@@ -18,6 +19,7 @@ services:
     ports:
       - "${DASHBOARD_BIND_IP:?NAS LAN IPv4 required}:${DASHBOARD_PORT:-3080}:3080"
     volumes:
+      - ${DASHBOARD_ROOT}/auth:/data/auth
       - ${DASHBOARD_ORDINARY_DATA:?ordinary data required}:/data/ordinary:ro
       - ${DASHBOARD_PREMIUM_DATA:?premium data required}:/data/premium:ro
       - ${DASHBOARD_ROOT}/runtime:/data/runtime:ro
