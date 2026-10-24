@@ -7,7 +7,7 @@ import { Store, files } from './store.ts';
 import { atomic, read, digest, RECIPIENT, trialDeadline, trial, stamp, active, day, localParts, type Row } from './core.ts';
 import { isApproved, draftHash } from './quality.ts';
 import { policy } from './core.ts';
-import { authorizedTestRecipient } from './subscribers.ts';
+import { internalTestSubscribers } from './subscribers.ts';
 import { validate, codepoints } from './model.ts';
 export const escape = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' })[c]!);
 const write = (p: string, value: string) => writeFileSync(p, value, { mode: 0o600 });
@@ -70,7 +70,25 @@ export function freezeIssue(store: Store, issue: Row, records: Row[]) {
   store.run('INSERT INTO issues VALUES (?,?)', issue.id, JSON.stringify(issue)); store.checkpoint(); return frozen;
 }
 
-export async function sendOnce(store: Store, issueId: string, deps: { transport?: any; now?: () => Date; authorize?: () => Promise<boolean> } = {}): Promise<Row> {
+type DeliveryDeps = { transport?: any; now?: () => Date; authorize?: () => Promise<boolean>; subscribers?: () => Promise<string[]> };
+export async function sendOnce(store: Store, issueId: string, deps: DeliveryDeps = {}): Promise<Row> {
+  if (!/^[A-Za-z0-9_-]+$/.test(issueId)) throw new Error('invalid_issue');
+  const config = trial(store.root); const now = deps.now?.() ?? new Date();
+  if (!config.enabled || !config.delivery_enabled || now.getTime() >= trialDeadline(config)) return { status: 'trial_or_delivery_disabled_or_expired' };
+  if (read(store.root + '/test-delivery-config.json').allowed_recipient !== RECIPIENT) throw new Error('recipient_not_explicitly_authorized');
+  if (!store.authoritative && !deps.transport) throw new Error('smtp_requires_authoritative_checkpoint');
+  // Resolve the complete audience before SMTP; Notion failure must fail closed.
+  // authorize is the legacy single-recipient test seam, never a production fallback.
+  const audience = deps.subscribers ?? (deps.authorize ? async () => await deps.authorize!() ? [RECIPIENT] : [] : () => internalTestSubscribers());
+  const recipients = [...new Set(await audience())];
+  if (recipients.some(email => !/^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(email))) throw new Error('invalid_test_subscriber');
+  if (!recipients.length) return { status: 'notion_recipient_not_eligible' };
+  const deliveries: Row[] = [];
+  for (const recipient of recipients) deliveries.push(await sendRecipient(store, issueId, recipient, deps));
+  if (deliveries.length === 1) return deliveries[0];
+  return { status: deliveries.every(r => r.status === 'smtp_accepted') ? 'smtp_accepted' : 'partial_delivery', deliveries };
+}
+async function sendRecipient(store: Store, issueId: string, recipient: string, deps: DeliveryDeps): Promise<Row> {
   if (!/^[A-Za-z0-9_-]+$/.test(issueId)) throw new Error('invalid_issue');
   const config = trial(store.root); const now = deps.now?.() ?? new Date();
   if (!config.enabled || !config.delivery_enabled || now.getTime() >= trialDeadline(config)) return { status: 'trial_or_delivery_disabled_or_expired' };
@@ -89,16 +107,15 @@ export async function sendOnce(store: Store, issueId: string, deps: { transport?
   if (!html.includes('【测试】') || !text.includes('【测试】')) throw new Error('missing_test_label');
   if (/(?<![A-Za-z0-9_-])sk-[A-Za-z0-9_-]{20,}/.test(html + '\n' + text)) throw new Error('credential_like_text_blocked');
   for (const path of files(store.root + '/deliveries')) {
-    const old = read(path); if (old.issue === issueId && old.recipient === RECIPIENT && !['failed_before_send', 'not_sent_outside_window', 'expired_not_sent'].includes(old.status)) return { ...old, reused: true };
+    const old = read(path); if (old.issue === issueId && old.recipient === recipient && !['failed_before_send', 'not_sent_outside_window', 'expired_not_sent'].includes(old.status)) return { ...old, reused: true };
   }
   const sender = process.env.SENDING_ACCOUNT; const password = process.env.SENDING_PASSWORD; const server = process.env.SERVER;
   if (!sender || !/^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(sender) || !password || !server) return { status: 'missing_test_smtp_configuration' };
-  if (!await (deps.authorize ?? (() => authorizedTestRecipient()))()) return { status: 'notion_recipient_not_eligible' };
-  const fingerprint = digest(RECIPIENT + '\0' + issueId + '\0' + html + '\0' + text);
+  const fingerprint = digest(recipient + '\0' + issueId + '\0' + html + '\0' + text);
   const subject = edition.mode === 'manual_makeup_24h' ? `【测试·补发】${edition.kind === 'diagnostic' ? '早报异常诊断' : '科技早报'}｜${edition.collection_cutoff.slice(0, 10)}｜${edition.articles.length}条` : edition.kind === 'diagnostic' ? `【测试】TS早报异常诊断｜${edition.collection_cutoff.slice(0, 10)}` : `【测试·TS${edition.mode === 'current_24h_sample' ? '新版选题' : '早报'}】科技早报｜${edition.collection_cutoff.slice(0, 10)}｜${edition.articles.length}条精选`;
   const previous = (() => { try { return read(store.root + '/deliveries/' + fingerprint + '.json'); } catch { return {}; } })();
   if ((previous.attempts ?? 0) >= 3 || previous.retry_after && now.getTime() < Date.parse(previous.retry_after)) return { status: 'smtp_retry_pending_or_exhausted' };
-  const receipt: Row = { issue: issueId, recipient: RECIPIENT, subject, message_id: `<premium-test-${fingerprint.slice(0, 32)}@${sender.split('@')[1]}>`, status: 'sending', attempts: (previous.attempts ?? 0) + 1, started_at: stamp(now), model_content_generated: edition.articles.length > 0, engine: 'typescript' };
+  const receipt: Row = { issue: issueId, recipient, subject, message_id: `<premium-test-${fingerprint.slice(0, 32)}@${sender.split('@')[1]}>`, status: 'sending', attempts: (previous.attempts ?? 0) + 1, started_at: stamp(now), model_content_generated: edition.articles.length > 0, engine: 'typescript' };
   const path = store.root + '/deliveries/' + fingerprint + '.json'; const save = () => { atomic(path, receipt); store.checkpoint(); };
   save(); // Claim is remotely durable before creating an SMTP connection.
   const sendingTime = deps.now?.() ?? new Date(); const sendingParts = localParts(sendingTime);
@@ -111,8 +128,8 @@ export async function sendOnce(store: Store, issueId: string, deps: { transport?
   const transport = deps.transport ?? nodemailer.createTransport({ host: server, port: 465, secure: true, auth: { user: sender, pass: password }, pool: false,
     connectionTimeout: 30000, greetingTimeout: 30000, socketTimeout: 30000, logger: false, debug: false });
   try {
-    const result = await transport.sendMail({ from: { name: '每日科技早报 · 测试', address: sender }, to: RECIPIENT, envelope: { from: sender, to: [RECIPIENT] }, subject, messageId: receipt.message_id, text, html });
-    receipt.status = result.accepted?.includes(RECIPIENT) ? 'smtp_accepted' : 'recipient_refused'; receipt.accepted_at = stamp(); save();
+    const result = await transport.sendMail({ from: { name: '每日科技早报 · 测试', address: sender }, to: recipient, envelope: { from: sender, to: [recipient] }, subject, messageId: receipt.message_id, text, html });
+    receipt.status = result.accepted?.includes(recipient) ? 'smtp_accepted' : 'recipient_refused'; receipt.accepted_at = stamp(); save();
   } catch (error) {
     if (receipt.status === 'smtp_accepted') throw error; // Failed acceptance persistence must fail the task, never mask it.
     receipt.status = ['CONN', 'AUTH', 'EHLO', 'HELO', 'STARTTLS'].includes((error as any).command) ? 'failed_before_send' : 'unknown_do_not_retry'; receipt.retry_after = stamp(new Date((deps.now?.() ?? new Date()).getTime() + 60000 * receipt.attempts)); save();

@@ -10,7 +10,7 @@ import { cacheKey, paidRequest } from '../src/model.ts';
 import { morningTick, morningTime } from '../src/morning.ts';
 import { due, refreshDeliveryIssue, reportTrial } from '../src/pool.ts';
 import { freezeIssue, sendOnce } from '../src/mail.ts';
-import { premiumSubscribers, authorizedTestRecipient } from '../src/subscribers.ts';
+import { premiumSubscribers, authorizedTestRecipient, internalTestSubscribers } from '../src/subscribers.ts';
 
 const text = '公司表示新模型计划在中国测试，预计速度提升20%，尚未独立验证。'.repeat(10);
 const a: Row = { id: 'quality', title: '模型计划测试', text, url: 'https://example.org/model', source: 'github', source_name: 'GitHub',
@@ -196,4 +196,14 @@ test('known-cost invalid review is repaired within the original job and unknown 
    assert.equal(diagnostic.stage,'review');assert.equal(diagnostic.error_code,'review_verdict_conflict');assert.ok(diagnostic.started_at&&diagnostic.finished_at);
   }finally{close();}
  }
+});
+test('Notion test flag filters tests while premium eligibility survives clearing it', async () => {
+  const records = [subscriber('first@example.org'), subscriber('second@example.org'), subscriber('ordinary@example.org', '正常', false), subscriber('paused@example.org', '已退订')];
+  for (const record of records) record.properties['高级内测'] = { checkbox: true };
+  records[1].properties['高级内测'].checkbox = false;
+  records.push({ ...subscriber('archived@example.org'), archived: true });
+  const fetcher = (async (_: any, options: any) => Response.json(options.method ? { results: records, has_more: false } : { properties: { 高级订阅: { type: 'checkbox' }, 高级内测: { type: 'checkbox' } } })) as typeof fetch;
+  assert.deepEqual(await internalTestSubscribers(env, fetcher), ['first@example.org']);
+  assert.deepEqual(await premiumSubscribers(env, fetcher), ['first@example.org', 'second@example.org']);
+  await assert.rejects(() => internalTestSubscribers(env, (async () => Response.json({ properties: { 高级订阅: { type: 'checkbox' } } })) as typeof fetch), /premium_test_checkbox_missing/);
 });
