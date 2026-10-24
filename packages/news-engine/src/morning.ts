@@ -34,7 +34,7 @@ export async function morningTick(store: Store, now = new Date(), deps = { colle
   let receipt: Row;
   try { receipt = await deps.deliver(store, false, now); } catch (error) {
     const message = error instanceof Error ? error.message : '';
-    if (!message.startsWith('notion_') && message !== 'premium_checkbox_missing') throw error;
+    if (!message.startsWith('notion_') && !['premium_checkbox_missing', 'premium_test_checkbox_missing'].includes(message)) throw error;
     phase(store, 'notion_delivery_blocked', now);
     return { status: 'notion_delivery_blocked', terminal: false };
   }
