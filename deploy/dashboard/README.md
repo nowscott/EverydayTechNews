@@ -24,7 +24,7 @@ record-run.py 用独立的非阻塞锁避免重叠，原业务锁仍保留。开
 
 ## 密码与验证
 
-在安全终端通过标准输入生成新 scrypt 哈希（apps/nas-dashboard/server/password.ts），原子更新 dashboard.env 中 DASHBOARD_PASSWORD_HASH，重新创建容器。重启后旧会话失效。登录会话180天、HttpOnly、SameSite=Strict；每IP15分钟最多8次失败，全局最多50次失败。当前为局域网HTTP；如接入HTTPS代理，需配置 DASHBOARD_SECURE_COOKIE=true 和正确的同源主机协议，不能直接开放公网。
+在安全终端通过标准输入生成新 scrypt 哈希（apps/nas-dashboard/server/password.ts），原子更新 dashboard.env 中 DASHBOARD_PASSWORD_HASH，重新创建容器。重启后旧会话失效。登录会话180天，令牌哈希保存在独立auth目录、HttpOnly、SameSite=Strict；每IP15分钟最多8次失败，全局最多50次失败。当前为局域网HTTP；如接入HTTPS代理，需配置 DASHBOARD_SECURE_COOKIE=true 和正确的同源主机协议，不能直接开放公网。
 
 验证桌面和手机宽度、筛选/分页/详情、脱敏与登录；核对真实数据库数量、费用和发送状态。只读隔离验证应在无业务写入的短窗口内，对数据库、WAL、durable/state和发送文件做前后哈希，查询调用数和账本行数。观察到并行业务任务时，应明确区分自然调度写入，不能归因于看板，也不能声称哈希不变。
 
@@ -38,7 +38,7 @@ record-run.py 用独立的非阻塞锁避免重叠，原业务锁仍保留。开
 回滚到v1.0时先停止body-collector，再恢复备份的compose.yaml与镜像配置；保留bodies目录和既有业务状态。新抓取的正文只供本地阅读，不进入旧业务的选题、评分、发信或归档发布流程。
 
 
-## Token 与费用（v1.3.0）
+## Token 与费用（v1.4.0）
 
 独立页面仅统计高级版，默认今日，支持近7天、本月及最多31天自定义区间。输入/输出只累加账本已知数值，缓存命中包含在输入中；缺失、损坏或无效用量显示未知。缓存命中率仅使用输入与缓存数据均有效的调用。费用使用历史cost，不按当前价格重算；cost未知时单独累计reserved，估算不代表账单实付。
 
