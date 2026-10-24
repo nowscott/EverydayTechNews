@@ -438,3 +438,25 @@ test('legacy human-review drafts migrate durably to automatic review without app
     assert.equal(store.one('SELECT COUNT(*) n FROM calls')!.n, 0);
   } finally { close(); }
 });
+
+test('Notion audience uses private independent receipts and never repeats uncertain SMTP', async () => {
+  const { store, root, close } = setup(); const saved = { ...process.env };
+  Object.assign(process.env, { SENDING_ACCOUNT: 'sender@example.org', SENDING_PASSWORD: 'test', SERVER: 'smtp.example.org' });
+  const sent: string[] = []; const second = 'second@example.org';
+  try {
+    const issue = { id: 'sample-audience-unit', kind: 'diagnostic', collection_cutoff: stamp(now()), generation_cutoff: permit.expires_at, articles: [], rejected: [], source_health: null };
+    freezeIssue(store, issue, []);
+    const deps = { now, subscribers: async () => [RECIPIENT, second, second], transport: {
+      sendMail: async (m: Row) => { sent.push(m.to); assert.deepEqual(m.envelope.to, [m.to]); assert.equal(m.cc, undefined); assert.equal(m.bcc, undefined);
+        if (m.to === second) throw { command: 'DATA' }; return { accepted: [m.to] }; }, close() {} } };
+    const first = await sendOnce(store, issue.id, deps);
+    assert.equal(first.status, 'partial_delivery');
+    assert.deepEqual(first.deliveries.map((r: Row) => r.status), ['smtp_accepted', 'unknown_do_not_retry']);
+    const again = await sendOnce(store, issue.id, deps);
+    assert.ok(again.deliveries.every((r: Row) => r.reused)); assert.deepEqual(sent, [RECIPIENT, second]);
+    await assert.rejects(() => sendOnce(store, issue.id, { ...deps, subscribers: async () => { throw Error('notion_http_503'); } }), /notion_http_503/);
+    assert.deepEqual(sent, [RECIPIENT, second]);
+    await sendOnce(store, issue.id, { ...deps, subscribers: async () => [RECIPIENT, 'third@example.org'] });
+    assert.deepEqual(sent, [RECIPIENT, second, 'third@example.org']);
+  } finally { process.env = saved; close(); }
+});

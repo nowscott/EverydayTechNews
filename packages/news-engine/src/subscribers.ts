@@ -1,10 +1,11 @@
 import { RECIPIENT, type Row } from './core.ts';
 import { notionRequest, dataSource } from '../../news-common/src/notion.ts';
 export { notionRequest, dataSource } from '../../news-common/src/notion.ts';
-export async function premiumSubscribers(env: Row = process.env, fetcher: typeof fetch = fetch): Promise<string[]> {
+export async function premiumSubscribers(env: Row = process.env, fetcher: typeof fetch = fetch, internalTest = false): Promise<string[]> {
   const id = await dataSource(env, fetcher);
   const schema = await notionRequest('/data_sources/' + id, env, fetcher);
   if (schema.properties?.['高级订阅']?.type !== 'checkbox') throw new Error('premium_checkbox_missing');
+  if (internalTest && schema.properties?.['高级内测']?.type !== 'checkbox') throw new Error('premium_test_checkbox_missing');
   const emails = new Set<string>(); const cursors = new Set<string>(); let cursor: string | undefined;
   do {
     const page = await notionRequest('/data_sources/' + id + '/query', env, fetcher, { method: 'POST',
@@ -14,7 +15,7 @@ export async function premiumSubscribers(env: Row = process.env, fetcher: typeof
       const props = record.properties ?? {}; const status = props['状态'] ?? props.Status;
       const email = String(props.Email?.email ?? '').trim().toLowerCase();
       if (!record.archived && !record.in_trash && (status?.status?.name ?? status?.select?.name) === '正常'
-        && props['高级订阅']?.checkbox === true && /^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(email)) emails.add(email);
+        && props['高级订阅']?.checkbox === true && (!internalTest || props['高级内测']?.checkbox === true) && /^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(email)) emails.add(email);
     }
     if (!page.has_more) break;
     cursor = page.next_cursor;
@@ -25,4 +26,8 @@ export async function premiumSubscribers(env: Row = process.env, fetcher: typeof
 }
 export async function authorizedTestRecipient(env: Row = process.env, fetcher: typeof fetch = fetch): Promise<boolean> {
   return (await premiumSubscribers(env, fetcher)).includes(RECIPIENT);
+}
+
+export async function internalTestSubscribers(env: Row = process.env, fetcher: typeof fetch = fetch): Promise<string[]> {
+  return premiumSubscribers(env, fetcher, true);
 }

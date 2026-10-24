@@ -1,5 +1,11 @@
 # 更新日志
 
+## [news-engine-v0.6.2] - 2026-10-24
+
+- 高级版内测收件人统一读取 Notion：状态正常且同时勾选高级订阅、高级内测；正式高级订阅继续使用原高级订阅资格。
+- 各收件人独立邮件及持久化发送记录，部分失败、未知 SMTP 结果和重启不会重发给已处理邮箱；Notion 不可用时停止发送。
+- 异常运维通知仍发给原管理员，测试标签、AI验收、预算和正式群发关闭保持原有配置。
+
 本文件记录 EverydayTechNews 的重要版本变更。
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
