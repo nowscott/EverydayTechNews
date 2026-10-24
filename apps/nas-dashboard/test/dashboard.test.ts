@@ -8,6 +8,7 @@ import { createHash } from 'node:crypto';
 import { once } from 'node:events';
 import { createApp } from '../server/main.ts';
 import { Dashboard, Reader, day, deliveryState, operation, range } from '../server/data.ts';
+import { isEvidenceFailure } from '../server/evidence.ts';
 import { hashPassword, redact, safeUrl, verifyPassword } from '../server/security.ts';
 function fixture(){
   const root=mkdtempSync(join(tmpdir(),'etn-dashboard-')),ordinary=join(root,'ordinary'),premium=join(root,'premium'),runtime=join(root,'runtime'),today=day(),yesterday=day(new Date(Date.now()-86400000));
@@ -79,5 +80,24 @@ test('original reader reuses saved source text and separate verified cache witho
  const params=new URLSearchParams({from:f.today,to:f.today}),item=f.dashboard.news('premium',params).data.items[0];const before=hashes(f.root);
  const detail=f.dashboard.news('premium',params,item.id);assert.equal(detail.data.original.kind,'article_text');assert.equal(detail.data.original.text,article.text);assert.deepEqual(hashes(f.root),before);
  const ordinary=f.dashboard.news('ordinary',params).data.items[0];assert.equal(f.dashboard.news('ordinary',params,ordinary.id).data.original.state,'pending');
+ }finally{f.close();}
+});
+
+
+test('absent manual receipt confirmation is informational; damaged and required sources still warn',()=>{
+ const f=fixture();try{
+  const now=new Date().toISOString();f.json(f.runtime+'/ordinary/latest.json',{state:'completed',started_at:now,finished_at:now,exit_code:0});
+  const before=hashes(f.root);let overview=f.dashboard.overview()[0];
+  assert.equal(overview.read_state,'ok');assert.equal(overview.data.inbox,'not_verified');
+  const feedback=overview.evidence.find((e:any)=>e.source==='feedback/'+f.today+'.json');
+  assert.equal(feedback.state,'not_recorded');assert.equal(isEvidenceFailure(feedback),false);
+  assert.deepEqual(hashes(f.root),before); // Never fabricate a receipt or mutate the ledger.
+  f.json(f.ordinary+'/feedback/'+f.today+'.json',{status:'received_confirmed',confirmed_by:'user'});
+  overview=f.dashboard.overview()[0];assert.equal(overview.data.inbox,'received_confirmed');assert.equal(overview.read_state,'ok');
+  writeFileSync(f.ordinary+'/feedback/'+f.today+'.json','{bad json');
+  overview=f.dashboard.overview()[0];assert.equal(overview.data.inbox,'not_verified');assert.equal(overview.read_state,'partial');
+  assert(overview.evidence.some((e:any)=>e.source.startsWith('feedback/')&&e.state==='unreadable'&&isEvidenceFailure(e)));
+  const r=new Reader(f.ordinary);r.file('required-file.json');assert.equal(r.evidence[0].state,'missing');assert(isEvidenceFailure(r.evidence[0]));r.close();
+  assert(isEvidenceFailure({state:'busy'}));assert(isEvidenceFailure({state:'unreadable'}));
  }finally{f.close();}
 });

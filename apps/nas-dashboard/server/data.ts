@@ -4,6 +4,7 @@ import { resolve, sep, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { cachedBody, articleUrl } from './body-cache.ts';
+import { isEvidenceFailure } from './evidence.ts';
 import { redact, safeUrl } from './security.ts';
 export type Row = Record<string, any>;
 export type Component = 'ordinary' | 'premium';
@@ -23,13 +24,13 @@ export class Reader {
     if (!real.startsWith(base + sep)) throw Error('unsafe_path');
     return p;
   }
-  file(name: string, kind: 'json' | 'text' = 'json'): any {
+  file(name: string, kind: 'json' | 'text' = 'json', options: { optional?: boolean } = {}): any {
     try {
       const p = this.path(name), s = statSync(p);
       if (!s.isFile() || s.size > 64 * 1024 * 1024) throw Error('invalid_file');
       const value = readFileSync(p, 'utf8'); const data = kind === 'json' ? JSON.parse(value) : value;
       this.evidence.push({ source: name, state: 'ok', source_time: s.mtime.toISOString() }); return data;
-    } catch (e: any) { this.evidence.push({ source: name, state: e.code === 'ENOENT' ? 'missing' : 'unreadable', source_time: null }); return null; }
+    } catch (e: any) { this.evidence.push({ source: name, state: e.code === 'ENOENT' ? (options.optional ? 'not_recorded' : 'missing') : 'unreadable', source_time: null }); return null; }
   }
   list(name: string): string[] {
     try { return readdirSync(this.path(name)).sort(); }
@@ -161,7 +162,7 @@ export class Dashboard {
   read(component: Component, action: (r: Reader) => any) {
     const r = new Reader(this.config[component]);
     try {
-      const data = action(r), failures = r.evidence.filter(v => v.state !== 'ok');
+      const data = action(r), failures = r.evidence.filter(isEvidenceFailure);
       return redact({ component, read_at: new Date().toISOString(), read_state: failures.length ? 'partial' : 'ok', evidence: r.evidence, data });
     } finally { r.close(); }
   }
@@ -176,7 +177,7 @@ export class Dashboard {
       try { run = operation(runtime.file(component+'/latest.json'),now,component); } finally { r.evidence.push(...runtime.evidence.map(e=>({...e,source:'runtime/'+e.source}))); runtime.close(); }
       const deploymentPath = this.config[component === 'ordinary' ? 'ordinaryDeployment' : 'premiumDeployment']; let version = report?.runtime?.version ?? null;
       if (deploymentPath) { const dep = new Reader(deploymentPath); try { version = dep.file('deployment.json')?.active?.tag ?? version; r.evidence.push(...dep.evidence.map(e=>({...e,source:'deployment/'+e.source}))); } finally { dep.close(); } }
-      const feedback = component === 'ordinary' ? r.file('feedback/'+date+'.json') : null;
+      const feedback = component === 'ordinary' ? r.file('feedback/'+date+'.json','json',{optional:true}) : null;
       const byStage = Object.fromEntries([...new Set(all.map(v=>v.stage))].map(s => [s,all.filter(v=>v.stage===s).length]));
       const sources = component === 'premium' ? r.file('source-health.json') : report?.collection;
       let delivery = deliveryState(current, component === 'ordinary' ? report?.delivery?.expected : undefined);
@@ -252,7 +253,7 @@ export class Dashboard {
       const records=r.list(component).filter(n=>/^\d.*\.json$/.test(n)).reverse().filter(n=>n.slice(0,10)>=from&&n.slice(0,10)<=to);
       const data=records.slice((page-1)*30,page*30).flatMap(n=>{const v=r.file(component+'/'+n);return v?[v.state==='running' && Date.now()-Date.parse(v.started_at)>=45*60000 ? {...v,state:'unknown'} : v]:[];});
       const business=this.read(component,b=>{const s=b.file('status.json');return {sources:component==='premium'?b.file('source-health.json'):s?.collection,last_error:s?.last_error,report_time:s?.at??b.evidence.find(e=>e.source==='status.json')?.source_time};});
-      return redact({component,read_at:new Date().toISOString(),read_state:r.evidence.some(e=>e.state!=='ok')?'partial':'ok',evidence:r.evidence,data:{items:data,total:records.length,page,page_size:30,business}});
+      return redact({component,read_at:new Date().toISOString(),read_state:r.evidence.some(isEvidenceFailure)?'partial':'ok',evidence:r.evidence,data:{items:data,total:records.length,page,page_size:30,business}});
     } finally {r.close();}
   }
 }
