@@ -76,3 +76,23 @@ test('today diagnostic edition raises an explicit alert even if SMTP accepted; a
   entry=f.dashboard.overview().find(e=>e.component==='premium')!;assert(!entry.data.alerts.some((s:string)=>s.includes('诊断刊')));
  }finally{f.close();}
 });
+
+test('legacy manual revisions without frozen_at consistently replace an older diagnostic across home, alerts and list',()=>{
+ const f=fixture();try{
+  const diagnostic={...f.issue,kind:'diagnostic',frozen_at:f.date+'T06:15:00+08:00'};
+  f.p.prepare('UPDATE issues SET data=?').run(JSON.stringify(diagnostic));
+  const {frozen_at,...legacy}=f.issue;
+  const base='sample-ts-makeup-'+f.date;
+  for(const [id,kind] of [[base,'diagnostic'],[base+'-r-092258','diagnostic'],[base+'-r-093830','newsletter']]){
+   f.p.prepare('INSERT INTO issues VALUES(?,?)').run(id,JSON.stringify({...legacy,id,kind,created_at:f.date+'T01:20:56Z',collection_cutoff:f.date+'T09:19:14+08:00'}));
+  }
+  const id=base+'-r-093830';
+  assert.equal(f.dashboard.home('premium').data.edition.id,id);
+  assert(!f.dashboard.overview().find(e=>e.component==='premium')!.data.alerts.some((s:string)=>s.includes('诊断刊')));
+  assert.equal(f.dashboard.issues('premium',new URLSearchParams({from:f.date,to:f.date})).data.items[0].id,id);
+  const newer={...diagnostic,id:'test-newer',frozen_at:f.date+'T10:00:00+08:00'};
+  f.p.prepare('INSERT INTO issues VALUES(?,?)').run(newer.id,JSON.stringify(newer));
+  assert.equal(f.dashboard.home('premium').data.edition.id,newer.id);
+  assert(f.dashboard.overview().find(e=>e.component==='premium')!.data.alerts.some((s:string)=>s.includes('诊断刊')));
+ }finally{f.close();}
+});

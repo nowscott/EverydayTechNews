@@ -86,6 +86,18 @@ function issues(r: Reader, component: Component): Row[] {
     const v = parse(row.data); return { id: row.id, date: row.day ?? dateOf(v.collection_cutoff ?? v.frozen_at), mode: v.mode, kind: v.kind ?? 'newsletter', frozen_at: v.frozen_at, count: (v.items ?? v.articles ?? []).length, data: v };
   });
 }
+// Older manual editions have created_at but no frozen_at. Compare instants,
+// then revision IDs when historical revisions retained the same timestamps.
+function newestIssue(a: Row, b: Row): number {
+  const time = (v: Row) => {
+    for (const value of [v.data.frozen_at, v.data.created_at, v.data.collection_cutoff, v.date && v.date+'T00:00:00+08:00']) {
+      const parsed = typeof value === 'string' ? Date.parse(value) : NaN;
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return 0;
+  };
+  return time(b)-time(a) || String(b.id).localeCompare(String(a.id));
+}
 function receipts(r: Reader, component: Component): Row[] {
   if (component === 'ordinary') return r.query('SELECT id,issue,email,status,attempts,data FROM deliveries').map(row => {
     const v = parse(row.data); return { id: row.id, issue: row.issue, recipient: row.email, status: row.status, attempts: row.attempts, started_at: v.first_started_at ?? v.started_at, accepted_at: v.accepted_at, reason: v.reason };
@@ -216,7 +228,7 @@ export class Dashboard {
       const due = now >= new Date(date+'T09:00:00+08:00');
       const enabled = config && (component === 'ordinary' ? config.mode !== 'paused' && date >= (config.mode === 'production' ? config.first_production_date : config.shadow_started_on) : config.enabled && config.delivery_enabled && (!config.expires_at || now < new Date(config.expires_at)));
       const alerts: string[] = [];
-      const latestToday=[...todayIssues].sort((a,b)=>String(b.frozen_at??'').localeCompare(String(a.frozen_at??'')))[0];
+      const latestToday=[...todayIssues].sort(newestIssue)[0];
       if(latestToday?.kind==='diagnostic')alerts.push('今日生成的是诊断刊，未形成新闻早报；请查看期刊说明与处理记录');
       if (['unknown','overdue','failed'].includes(run.state)) alerts.push(run.reason);
       if (due && enabled && delivery !== 'smtp_accepted') alerts.push('已过当日投递窗口，未见完整的服务器接收记录');
@@ -274,7 +286,7 @@ export class Dashboard {
   issues(component: Component, params: URLSearchParams, id?: string) {
     const {from,to,page}=range(params);
     return this.read(component,r=>{
-      const all=issues(r,component).filter(v=>v.date>=from&&v.date<=to).sort((a,b)=>String(b.frozen_at??b.date??'').localeCompare(String(a.frozen_at??a.date??''))), deliveries=receipts(r,component);
+      const all=issues(r,component).filter(v=>v.date>=from&&v.date<=to).sort(newestIssue), deliveries=receipts(r,component);
       const rows: Row[]=all.map(({data,...v})=>({...v,delivery:deliveryState(deliveries.filter(d=>d.issue===v.id)),delivery_count:deliveries.filter(d=>d.issue===v.id&&d.status==='smtp_accepted').length}));
       if (!id) return {items:rows.slice((page-1)*30,page*30),total:rows.length,page,page_size:30};
       const found=all.find(v=>v.id===id);if(!found)throw Error('not_found');
@@ -286,7 +298,7 @@ export class Dashboard {
   home(component: Component, now=new Date()) {
     const date=day(now);
     return this.read(component,r=>{
-      const latest=issues(r,component).sort((a,b)=>String(b.frozen_at??b.date??'').localeCompare(String(a.frozen_at??a.date??'')))[0];
+      const latest=issues(r,component).sort(newestIssue)[0];
       const all=news(r,component,date,date);all.sort((a,b)=>String(b.fetched_at??b.date).localeCompare(String(a.fetched_at??a.date)));
       let edition=null,highlights:Row[]=[];
       if(latest){const issue=parse(r.query('SELECT data FROM issues WHERE id=?',latest.id)[0]?.data);if(issue){const frozen=frozenRows(r,component,issue);highlights=latest.kind==='diagnostic'?[]:frozen.slice(0,5).map(({rewrite,...v})=>v);edition={id:latest.id,date:latest.date,frozen_at:latest.frozen_at,kind:latest.kind,mode:latest.mode,count:latest.count,source_count:new Set(frozen.map(v=>v.source)).size,delivery:deliveryState(receipts(r,component).filter(v=>v.issue===latest.id)),is_today:latest.date===date};}}
