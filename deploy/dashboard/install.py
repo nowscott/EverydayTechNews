@@ -74,7 +74,7 @@ def install(args):
     if latest != cron:
         raise SystemExit('crontab changed during installation; dashboard running, observer not installed; review current crontab')
     run(['crontab','-'], input=patched)
-    observer.atomic(root/'installation.json',{'version':'1.4.1','installed_at':dt.datetime.now(dt.timezone.utc).isoformat(),'image':args.image,'url':f'http://{args.bind}:{args.port}','source_commit':args.source_commit})
+    observer.atomic(root/'installation.json',{'version':'1.4.2','installed_at':dt.datetime.now(dt.timezone.utc).isoformat(),'image':args.image,'url':f'http://{args.bind}:{args.port}','source_commit':args.source_commit})
     print(json.dumps({'url':f'http://{args.bind}:{args.port}','password_file':str(root/'initial-password.txt'),'cron_backup':str(root/'crontab-before.txt')}))
 
 

@@ -216,6 +216,8 @@ export class Dashboard {
       const due = now >= new Date(date+'T09:00:00+08:00');
       const enabled = config && (component === 'ordinary' ? config.mode !== 'paused' && date >= (config.mode === 'production' ? config.first_production_date : config.shadow_started_on) : config.enabled && config.delivery_enabled && (!config.expires_at || now < new Date(config.expires_at)));
       const alerts: string[] = [];
+      const latestToday=[...todayIssues].sort((a,b)=>String(b.frozen_at??'').localeCompare(String(a.frozen_at??'')))[0];
+      if(latestToday?.kind==='diagnostic')alerts.push('今日生成的是诊断刊，未形成新闻早报；请查看期刊说明与处理记录');
       if (['unknown','overdue','failed'].includes(run.state)) alerts.push(run.reason);
       if (due && enabled && delivery !== 'smtp_accepted') alerts.push('已过当日投递窗口，未见完整的服务器接收记录');
       if (delivery === 'unknown') alerts.push('存在发送结果未知记录，不应自动重发');

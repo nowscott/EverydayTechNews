@@ -68,3 +68,11 @@ test('home, original features and isolated HTML routes require auth and use an i
  assert.equal((await fetch(base+'/api/issues/'+f.id+'/preview',{method:'POST',headers})).status,405);
  }finally{await new Promise<void>(r=>server.close(()=>r()));f.close();}
 });
+test('today diagnostic edition raises an explicit alert even if SMTP accepted; a newer newsletter revision clears that diagnostic alert',()=>{
+ const f=fixture();try{
+  const diagnostic={...f.issue,kind:'diagnostic',frozen_at:new Date(Date.now()-1000).toISOString()};f.p.prepare('UPDATE issues SET data=?').run(JSON.stringify(diagnostic));
+  let entry=f.dashboard.overview().find(e=>e.component==='premium')!;assert(entry.data.alerts.some((s:string)=>s.includes('诊断刊')));
+  const revised={...f.issue,id:f.id+'-revision',kind:'newsletter',frozen_at:new Date().toISOString()};f.p.prepare('INSERT INTO issues VALUES(?,?)').run(revised.id,JSON.stringify(revised));
+  entry=f.dashboard.overview().find(e=>e.component==='premium')!;assert(!entry.data.alerts.some((s:string)=>s.includes('诊断刊')));
+ }finally{f.close();}
+});
