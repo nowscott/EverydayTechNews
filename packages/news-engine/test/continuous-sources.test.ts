@@ -7,7 +7,7 @@ import {Store} from '../src/store.ts';
 import {gate,cacheKey,paidRequest} from '../src/model.ts';
 import {articleExclusion,publisherKey,publisherMaximum} from '../src/editorial-policy.ts';
 import {parseFeed,supplementRegistered} from '../src/sources.ts';
-import {reportTrial,due} from '../src/pool.ts';
+import {reportTrial,due,enrich} from '../src/pool.ts';
 import {freezeIssue,sendOnce} from '../src/mail.ts';
 function setup(){const root=mkdtempSync(tmpdir()+'/continuous-'),store=new Store(root);const config={schema_version:1,mode:'internal_test',testing_period:'continuous',enabled:true,model_enabled:true,delivery_enabled:true,production_enabled:false,start:'2026-10-19',days:null,expires_at:null,allowed_recipient:RECIPIENT,daily_budget_cny:2};atomic(root+'/trial.json',config);atomic(root+'/test-delivery-config.json',{allowed_recipient:RECIPIENT});return {root,store,config,close(){store.db.close();rmSync(root,{recursive:true,force:true});}};}
 test('continuous tests pass the old deadline, retain strict recipient/budget and finite sample permits',()=>{const {root,store,config,close}=setup();try{
@@ -44,3 +44,43 @@ test('registered short feeds require dated canonical article bodies, reject arbi
  assert.equal(rows[0].content_status,'usable_excerpt');assert.equal(rows[0].original_article_published_at,rows[0].published_at);assert.equal(requests,1);
  const bad:any[]=[{...rows[0],url:'https://evil.example/blog/test',published_time_kind:'rss_article_publication'}];await supplementRegistered(bad,root,(async()=>{throw Error('must not fetch');}) as typeof fetch,'huggingface');assert.equal(bad[0].body_probe_status,'body_url_not_allowlisted');
  }finally{close();}});
+
+test('scheduled enrich uses the configured continuous deadline after the legacy expiry',async t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-10-26T05:30:00+08:00')});
+ const {store,close}=setup();let requests=0;
+ t.mock.method(globalThis,'fetch',(async()=>{requests++;throw Error('unexpected network request');}) as typeof fetch);
+ try{
+  assert.equal(due(store).enrich,true);
+  const outcome=await enrich(store);
+  assert.equal(outcome.status,'processed_or_pending');assert.equal(outcome.calls,0);
+  assert.equal(requests,0);assert.equal(store.all('SELECT * FROM calls').length,0);
+ }finally{close();t.mock.timers.reset();}
+});
+test('scheduled enrich still blocks expired fixed trials, disabled models and window margins',async t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-10-26T05:30:00+08:00')});
+ const {root,store,config,close}=setup();let requests=0;
+ t.mock.method(globalThis,'fetch',(async()=>{requests++;throw Error('unexpected network request');}) as typeof fetch);
+ try{
+  atomic(root+'/trial.json',{...config,testing_period:'fixed_seven_days',days:7,expires_at:'2026-10-26T00:00:00+08:00'});
+  assert.equal((await enrich(store)).status,'trial_or_model_disabled_or_expired');
+  atomic(root+'/trial.json',{...config,model_enabled:false});
+  assert.equal((await enrich(store)).status,'trial_or_model_disabled_or_expired');
+  atomic(root+'/trial.json',config);
+  for(const at of ['2026-10-26T04:59:59+08:00','2026-10-26T06:12:00+08:00','2026-10-26T09:00:00+08:00']){
+   t.mock.timers.setTime(new Date(at).getTime());
+   assert.equal((await enrich(store)).status,'outside_window_or_margin');assert.equal(due(store).enrich,false);
+  }
+  assert.equal(requests,0);assert.equal(store.all('SELECT * FROM calls').length,0);
+ }finally{close();t.mock.timers.reset();}
+});
+test('continuous calls after the legacy expiry still enforce the daily budget before POST',async()=>{
+ const {store,close}=setup();let posts=0;
+ try{
+  const p=policy(),text='公司发布新模型，模型效果尚未经独立验证。'.repeat(20);
+  const a={id:'continuous-budget',url:'https://example.org/budget',title:'AI模型正式发布',source:'mit_ai',source_name:'MIT',published_at:'2026-10-26T04:00:00+08:00',text,content_status:'usable_excerpt',content_fingerprint:digest(text)};
+  const key=cacheKey(a,p);store.run('INSERT INTO jobs(key,article,status) VALUES (?,?,?)',key,pyjson(a),'queued');
+  store.run('INSERT INTO calls(day,job,reserved,status) VALUES (?,?,?,?)','2026-10-26','unknown-existing',2,'reserved');
+  const outcome=await paidRequest(store,key,a,p,undefined,{now:()=>new Date('2026-10-26T05:30:00+08:00'),token:'test',verify:async()=>true,fetcher:(async()=>{posts++;throw Error('unexpected POST');}) as typeof fetch});
+  assert.equal(outcome,'budget_exhausted');assert.equal(posts,0);assert.equal(store.all('SELECT * FROM calls').length,1);
+ }finally{close();}
+});
