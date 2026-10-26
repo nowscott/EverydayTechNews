@@ -114,7 +114,7 @@ export async function collect(store: Store, workers = 4, fetcher: typeof fetch =
 export async function enrich(store: Store) {
   const config = trial(store.root); if (!active(config) || !config.model_enabled) return { status: 'trial_or_model_disabled_or_expired', calls: 0 };
   const p = policy(); p.daily_budget_cny = Math.min(p.daily_budget_cny, config.daily_budget_cny);
-  const blockedByTime = gate(p, new Date(), true);
+  const blockedByTime = gate(p, new Date(), true, undefined, trialDeadline(config));
   if (blockedByTime) return { status: blockedByTime, calls: 0 };
   const deadline = stamp(at(day(), '06:15:00')); // Scheduled requests never use an anytime test permit.
   const [cutoff, floor] = writingWindow(); const [eligible] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER, floor);
