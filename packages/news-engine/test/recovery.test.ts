@@ -461,3 +461,19 @@ test('Notion audience uses private independent receipts and never repeats uncert
     assert.deepEqual(sent, [RECIPIENT, second, 'third@example.org']);
   } finally { process.env = saved; close(); }
 });
+
+test('scheduled writer uses the configured continuous deadline after the legacy expiry, while fixed expiry and window remain enforced',async t=>{
+ const {store,root,close}=setup();
+ try{
+  store.syncGit=true;store.push=()=>{};
+  const clock=new Date('2026-10-26T05:10:00+08:00');t.mock.timers.enable({apis:['Date'],now:clock});
+  const continuous={...JSON.parse(readFileSync(root+'/trial.json','utf8')),testing_period:'continuous',days:null,expires_at:null};atomic(root+'/trial.json',continuous);
+  const fresh:Row={...a,id:'continuous-writer',fetched_at:'2026-10-26T04:50:00+08:00',published_at:'2026-10-26T04:00:00+08:00',original_article_published_at:'2026-10-26T04:00:00+08:00'};
+  store.run('INSERT INTO articles VALUES (?,?,?)',fresh.id,fresh.content_fingerprint,pyjson(fresh));assess(store,clock);
+  let gets=0,posts=0;t.mock.method(globalThis,'fetch',(async(_u:any,options:any)=>{if(options?.method==='POST')posts++;else gets++;return new Response('pricing unavailable',{status:503});}) as typeof fetch);
+  const permitted=await enrich(store);assert.equal(permitted.status,'processed_or_pending');assert.equal(permitted.jobs?.[0]?.status,'official_rules_unconfirmed');assert.equal(gets,1);assert.equal(posts,0);
+  t.mock.timers.setTime(new Date('2026-10-26T06:14:00+08:00').getTime());assert.equal((await enrich(store)).status,'outside_window_or_margin');assert.equal(gets,1);
+  atomic(root+'/trial.json',{...continuous,testing_period:'bounded',days:7,expires_at:EXPIRY});
+  t.mock.timers.setTime(clock.getTime());assert.equal((await enrich(store)).status,'trial_or_model_disabled_or_expired');assert.equal(gets,1);assert.equal(posts,0);
+ }finally{close();t.mock.timers.reset();}
+});
