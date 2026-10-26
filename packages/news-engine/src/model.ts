@@ -147,6 +147,8 @@ export async function paidRequest(store: Store, key: string, a: Row, p: Row, per
   blocked = gate(p, now(), verified, permit, deadline);
   if (!blocked && (day(now()) !== day(clock) || tariff(now()) !== multiplier)) blocked = 'billing_period_changed';
   if (blocked) {
+    const info=JSON.parse(store.one('SELECT data FROM meta WHERE key=?','call_diagnostic:'+callId)!.data);
+    Object.assign(info,{finished_at:stamp(now()),status:'not_sent',error_code:blocked});store.run('UPDATE meta SET data=? WHERE key=?',pyjson(info),'call_diagnostic:'+callId);
     store.run("UPDATE calls SET cost=0,status='not_sent' WHERE id=?", callId); store.run("UPDATE jobs SET status='queued' WHERE key=?", key); store.checkpoint(); return blocked;
   }
   const start = performance.now(); let received = false;

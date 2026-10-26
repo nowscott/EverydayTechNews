@@ -310,6 +310,7 @@ test('publisher capacity blocks additional paid work before pricing or model req
 });
 
 test('pricing preflight failure leaves retry sample unfrozen and makes no paid request', async t => {
+  t.mock.timers.enable({apis:['Date'],now:new Date('2026-10-18T12:00:00+08:00')});
   const { store, close } = setup(); let posts = 0;
   try {
     store.syncGit = true; store.push = () => {};
@@ -324,7 +325,7 @@ test('pricing preflight failure leaves retry sample unfrozen and makes no paid r
     assert.equal(posts, 0);
     assert.equal(existsSync(store.root + '/durable/ts-launch-serif-retry.json'), false);
     assert.equal(existsSync(store.root + '/issues/sample-ts-serif-retry-2026-10-18/edition.json'), false);
-  } finally { close(); }
+  } finally { close();t.mock.timers.reset(); }
 });
 
 test('shared title exclusions stop legacy queued articles before pricing and paid POST', async () => {

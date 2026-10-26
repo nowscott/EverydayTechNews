@@ -51,3 +51,5 @@ HTML经清理后在无allow权限的sandbox iframe中呈现；预览接口使用
 登录使用180天HttpOnly Cookie，服务端仅将随机令牌的哈希保存到看板独立auth目录，刷新和容器重启后保留。主动退出立即撤销会话，修改密码使旧会话失效；浏览器清除Cookie或180天到期后需重新登录。不在localStorage存储密码，不缓存业务API响应。
 
 新闻接口新增processing_stage、score_missing_reason、score_time、selection_reason及独立community_score；详情新增attempts（受控原因、阶段、时间、策略、后续校验恢复、条件式重试说明），不返回原始模型响应。总览新增funnel，新闻阶段按首次抓取／归档日，期刊发送按采集截止日，调用费用按账本日。评分从同ID与内容指纹的已保存评估报告读取；每日期读取最新报告，最多32天；缺失显示未记录，损坏显示读取故障。
+
+高级版引擎保存的release_notes和preprint_abstract在原文区分别标记项目发布说明／作者自述与预印本摘要／论文作者陈述，不作为独立事实验证。看板不为此在浏览请求中访问GitHub或arXiv。

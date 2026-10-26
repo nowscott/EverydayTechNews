@@ -5,6 +5,7 @@ import { dirname } from 'node:path';
 import { SOURCES, DISCOVERY_ONLY_SOURCES, ENCODED_REQUIRED_SOURCES } from './constants.ts';
 import { digest, pyjson, stamp, type Row } from './core.ts';
 import { hnConfig, hnPublisher, extractHnPublisher, extractPublisherArticle } from './hn-publishers.ts';
+import { materialRequest,parseMaterial } from './hn-materials.ts';
 import { titleExclusion } from './editorial-policy.ts';
 import { compareText } from './compat.ts';
 export { SOURCES } from './constants.ts';
@@ -119,8 +120,8 @@ export async function mapLimit<T, U>(items: T[], limit: number, fn: (value: T) =
     for (;;) { const i = cursor++; if (i >= items.length) return; output[i] = await fn(items[i]); }
   })); return output;
 }
-export async function get(url: string, fetcher: typeof fetch = fetch, redirects = true) {
-  const response = await fetcher(url, { signal: AbortSignal.timeout(40000), redirect: redirects ? 'follow' : 'manual', headers: { 'User-Agent': 'EverydayTechNews-internal-research/TS-1.0' } });
+export async function get(url: string, fetcher: typeof fetch = fetch, redirects = true, timeout=40000) {
+  const response = await fetcher(url, { signal: AbortSignal.timeout(Math.max(1,Math.floor(Math.min(40000,timeout)))), redirect: redirects ? 'follow' : 'manual', headers: { 'User-Agent': 'EverydayTechNews-internal-research/TS-1.0' } });
   if (!response.ok) throw Object.assign(new Error('http_error'), { status: response.status });
   const raw = Buffer.from(await response.arrayBuffer());
   if (raw.length > 20_000_000) throw new Error('oversized_source');
@@ -157,25 +158,26 @@ async function supplementHn(rows: Row[], folder: string, fetcher: typeof fetch, 
         body_probe_status: 'original_submission_text', uncertainty: '仅根据Show HN投稿正文，项目作者身份及产品效果未经独立核实；未抓取外链正文或评论。' });
       return false;
     }
-    if (!hnPublisher(a.url)) { a.body_probe_status = 'publisher_not_allowlisted'; return false; }
+    if (!hnPublisher(a.url) && !materialRequest(a.url)) { a.body_probe_status = 'publisher_not_allowlisted'; return false; }
     if (admitted++ >= hnConfig.maximum_body_fetches) { a.body_probe_status = 'body_batch_limit'; return false; }
     return true;
   });
   await mapLimit(selected, 2, async a => {
     try {
       if (performance.now() >= deadline) { a.body_probe_status = 'source_deadline'; return; }
-      const { raw, response } = await get(a.url, fetcher, false);
-      if (response.status !== 200 || !(response.headers.get('content-type') ?? '').includes('text/html')) { a.body_probe_status = 'article_redirect_or_non_html'; return; }
+      const material=materialRequest(a.url);
+      const { raw, response } = await get(material?.fetch_url??a.url, fetcher, false,deadline-performance.now());
+      if (response.status !== 200 || !(response.headers.get('content-type') ?? '').includes(material?.kind==='release_notes'?'application/json':'text/html')) { a.body_probe_status = 'article_redirect_or_non_html'; return; }
       a.body_fetched_at = stamp();
       const path = `${folder}/feeds/hackernews/${digest(raw)}.html`; mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, raw);
       a.body_snapshot = path;
-      const result = extractHnPublisher(raw.toString('utf8'), a); a.body_probe_status = result.body_probe_status;
+      const result = material?parseMaterial(raw.toString('utf8'),material):extractHnPublisher(raw.toString('utf8'), a); a.body_probe_status = result.body_probe_status;
       if (result.body_probe_status !== 'parsed') return;
-      const text = clean(result.raw_article_html); const published = time(result.publication_raw);
-      Object.assign(a, { text, content_fingerprint: digest(text), content_status: complete(text), content_origin: 'hn_linked_publisher_html',
+      const text = result.text??clean(result.raw_article_html); const published = time(result.publication_raw);
+      Object.assign(a, { text, content_fingerprint: digest(text), content_status: complete(text), content_origin: result.content_origin??'hn_linked_publisher_html',material_kind:result.material_kind??'article_text',material_version:result.material_version??null,url:result.canonical_url??a.url,source_name:result.source_name??a.source_name,
         published_raw: result.publication_raw, published_at: published, original_article_published_at: published, published_time_kind: 'linked_article_publication',
         fetched_at: a.body_fetched_at, publisher_host: result.publisher_host,
-        uncertainty: 'HN为发现来源；正文及发表时间取自链接发布方，社区热度不代表事实核实。' });
+        uncertainty: 'HN为发现来源；材料及发表时间取自原发布方。项目发布说明是作者自述，预印本摘要是论文作者陈述，均未经独立验证；社区热度不代表事实核实。' });
     } catch (error) { if (storageError(error)) throw error; a.body_probe_status = 'body_fetch_failed'; a.body_http_status = (error as any).status ?? null; }
   });
 }
