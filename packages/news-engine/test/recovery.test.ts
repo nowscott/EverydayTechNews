@@ -309,6 +309,29 @@ test('publisher capacity blocks additional paid work before pricing or model req
   } finally { close(); t.mock.timers.reset(); }
 });
 
+test('enrich prioritizes current selection over stale queued scores', async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: Date.parse('2026-10-19T05:10:00+08:00') });
+  const { store, p, close } = setup();
+  try {
+    store.syncGit = true; store.push = () => {};
+    const base = { ...a, source:'macrumors', published_at:'2026-10-19T04:00:00+08:00',
+      original_article_published_at:'2026-10-19T04:00:00+08:00', fetched_at:'2026-10-19T04:30:00+08:00' };
+    const launch = { ...base, id:'launch', url:'https://www.macrumors.com/launch',
+      title:'Apple Announces New iPad Mini With OLED Display', content_fingerprint:digest(text+'launch'), ranking:{score:70} };
+    const color = { ...base, id:'color', url:'https://www.macrumors.com/color',
+      title:'New iPad Mini Available in Just Two Colors', content_fingerprint:digest(text+'color'), ranking:{score:99} };
+    for (const item of [launch, color]) {
+      store.run('INSERT INTO articles VALUES (?,?,?)', item.id, item.content_fingerprint, pyjson(item));
+      store.run('INSERT INTO jobs(key,article,status) VALUES (?,?,?)', cacheKey(item,p), pyjson(item), 'queued');
+    }
+    t.mock.method(globalThis, 'fetch', (async () => { throw new Error('pricing unavailable'); }) as typeof fetch);
+    const outcome = await enrich(store);
+    assert.equal(outcome.jobs?.[0]?.job, cacheKey(launch,p));
+    assert.equal(outcome.jobs?.[0]?.status, 'official_rules_unconfirmed');
+    assert.equal(outcome.calls, 0);
+  } finally { close(); t.mock.timers.reset(); }
+});
+
 test('pricing preflight failure leaves retry sample unfrozen and makes no paid request', async t => {
   t.mock.timers.enable({apis:['Date'],now:new Date('2026-10-18T12:00:00+08:00')});
   const { store, close } = setup(); let posts = 0;

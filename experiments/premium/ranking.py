@@ -3,7 +3,7 @@ from collections import Counter
 from datetime import datetime
 import re
 
-VERSION='editorial-6'
+VERSION='editorial-7'
 PRIMARY={'mit_ai','deepmind','google_research','huggingface','nvidia','github','cloudflare','microsoft_foundry','apple','tesla','nasa','apple_developer','nasa_blogs'}
 AI=r'(?<![A-Za-z])ai(?![A-Za-z])|\b(?:llm|agents?|chatgpt|openai|anthropic|claude|copilot|foundry|deepseek|gemini|gpt[- ]?\d|transformer|clef|qwen|llama|mistral|multimodal|embeddings?|diffusion|foundation models?|neural networks?)\b|人工智能|大模型|智能体|生成式|机器学习|模型训练|推理模型'
 CHIPS=r'\b(?:gpu|cpu|nvidia|geforce|dlss|semiconductor|chips?|hbm|cuda|esp32|firmware)\b|芯片|算力|半导体|显卡|存储芯片|量子计算'
@@ -38,7 +38,7 @@ def evaluate(a,cutoff):
         (r'研究|报告|监管|收购|融资|research|study|report|regulat|acqui',16,'研究或行业事件'),
         (r'诉讼|指控|调查|litigation|lawsuit|allegation|investigation',16,'法律或行业风险，仍需保留指控/未证实限定'),
         (r'运营时间|全天候|自动驾驶|robotaxi|\bfsd\b|self.driving|driverless|launch mission|发射任务',16,'运营或核心能力变化'),
-        (r'发布|推出|上线|正式|开源|launch|release|available|introduc|new in|arrive',14,'发布或可用性变化'),
+        (r'发布|推出|上线|正式|开源|launch|release|available|introduc|announc|new in|arrive',14,'发布或可用性变化'),
         (r'测试|预览|计划|传闻|preview|beta|plan|rumou?r',8,'测试或未落定进展'),
     ]:
         if re.search(pattern,title,re.I):impact=max(impact,value);signals.append(reason)
@@ -50,13 +50,14 @@ def evaluate(a,cutoff):
     provenance=8 if a['source'] in PRIMARY else 5
     penalty=0
     if re.search(r'优惠|好价|促销|广告|秒杀|红包|sponsored|deals|giveaway',title,re.I):penalty=45;signals.append('营销选题降权')
-    elif re.search(r'配色|主题壁纸|表盘|抽奖|促销|获奖|award|celebrat',title,re.I):penalty=16;signals.append('装饰/宣传内容降权')
+    elif re.search(r'配色|主题壁纸|表盘|抽奖|促销|获奖|award|celebrat|(?:available|comes?|only).{0,35}colou?rs?|new colou?rs?',title,re.I):penalty=16;signals.append('装饰/宣传内容降权')
     if re.search(r'战地|Gears of War|游戏皮肤|主题壁纸|表盘',title,re.I):penalty+=24;signals.append('非核心AI的游戏/外观更新降权')
     if re.search(r'关注.{0,20}(账号|账户)|follow(?:s|ed|ing)? .{0,30}(?:account|tesla)|banana|香蕉|趣闻',title,re.I):penalty+=24;signals.append('社交关注或趣闻，信息增量低')
     if re.search(r'(?:supercharg|充电站|超充).{0,60}(?:open|启用|开业|投票)|(?:open|启用|开业).{0,60}(?:supercharg|充电站|超充)',title,re.I):penalty+=20;signals.append('局部设施动态降权')
     if re.search(r'预购.{0,20}(?:送达|交付)|(?:delivery|shipping) dates?.{0,20}(?:up|earl)|moving up.{0,30}(?:delivery|shipping)',title,re.I):penalty+=14;signals.append('局部订单时间调整降权')
     if re.search(r'传闻|rumou?r|merger clues|hints?.{0,20}merger',title,re.I):penalty+=10;signals.append('未证实传闻降权')
     if re.search(r'候选版本|候选版|release candidate|\brc\b',title,re.I) and not re.search(r'安全|漏洞|重大|security|vulnerab|breaking',title,re.I):penalty+=12;signals.append('常规候选版本降权')
+    if a['source']=='hackernews' and re.search(r'^Show HN:',title,re.I) and not re.search(r'安全|漏洞|security|vulnerab|CVE-\d|重大',title,re.I):penalty+=8;signals.append('开发者项目投稿适度降权')
     if a.get('content_status')!='usable_excerpt':evidence=0;penalty+=100;signals.append('正文不足，禁止生成')
     score=round(max(0,min(100,relevance+impact+freshness+evidence+provenance+interest_bonus-penalty)),2)
     return dict(version=VERSION,score=score,interests=interests,config=config,breakdown=dict(relevance=relevance,impact=impact,freshness=freshness,evidence_amount=evidence,source_proximity=provenance,interest_bonus=interest_bonus,penalty=-penalty),signals=signals,note='启发式选题分，不是事实正确率；企业自述仍需归因')

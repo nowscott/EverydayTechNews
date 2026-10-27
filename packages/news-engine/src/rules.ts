@@ -1,5 +1,5 @@
 // Patterns and editorial messages ported from ranking.py editorial-6.
-export const VERSION = "editorial-6" as const;
+export const VERSION = "editorial-7" as const;
 export const PRIMARY = [
   "github",
   "mit_ai", "deepmind", "google_research", "huggingface",
@@ -45,7 +45,7 @@ export const IMPACT = [
     "运营或核心能力变化"
   ],
   [
-    "发布|推出|上线|正式|开源|launch|release|available|introduc|new in|arrive",
+    "发布|推出|上线|正式|开源|launch|release|available|introduc|announc|new in|arrive",
     14,
     "发布或可用性变化"
   ],

@@ -13,7 +13,8 @@ const python = process.env.PYTHON ?? (existsSync(`${root}.venv/bin/python`) ? `$
 const config = preferences();
 
 test('all synthetic reference outputs match Python, including Unicode and ties', () => {
-  const cases = [...parityCases(), ...['Parser Combinators', 'Show HN: Run ESP32 firmware in the browser', 'A new Rust compiler'].map(title => ({ articles: [article({title})], cutoff }))];
+  const cases = [...parityCases(), ...['Parser Combinators', 'Show HN: Run ESP32 firmware in the browser', 'A new Rust compiler'].map(title => ({ articles: [article({title})], cutoff })),
+    ...['Apple Announces New iPad Mini With OLED Display', 'New iPad Mini Available in Just Two Colors', 'Show HN: A REPL for agents', 'Show HN: Security vulnerability scanner'].map(title => ({ articles:[article({title,source:'hackernews'})], cutoff }))];
   const result = spawnSync(python, [fileURLToPath(new URL('../tools/python_reference.py', import.meta.url))], {
     input: JSON.stringify(cases), encoding: 'utf8', maxBuffer: 30 * 1024 * 1024,
   });
@@ -25,6 +26,26 @@ test('all synthetic reference outputs match Python, including Unicode and ties',
 test('interest bonus is a maximum, not a sum; all five interests detected', () => {
   const ranking = evaluate(article({ title: 'AI Apple NVIDIA Tesla SpaceX 发布' }), cutoff, config);
   assert.equal(ranking.breakdown.interest_bonus, 12); assert.equal(ranking.interests.length, 5);
+});
+
+test('ordinary Show HN projects are deprioritized without penalizing security submissions', () => {
+  const base = article({ source: 'hackernews', title: 'Show HN: A Playwright REPL for agents' });
+  const normal = evaluate(base, cutoff, config);
+  const otherSource = evaluate({ ...base, source: 'ithome' }, cutoff, config);
+  assert.equal(normal.score, otherSource.score - 8);
+  assert.ok(normal.signals.includes('开发者项目投稿适度降权'));
+  const security = evaluate({ ...base, title: 'Show HN: Security vulnerability scanner' }, cutoff, config);
+  assert.ok(!security.signals.includes('开发者项目投稿适度降权'));
+});
+
+test('announced product launch ranks above a standalone color update', () => {
+  const launch = article({source:'macrumors', title:'Apple Announces New iPad Mini With 8.5-Inch OLED Display, A20 Pro Chip, and More'});
+  const color = {...launch, title:'New iPad Mini Available in Just Two Colors'};
+  const substantive = evaluate(launch, cutoff, config);
+  const minor = evaluate(color, cutoff, config);
+  assert.equal(substantive.breakdown.impact, 14);
+  assert.equal(minor.breakdown.penalty, -16);
+  assert.ok(substantive.score > minor.score);
 });
 
 test('score thresholds, sample mode and capacity reasons are preserved', () => {
