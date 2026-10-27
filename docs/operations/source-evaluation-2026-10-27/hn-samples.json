@@ -1,0 +1,330 @@
+{
+  "arstechnica.com": [
+    {
+      "id": "c258c08c57694f4ba8443446dae639e39a1a60ec2bf9064ff736d28e81ea1f76",
+      "title": "US Rep proposes bill to give video game buyers \"ownership,\" not \"a license\"",
+      "url": "https://arstechnica.com/gaming/2026/10/us-rep-proposes-bill-to-give-video-game-buyers-ownership-not-a-license",
+      "fetched_at": "2026-10-20T00:07:10.594000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "b88603a21342fec7d042586438f1ee9723ae0408eafa61bd9c821adbce39017b",
+      "title": "A Chinese rocket deorbited over Minnesota and left this in a farmer's cornfield",
+      "url": "https://arstechnica.com/space/2026/10/a-chinese-rocket-deorbited-over-minnesota-and-left-this-in-a-farmers-cornfield",
+      "fetched_at": "2026-10-20T00:07:10.594000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "878d2ce031b4ce41627ac1f71d532352ab5f21ed16e207ddf8b290930e635991",
+      "title": "Stratospheric airship flew from US to Japan to test sky cell tower concept",
+      "url": "https://arstechnica.com/gadgets/2026/10/trans-pacific-journey-tested-stratospheric-cell-tower-concept-in-japan",
+      "fetched_at": "2026-10-20T04:07:06.086000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "4d844e6b99b88fca9d257e668e645505cb485298182f3a8986bb64c3ee099c2a",
+      "title": "Startup taps underwater volcano as energy source in \"proof point\" test",
+      "url": "https://arstechnica.com/science/2026/10/startup-taps-underwater-volcano-as-energy-source-in-proof-point-test",
+      "fetched_at": "2026-10-20T04:15:18.206000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "9e8866c8ff715d7534371c73575e1dd8ad28fd93acd1d1775b4a77a7a083eb83",
+      "title": "Accused OpenAI spy had folder called \"Saudi Gov Docs,\" FBI says",
+      "url": "https://arstechnica.com/tech-policy/2026/10/accused-openai-spy-had-folder-called-saudi-gov-docs-fbi-says",
+      "fetched_at": "2026-10-20T09:07:05.516000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "d8c6268b596590b19c3337bf7e5693dcdcd558c52452cc64792a180fdc376c60",
+      "title": "Japan launches mission to bring home a piece of the Martian moon Phobos",
+      "url": "https://arstechnica.com/space/2026/10/japan-launches-mission-to-bring-home-a-piece-of-the-martian-moon-phobos",
+      "fetched_at": "2026-10-20T18:37:08.219000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "7a14963ad9b0f01e5adcb8570cfef8222d13492d32fba2a44d4fd8199a9e6b30",
+      "title": "Pennsylvania issues alert on congenital measles–something unseen for decades",
+      "url": "https://arstechnica.com/health/2026/10/pennsylvania-issues-alert-on-congenital-measles-something-us-hasnt-seen-for-decades",
+      "fetched_at": "2026-10-20T20:37:07.695000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "ac5d720a43c3dde3d9be50fec03addfbd40601bd701fb6ad8fc045732c3f98aa",
+      "title": "Meta Muse exposes users' personal and business secrets in shared conversations",
+      "url": "https://arstechnica.com/security/2026/10/meta-muse-exposes-users-personal-and-business-secrets-when-they-share-conversations",
+      "fetched_at": "2026-10-20T22:07:09.988000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "9f5397e79b89497763ad68b097133e1e1e2bd9008cb265984510a5211acbfe3a",
+      "title": "Accused OpenAI spy had folder called \"Saudi Gov Docs,\" FBI says",
+      "url": "https://arstechnica.com/tech-policy/2026/10/accused-openai-spy-had-folder-called-saudi-gov-docs-fbi-says",
+      "fetched_at": "2026-10-20T23:37:08.494000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "8d8b910c5531b0aa66e988bbbd28c23f0b98d4a69b2f93ff92738271423ec1d1",
+      "title": "Patch your Plex media server before someone hacks it",
+      "url": "https://arstechnica.com/security/2026/10/recently-fixed-plex-media-vulnerabilities-are-being-exploited-to-install-malware",
+      "fetched_at": "2026-10-21T01:07:07.587000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    }
+  ],
+  "github.com": [
+    {
+      "id": "4b517d044be253426f729330266274e8fcc35455675e8e06d068e1aa6ca030e9",
+      "title": "Contextbridge-AI",
+      "url": "https://github.com/mujtabamisri/contextbridge-ai",
+      "fetched_at": "2026-10-20T00:07:10.594000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "ce6d41b64e95fb8d1ef958470a27eaaca40384bc686d7e89a234a7c4776d91de",
+      "title": "Boxer – A lightweight 2D game library in C (WIP)",
+      "url": "https://github.com/n67094/boxer",
+      "fetched_at": "2026-10-20T00:07:10.594000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "6301b7e7c99fa426e59ce6c718db736804d5d1b9a09459ddcabdd48e624ec030",
+      "title": "Tinycast",
+      "url": "https://github.com/abue-ammar/tinycast",
+      "fetched_at": "2026-10-20T00:07:10.594000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "54626197c8d84bf4d6590c0c109cc6cb898a9613fe1113c1d60c8d35d09d6484",
+      "title": "Show HN: Kompressor – deterministic prompt compression for coding agents",
+      "url": "https://github.com/hystax/optscale-kompressor",
+      "fetched_at": "2026-10-20T00:07:10.594000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "8dcb94a43ec63cdbb91b96410cbd532c5bcd97436e019e6ea425f05b0ba14740",
+      "title": "Migrations turn code itself into state",
+      "url": "https://github.com/powertime-org/pgdeclare",
+      "fetched_at": "2026-10-20T00:37:04.804000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "bfabce9e9af17a46a10ea7b16fafe75e9226bdfe3473eac07dd1375ef88134e7",
+      "title": "StreetComplete v64.0 with iOS Support Released",
+      "url": "https://github.com/streetcomplete/StreetComplete/releases/tag/v64.0",
+      "fetched_at": "2026-10-20T00:37:04.804000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "6a06fb4d474f619abf38d82d06bc392919ef92dbc95396af332f0f17c36a5eed",
+      "title": "Show HN: Earshot – talk to Claude Code with AirPods, nod to send",
+      "url": "https://github.com/epavanello/earshot",
+      "fetched_at": "2026-10-20T01:07:05.300000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "e51d864e3d9789a699f04237d200f461a37c545e40c92bd8bea5ded6d03961ca",
+      "title": "Curl proposes \"Every vulnerability report < HIGH is immediately made public\"",
+      "url": "https://github.com/curl/curl/discussions/23458",
+      "fetched_at": "2026-10-20T01:07:05.300000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "1545d1e7a92e27b5263d92db313ac5c34a7cd7cd6e92aba99cfb4d279d6426f7",
+      "title": "Android apps running native on macOS",
+      "url": "https://github.com/kksimp/Mac.apk",
+      "fetched_at": "2026-10-20T01:07:05.300000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "44f8d0af16d2226ab6551ded619c2d32732a3dbd696b42176ed1778e26a653fd",
+      "title": "A train simulator game for console hackers",
+      "url": "https://github.com/antoniovazquezaraujo/LeTrain",
+      "fetched_at": "2026-10-20T01:07:05.300000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    }
+  ],
+  "www.bbc.com": [
+    {
+      "id": "62eb73ad56287c1b6c5d947b1eae710046c750653e40311586c806cdfeaa27d2",
+      "title": "ADHD, autism and the sensory challenges hidden in everyday clothes",
+      "url": "https://www.bbc.com/news/articles/cmkge3q5p2gqo",
+      "fetched_at": "2026-10-20T00:37:04.804000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "05b2a761c2eef66da23343abe3c510a7b527e37fc1327305551ccb31cfa1c5c1",
+      "title": "Can you cheat on someone with a video game?",
+      "url": "https://www.bbc.com/news/articles/ckn9wrr75dyeo",
+      "fetched_at": "2026-10-20T03:37:05.802000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "51c6d42c501c7840d78425d6bee27d1f21d9fa6d39b564a5fcef2d7ca696b68f",
+      "title": "Inside the shadowy world of anti-Putin sabotage from within Russia",
+      "url": "https://www.bbc.com/news/articles/c6pwgzkj8zzgo",
+      "fetched_at": "2026-10-20T04:30:29.669000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "abc6d29060058746c3dc61bc66aec2bb5ee9cf198bf5ea8ea989eb522e95fee9",
+      "title": "US bans DeepSeek AI from government use as tech tension with China continues",
+      "url": "https://www.bbc.com/news/articles/cjkgeq0k1wevo",
+      "fetched_at": "2026-10-20T09:07:05.516000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "80c622d7ef36124e81ecfc07c80f547e307d83541a734bd75c0fe22332de869b",
+      "title": "Tiny possum and glider thought extinct for 6000 years found in remote West Papua",
+      "url": "https://www.bbc.com/news/articles/cp814l80pw2o",
+      "fetched_at": "2026-10-20T14:37:06.810000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "9482752e92df5dde2c2ddb9f3cd5b8abae410f83753c4abd8ff341c73a52a8e4",
+      "title": "Albertans have rejected referendum on independence",
+      "url": "https://www.bbc.com/news/live/cqy7ln0383pnt",
+      "fetched_at": "2026-10-20T15:37:06.454000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "11d35245c9975259fd01ae619d38ed9c2dca7a1291e30e659c1c0c7b8eebb451",
+      "title": "Revolut down as users report app not working",
+      "url": "https://www.bbc.com/news/articles/cxdd8mm6qy4mo",
+      "fetched_at": "2026-10-20T18:07:08.206000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "5148f53e921dda69046179a194eb873cc68681471f19ad86ef30ca9da1aea1fe",
+      "title": "More than 4 in 10 UK teenagers want more work experience opportunities at school",
+      "url": "https://www.bbc.com/news/articles/c6m2dmdxgz2xo",
+      "fetched_at": "2026-10-20T20:37:07.695000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "6d017ae708f94472290288f9c4621953ea04f03ba1f4e4e72734874eb1b4c5b1",
+      "title": "Zelensky prepares for Oslo talk with US envoys as Rubio denies withholding Intel",
+      "url": "https://www.bbc.com/news/articles/ck9qzn193lrlo",
+      "fetched_at": "2026-10-20T20:37:07.695000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "dea59bbd9e3a5c8504f0c1044a6aef7f6eba0acd5b0f801a0d5ea4bc60d9f1c1",
+      "title": "UK to deploy jets to defend Saudi Arabia from Houthi attacks",
+      "url": "https://www.bbc.com/news/articles/ckr5yqe1r1llo",
+      "fetched_at": "2026-10-20T20:37:07.695000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    }
+  ],
+  "www.reuters.com": [
+    {
+      "id": "f87e8b02f77e8836f93c7433b73a461edc43d135cf72da4455cd0386720a1d0a",
+      "title": "Chinese export boom has legs – and wings",
+      "url": "https://www.reuters.com/world/china/this-chinese-export-boom-really-has-legs-wings-2026-10-15",
+      "fetched_at": "2026-10-20T01:07:05.300000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "a37d8e857f5188c6f42633090cb2ee37ba58ad906a2db552f16c52625c475200",
+      "title": "Europe EV sales rose 70.3% in September, 32.6% of market share",
+      "url": "https://www.reuters.com/business/europe-ev-sales-rose-70-september-almost-30-market-share-2026-10-19",
+      "fetched_at": "2026-10-20T01:37:05.777000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "c96f5bef9db30172a27b0d7f46e85f2a4f074b539487a5e455c0958353d7b6cb",
+      "title": "Top cases on the US Supreme Court's docket",
+      "url": "https://www.reuters.com/world/us/top-cases-us-supreme-courts-docket-2026-10-19",
+      "fetched_at": "2026-10-20T01:37:05.777000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "2a546a9b514b70f5143c82a63e350f9196accbd7d445869794c7d344958990c8",
+      "title": "German industry has lost nearly half a million jobs since 2019, Ifo says",
+      "url": "https://www.reuters.com/business/german-industry-has-lost-nearly-half-million-jobs-since-2019-ifo-says-2026-10-19",
+      "fetched_at": "2026-10-20T02:07:05.634000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "4353e6415b434aa069b9b7486add0ed65292b81260edaccbdd50cfa8694ac24b",
+      "title": "Supreme Court rejects music labels' challenge to copyright termination",
+      "url": "https://www.reuters.com/legal/government/us-supreme-court-rejects-music-labels-challenge-copyright-termination-ruling-2026-10-19",
+      "fetched_at": "2026-10-20T02:37:05.401000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "f667e04c0eb53a9c39e35187cb058b44f36c0edd2945c3e78c0c7daeca23d524",
+      "title": "Ex-OpenAI employee accused of planting device appears to have Saudi backing",
+      "url": "https://www.reuters.com/technology/ex-openai-employee-accused-planting-device-appears-have-saudi-backing-court-2026-10-19",
+      "fetched_at": "2026-10-20T04:45:11.035000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "b41f13aa21009575ceb484f39da025f6ec9a9ea993c64d9b34d2527220cb322d",
+      "title": "Investors temper Anthropic IPO valuation expectations over growth slowdown",
+      "url": "https://www.reuters.com/business/finance/investors-temper-anthropic-ipo-valuation-expectations-over-revenue-growth-2026-10-15",
+      "fetched_at": "2026-10-20T09:07:05.516000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "e91ab253e58adbee76a6081071ba4d948ce48074d544790f851cb775a4618ea4",
+      "title": "US banning Chinese AI DeepSeek from government agency IT systems",
+      "url": "https://www.reuters.com/technology/us-banning-chinese-ai-deepseek-government-agency-it-systems-2026-10-19",
+      "fetched_at": "2026-10-20T10:07:05.819000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "d48dc99b5c8e7e4316efa392c78d9076da4dfd618a17c4dbd1553c64c6e21d6f",
+      "title": "DeepSeek banned from U.S. federal civilian agencies under new DHS order",
+      "url": "https://www.reuters.com/technology/us-banning-chinese-ai-deepseek-government-agency-it-systems-2026-10-19",
+      "fetched_at": "2026-10-20T12:07:07.027000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    },
+    {
+      "id": "6173e3ed07ce7b5890cf026356fffc34d310c44dd5f6ecb5260242a19c996f71",
+      "title": "AI firm Elice plunges 32% in market debut as investors dump data centre stocks",
+      "url": "https://www.reuters.com/world/asia-pacific/south-korean-ai-data-centre-firm-elice-shares-tumble-ipo-debut-2026-10-20",
+      "fetched_at": "2026-10-20T20:07:08.251000+08:00",
+      "content_status": "discovery_only",
+      "body_probe_status": "publisher_not_allowlisted"
+    }
+  ]
+}

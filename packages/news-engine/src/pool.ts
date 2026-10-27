@@ -133,10 +133,11 @@ export async function enrich(store: Store) {
     if (reviewCalls >= Number(preferences().batch_size)) return { status: 'review_batch', calls: reviewCalls };
     if (['budget_exhausted', 'official_rules_unconfirmed', 'missing_api_key'].includes(outcome)) return { status: outcome, calls: reviewCalls };
   }
-  const keys = new Set(eligible.map(a => cacheKey(a, p))); const attempted = attemptedVersions(store); let invoked = reviewCalls; const statuses: Row[] = [];
-  const jobs = store.all('SELECT * FROM jobs WHERE result IS NULL').sort((a, b) => (JSON.parse(b.article).ranking?.score ?? 0) - (JSON.parse(a.article).ranking?.score ?? 0));
+  const attempted = attemptedVersions(store); let invoked = reviewCalls; const statuses: Row[] = [];
+  const queued = new Map(store.all('SELECT * FROM jobs WHERE result IS NULL').map(job => [job.key, job]));
+  const jobs = eligible.map(a => queued.get(cacheKey(a, p))).filter((job): job is Row => !!job);
   for (const job of jobs) {
-    if (invoked >= Number(preferences().batch_size)) break; if (!keys.has(job.key)) continue;
+    if (invoked >= Number(preferences().batch_size)) break;
     if (!attempted.has(job.key) && attempted.size >= Number(preferences().new_versions_per_day)) continue;
     const candidate = eligible.find(a => cacheKey(a, p) === job.key)!; const a: Row = { ...candidate, revision_feedback: JSON.parse(job.article).revision_feedback }; if (!a.text || a.evidence_expired_or_missing) continue;
     const completed = recordsReady(store, eligible, deadline, [], false);

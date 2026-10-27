@@ -64,7 +64,7 @@ export function evaluate(a: Article, cutoff: string, config: EditorialConfig): R
   let penalty = 0;
   if (search('优惠|好价|促销|广告|秒杀|红包|sponsored|deals|giveaway', a.title)) {
     penalty = 45; signals.push('营销选题降权');
-  } else if (search('配色|主题壁纸|表盘|抽奖|促销|获奖|award|celebrat', a.title)) {
+  } else if (search('配色|主题壁纸|表盘|抽奖|促销|获奖|award|celebrat|(?:available|comes?|only).{0,35}colou?rs?|new colou?rs?', a.title)) {
     penalty = 16; signals.push('装饰/宣传内容降权');
   }
   if (search('战地|Gears of War|游戏皮肤|主题壁纸|表盘', a.title)) { penalty += 24; signals.push('非核心AI的游戏/外观更新降权'); }
@@ -73,6 +73,7 @@ export function evaluate(a: Article, cutoff: string, config: EditorialConfig): R
   if (search("预购.{0,20}(?:送达|交付)|(?:delivery|shipping) dates?.{0,20}(?:up|earl)|moving up.{0,30}(?:delivery|shipping)", a.title)) { penalty += 14; signals.push('局部订单时间调整降权'); }
   if (search("传闻|rumou?r|merger clues|hints?.{0,20}merger", a.title)) { penalty += 10; signals.push('未证实传闻降权'); }
   if (search('候选版本|候选版|release candidate|\\brc\\b', a.title) && !search('安全|漏洞|重大|security|vulnerab|breaking', a.title)) { penalty += 12; signals.push('常规候选版本降权'); }
+  if (a.source === 'hackernews' && search('^Show HN:', a.title) && !search('安全|漏洞|security|vulnerab|CVE-\\d|重大', a.title)) { penalty += 8; signals.push('开发者项目投稿适度降权'); }
   if (a.content_status !== 'usable_excerpt') { evidence = 0; penalty += 100; signals.push('正文不足，禁止生成'); }
   return {
     version: VERSION, score: round2(Math.max(0, Math.min(100, relevance + impact + freshness + evidence + provenance + interestBonus - penalty))),

@@ -27,6 +27,26 @@ test('interest bonus is a maximum, not a sum; all five interests detected', () =
   assert.equal(ranking.breakdown.interest_bonus, 12); assert.equal(ranking.interests.length, 5);
 });
 
+test('ordinary Show HN projects are deprioritized without penalizing security submissions', () => {
+  const base = article({ source: 'hackernews', title: 'Show HN: A Playwright REPL for agents' });
+  const normal = evaluate(base, cutoff, config);
+  const otherSource = evaluate({ ...base, source: 'ithome' }, cutoff, config);
+  assert.equal(normal.score, otherSource.score - 8);
+  assert.ok(normal.signals.includes('开发者项目投稿适度降权'));
+  const security = evaluate({ ...base, title: 'Show HN: Security vulnerability scanner' }, cutoff, config);
+  assert.ok(!security.signals.includes('开发者项目投稿适度降权'));
+});
+
+test('announced product launch ranks above a standalone color update', () => {
+  const launch = article({source:'macrumors', title:'Apple Announces New iPad Mini With 8.5-Inch OLED Display, A20 Pro Chip, and More'});
+  const color = {...launch, title:'New iPad Mini Available in Just Two Colors'};
+  const substantive = evaluate(launch, cutoff, config);
+  const minor = evaluate(color, cutoff, config);
+  assert.equal(substantive.breakdown.impact, 14);
+  assert.equal(minor.breakdown.penalty, -16);
+  assert.ok(substantive.score > minor.score);
+});
+
 test('score thresholds, sample mode and capacity reasons are preserved', () => {
   const low = article({ title: '日常生活', text: '人工智能', source: 'ithome' });
   const score = evaluate(low, cutoff, config).score;

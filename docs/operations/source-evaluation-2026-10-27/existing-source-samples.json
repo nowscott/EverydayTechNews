@@ -1,0 +1,682 @@
+{
+  "openai": [
+    {
+      "title": "Greptile takes bug detection beyond code review with GPT-6 Astra",
+      "url": "https://openai.com/index/greptile-code-review-codex-astra",
+      "published_at": "2026-10-27T06:00:00+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "error": "HTTP Error 403: Forbidden"
+      }
+    },
+    {
+      "title": "Working with academic communities to build scientific understanding",
+      "url": "https://openai.com/index/building-scientific-understanding-with-academic-communities",
+      "published_at": "2026-10-26T22:30:00+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "error": "HTTP Error 403: Forbidden"
+      }
+    },
+    {
+      "title": "GPT-6.1 Sol helps CodeRabbit strengthen security across complex codebases",
+      "url": "https://openai.com/index/gpt-6-1-sol-coderabbit-code-security",
+      "published_at": "2026-10-26T21:45:00+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "error": "HTTP Error 403: Forbidden"
+      }
+    },
+    {
+      "title": "How Ultrafast cut incident investigation from hours to minutes at OpenAI",
+      "url": "https://openai.com/index/openai-cut-incident-investigation",
+      "published_at": "2026-10-26T15:00:00+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "error": "HTTP Error 403: Forbidden"
+      }
+    },
+    {
+      "title": "Introducing GPT-6.1 Terra",
+      "url": "https://openai.com/index/introducing-gpt-6-1-terra",
+      "published_at": "2026-10-26T08:00:00+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "error": "HTTP Error 403: Forbidden"
+      }
+    },
+    {
+      "title": "ChatGPT’s expanding world of work",
+      "url": "https://openai.com/index/chatgpt-expanding-world-of-work",
+      "published_at": "2026-10-26T18:00:00+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "error": "HTTP Error 403: Forbidden"
+      }
+    },
+    {
+      "title": "How Fanatics and OpenAI streamline the fan experience",
+      "url": "https://openai.com/index/fanatics-streamline-fan-experience",
+      "published_at": "2026-10-26T15:00:00+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "error": "HTTP Error 403: Forbidden"
+      }
+    },
+    {
+      "title": "Securing our frontier model training environment",
+      "url": "https://openai.com/index/securing-our-frontier-model-training-environment",
+      "published_at": "2026-10-23T18:00:00+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "error": "HTTP Error 403: Forbidden"
+      }
+    },
+    {
+      "title": "Rapidly scaling online storage to serve over 1 billion ChatGPT users (Part II)",
+      "url": "https://openai.com/index/scaling-storage-one-billion-users-part-two",
+      "published_at": "2026-10-24T01:00:00+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "error": "HTTP Error 403: Forbidden"
+      }
+    },
+    {
+      "title": "OpenAI and Poland’s NASK partner to advance AI safety and security",
+      "url": "https://openai.com/index/openai-nask-ai-safety-security-partnership",
+      "published_at": "2026-10-23T08:00:00+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "error": "HTTP Error 403: Forbidden"
+      }
+    }
+  ],
+  "google_ai": [
+    {
+      "title": "Our newest AI Quest: Mapping the human brain",
+      "url": "https://blog.google/products-and-platforms/products/education/ai-quests-polar-peaks",
+      "published_at": "2026-10-27T00:00:00+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 5812,
+        "date_metadata": true,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Southeast Asia’s digital economy to hit $368 billion",
+      "url": "https://blog.google/company-news/inside-google/around-the-globe/google-asia/e-conomy-sea-report-2026",
+      "published_at": "2026-10-21T12:00:00+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 8888,
+        "date_metadata": true,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Gemini 4 Argon: Built to solve your hardest problems",
+      "url": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/introducing-gemini-4-argon",
+      "published_at": "2026-10-14T00:00:00+08:00",
+      "published_time_kind": null,
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 20048,
+        "date_metadata": true,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Introducing Playground: Create and play custom games",
+      "url": "https://blog.google/innovation-and-ai/technology/ai/playground-experimental-gaming-platform",
+      "published_at": "2026-10-07T20:00:00+08:00",
+      "published_time_kind": null,
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 6297,
+        "date_metadata": true,
+        "canonical": true
+      }
+    },
+    {
+      "title": "The latest AI news we announced in September 2026",
+      "url": "https://blog.google/innovation-and-ai/technology/ai/google-ai-updates-september-2026",
+      "published_at": "2026-10-02T23:00:00+08:00",
+      "published_time_kind": null,
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 12830,
+        "date_metadata": true,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Watch the winning trailer from the Future Vision XPRIZE, The Gifted.",
+      "url": "https://blog.google/innovation-and-ai/technology/ai/winner-future-vision-xprize",
+      "published_at": "2026-09-29T03:00:00+08:00",
+      "published_time_kind": null,
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 1561,
+        "date_metadata": true,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Google Beam expands with new regions, partners, and customers",
+      "url": "https://blog.google/innovation-and-ai/technology/research/google-beam-expansion",
+      "published_at": "2026-09-24T02:00:00+08:00",
+      "published_time_kind": null,
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 6939,
+        "date_metadata": true,
+        "canonical": true
+      }
+    },
+    {
+      "title": "New experts join Google’s AI & Economy team",
+      "url": "https://blog.google/innovation-and-ai/technology/ai/expanding-ai-economy-research-bench",
+      "published_at": "2026-09-18T22:00:00+08:00",
+      "published_time_kind": null,
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 7414,
+        "date_metadata": true,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Co-creating the future of fashion with Google",
+      "url": "https://blog.google/innovation-and-ai/technology/ai/google-flow-fashion-week",
+      "published_at": "2026-09-18T21:00:00+08:00",
+      "published_time_kind": null,
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 5207,
+        "date_metadata": true,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Making global data easier to explore",
+      "url": "https://blog.google/innovation-and-ai/technology/ai/google-un-data-commons-platform",
+      "published_at": "2026-09-18T04:00:00+08:00",
+      "published_time_kind": null,
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 5278,
+        "date_metadata": true,
+        "canonical": true
+      }
+    }
+  ],
+  "apple": [
+    {
+      "title": "Siri AI is available in more languages starting today",
+      "url": "https://www.apple.com/newsroom/2026/10/siri-ai-is-available-in-more-languages-starting-today",
+      "published_at": "2026-10-27T02:37:30.189000+08:00",
+      "published_time_kind": "atom_update_not_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": "fetch_or_parse_failed",
+      "probe": {
+        "status": 200,
+        "text_chars": 5464,
+        "date_metadata": false,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Apple gives iPad mini its biggest update ever",
+      "url": "https://www.apple.com/newsroom/2026/10/apple-gives-ipad-mini-its-biggest-update-ever",
+      "published_at": "2026-10-26T21:00:22.904000+08:00",
+      "published_time_kind": "atom_update_not_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": "fetch_or_parse_failed",
+      "probe": {
+        "status": 200,
+        "text_chars": 41656,
+        "date_metadata": false,
+        "canonical": true
+      }
+    },
+    {
+      "title": "iPhone Duo arrives at Apple Store locations worldwide",
+      "url": "https://www.apple.com/newsroom/2026/10/iphone-duo-arrives-at-apple-store-locations-worldwide",
+      "published_at": "2026-10-23T14:10:35.677000+08:00",
+      "published_time_kind": "atom_update_not_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": "fetch_or_parse_failed",
+      "probe": {
+        "status": 200,
+        "text_chars": 3583,
+        "date_metadata": false,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Formula 1® United States Grand Prix™ streams live on Apple TV this weekend",
+      "url": "https://www.apple.com/newsroom/2026/10/formula-1-united-states-grand-prix-streams-live-on-apple-tv-this-weekend",
+      "published_at": "2026-10-22T20:59:11.281000+08:00",
+      "published_time_kind": "atom_update_not_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": "fetch_or_parse_failed",
+      "probe": {
+        "status": 200,
+        "text_chars": 24297,
+        "date_metadata": false,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Developers bring incredible new app experiences to iPhone Duo",
+      "url": "https://www.apple.com/newsroom/2026/10/developers-bring-incredible-new-app-experiences-to-iphone-duo",
+      "published_at": "2026-10-22T19:59:15.686000+08:00",
+      "published_time_kind": "atom_update_not_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": "fetch_or_parse_failed",
+      "probe": {
+        "status": 200,
+        "text_chars": 41728,
+        "date_metadata": false,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Apple unveils the 2026 Designers of Tomorrow",
+      "url": "https://www.apple.com/newsroom/2026/10/apple-unveils-the-2026-designers-of-tomorrow",
+      "published_at": "2026-10-20T22:59:22.784000+08:00",
+      "published_time_kind": "atom_update_not_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": "fetch_or_parse_failed",
+      "probe": {
+        "status": 200,
+        "text_chars": 17477,
+        "date_metadata": false,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Apple announces American Manufacturing Program partners for latest iPhone lineup",
+      "url": "https://www.apple.com/newsroom/2026/10/apple-announces-american-manufacturing-program-partners-for-latest-iphone-lineup",
+      "published_at": "2026-10-20T20:00:22.992000+08:00",
+      "published_time_kind": "atom_update_not_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": "fetch_or_parse_failed",
+      "probe": {
+        "status": 200,
+        "text_chars": 14898,
+        "date_metadata": false,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Open up to new possibilities with iPhone Duo",
+      "url": "https://www.apple.com/newsroom/2026/10/open-up-to-new-possibilities-with-iphone-duo",
+      "published_at": "2026-10-15T20:59:28.566000+08:00",
+      "published_time_kind": "atom_update_not_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 35659,
+        "date_metadata": false,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Bünyamin Aydın’s new collection, “From Earth to Sky,” soars with iPad Pro",
+      "url": "https://www.apple.com/newsroom/2026/10/bunyamin-aydins-new-collection-from-earth-to-sky-soars-with-ipad-pro",
+      "published_at": "2026-10-15T01:39:29.065000+08:00",
+      "published_time_kind": "atom_update_not_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 18168,
+        "date_metadata": false,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Meet Apple HomeView, a new way to enjoy entertainment and manage the home",
+      "url": "https://www.apple.com/newsroom/2026/10/meet-apple-homeview-a-new-way-to-enjoy-entertainment-and-manage-the-home",
+      "published_at": "2026-10-13T20:59:16.617000+08:00",
+      "published_time_kind": "atom_update_not_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 37007,
+        "date_metadata": false,
+        "canonical": true
+      }
+    }
+  ],
+  "deepmind": [
+    {
+      "title": "Beyond tree cover: mapping the world’s forest types",
+      "url": "https://deepmind.google/blog/beyond-tree-cover-mapping-the-worlds-forest-types",
+      "published_at": "2026-10-22T22:30:24+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 0,
+        "date_metadata": false,
+        "canonical": false
+      }
+    },
+    {
+      "title": "Accelerating the search for antimicrobial peptides with Google Antigravity",
+      "url": "https://deepmind.google/blog/accelerating-antimicrobial-discovery",
+      "published_at": "2026-10-16T00:08:03+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 10135,
+        "date_metadata": true,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Google DeepMind and Singapore Government collaborate to build fine-tuned AI model for scam detection",
+      "url": "https://deepmind.google/blog/on-device-ai-scam-detection-mddi",
+      "published_at": "2026-10-14T10:00:14+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 0,
+        "date_metadata": false,
+        "canonical": false
+      }
+    },
+    {
+      "title": "Developing Gemini 4 Argon responsibly and safely",
+      "url": "https://deepmind.google/blog/developing-gemini-4-argon-responsibly-and-safely",
+      "published_at": "2026-10-14T03:43:07+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 9233,
+        "date_metadata": true,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Gemini 4 Argon for Robotics",
+      "url": "https://deepmind.google/blog/gemini-4-argon-for-robotics",
+      "published_at": "2026-10-14T00:01:58+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 0,
+        "date_metadata": false,
+        "canonical": false
+      }
+    },
+    {
+      "title": "Gemini 4 Argon: Built to solve your hardest problems",
+      "url": "https://deepmind.google/blog/introducing-gemini-4-argon",
+      "published_at": "2026-10-14T00:01:52+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 20048,
+        "date_metadata": true,
+        "canonical": true
+      }
+    },
+    {
+      "title": "EmbeddingGemma 2: an open, lightweight multimodal embedding model",
+      "url": "https://deepmind.google/blog/embeddinggemma-2-an-open-lightweight-multimodal-embedding-model",
+      "published_at": "2026-10-07T03:57:04+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 6630,
+        "date_metadata": true,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Gemini 4 Argon: our next era of frontier intelligence",
+      "url": "https://deepmind.google/blog/gemini-4-argon-our-next-era-of-frontier-intelligence",
+      "published_at": "2026-10-01T04:01:45+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 12217,
+        "date_metadata": true,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Introducing SynthID Bio",
+      "url": "https://deepmind.google/blog/introducing-synthid-bio",
+      "published_at": "2026-09-30T23:03:07+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 10115,
+        "date_metadata": true,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Introducing Gemini 3.8 Live with Live Avatar",
+      "url": "https://deepmind.google/blog/introducing-gemini-38-live-with-live-avatar",
+      "published_at": "2026-09-25T00:20:39+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 4944,
+        "date_metadata": true,
+        "canonical": true
+      }
+    }
+  ],
+  "huggingface": [
+    {
+      "title": "LitPivot: Developing research ideas through dynamic contextualization within the literature landscape",
+      "url": "https://huggingface.co/blog/allenai/litpivot",
+      "published_at": "2026-10-24T00:15:50+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 9135,
+        "date_metadata": false,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Does Your Model Run on AWS Trainium? Look It Up",
+      "url": "https://huggingface.co/blog/torch-neuronx-model-support",
+      "published_at": "2026-10-23T08:00:00+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 4942,
+        "date_metadata": false,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Turning Database Grading into RL Rewards: Post-Training Agents with ThinkingBox",
+      "url": "https://huggingface.co/blog/microsoft/thinkingbox-training",
+      "published_at": "2026-10-23T06:24:34+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 28049,
+        "date_metadata": false,
+        "canonical": true
+      }
+    },
+    {
+      "title": "OlmoEarth v1.3: State-of-the-art embeddings for the whole planet",
+      "url": "https://huggingface.co/blog/allenai/olmoearth-v1-3",
+      "published_at": "2026-10-23T00:11:31+08:00",
+      "published_time_kind": "registered_feed_article_publication",
+      "content_status": "usable_excerpt",
+      "body_probe_status": "parsed",
+      "probe": {
+        "status": 200,
+        "text_chars": 8733,
+        "date_metadata": false,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Ensemble forecasting with IBM Granite time-series models",
+      "url": "https://huggingface.co/blog/ibm-research/granite-timeseries-ensemble-r1",
+      "published_at": "2026-10-22T15:51:31+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 14685,
+        "date_metadata": false,
+        "canonical": true
+      }
+    },
+    {
+      "title": "NVIDIA Kumo Relational Outperforms Supervised Machine Learning on Relational Data, No Training Required",
+      "url": "https://huggingface.co/blog/nvidia/kumo-relational",
+      "published_at": "2026-10-22T02:26:30+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 14669,
+        "date_metadata": false,
+        "canonical": true
+      }
+    },
+    {
+      "title": "How Specializing the Vocabulary of SLMs Can Cut Inference Cost by 77% in Real Applications",
+      "url": "https://huggingface.co/blog/Dharma-AI/vocabx-vocabulary-specialization",
+      "published_at": "2026-10-22T01:35:36+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 14474,
+        "date_metadata": false,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Profiling TorchNeuron (Part 1): System-level profiling on AWS Trainium.",
+      "url": "https://huggingface.co/blog/amazon/profiling-torchneuron-part-1",
+      "published_at": "2026-10-22T00:04:43+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 13417,
+        "date_metadata": false,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Granite Speech 5.0: Transcribe, Translate, and Attribute more Accurately and Faster",
+      "url": "https://huggingface.co/blog/ibm-granite/granite-speech-5",
+      "published_at": "2026-10-21T22:58:18+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 8241,
+        "date_metadata": false,
+        "canonical": true
+      }
+    },
+    {
+      "title": "Hugging Face ❤️ TorchTPU: TPUs, Natively",
+      "url": "https://huggingface.co/blog/hf-torchtpu",
+      "published_at": "2026-10-20T08:00:00+08:00",
+      "published_time_kind": "rss_article_publication",
+      "content_status": "discovery_only",
+      "body_probe_status": null,
+      "probe": {
+        "status": 200,
+        "text_chars": 7872,
+        "date_metadata": false,
+        "canonical": true
+      }
+    }
+  ]
+}
