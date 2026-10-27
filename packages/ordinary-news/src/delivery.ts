@@ -4,7 +4,7 @@ import { Store } from './store.ts';
 import { OWNER, hash, day, yesterday, at, config, atomic, read, validEmail, type Row } from './core.ts';
 import { archivePath } from './archive.ts';
 import { selectedItems, formatNews, buildMessage, notifications, unsubscribeLink } from './email.ts';
-import { subscribers, markAbnormal, type Subscriber } from './subscribers.ts';
+import { resolveSubscribers, markAbnormal, type Subscriber } from './subscribers.ts';
 export function compose(store:Store,now=new Date()) {
   const c=config(store.root),date=day(now),id=(c.mode==='production'?'ordinary-':'shadow-')+date;
   const old=store.one('SELECT data FROM issues WHERE id=?',id);if(old)return JSON.parse(old.data);
@@ -50,7 +50,13 @@ export async function deliver(store:Store,issue:Row,deps:DeliveryDeps={}):Promis
       finished_at:rows.map(r=>{const v=JSON.parse(r.data);return v.accepted_at??v.started_at;}).filter(Boolean).sort().at(-1),inbox:'not_verified'};
     store.meta('delivery:'+issue.id,result);return result;
   }
-  const live=await(deps.getSubscribers??(()=>subscribers(env)))();
+  let live:Subscriber[];
+  if(deps.getSubscribers) live=await deps.getSubscribers();
+  else {
+    try { const audience=await resolveSubscribers(store.root,env,at(day(clock()),'09:00:00')); live=audience.subscribers; store.meta('subscriber_audience',audience.report); }
+    catch(error) { store.meta('subscriber_audience',{source:'unavailable',reason:(error as Error).message,at:clock().toISOString()}); throw error; }
+  }
+  if(!window(config(store.root),issue,clock()))return {status:'outside_delivery_window'};
   const planKey='delivery_plan:'+issue.id;const previousPlan=store.meta(planKey);
   const users:Subscriber[]=c.mode==='shadow'?[{email:OWNER,name:'NowScott',page_id:'',status_name:'状态',status_type:'select',premium:false}]:live.filter(u=>!previousPlan||previousPlan.members.includes(u.email.toLowerCase()));
   const allowed=new Set(users.map(u=>u.email.toLowerCase()));

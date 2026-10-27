@@ -3,6 +3,7 @@ import nodemailer from 'nodemailer';
 import { Store } from './store.ts';
 import { collect, rank, archivePath, archiveFiles } from './archive.ts';
 import { compose, deliver, recover, flushOutbox } from './delivery.ts';
+import { resolveSubscribers } from './subscribers.ts';
 import { day, yesterday, at, config, atomic, hash, read, OWNER, VERSION, safeError, type Row } from './core.ts';
 export function report(store:Store,now=new Date()):Row {
   const c=config(store.root),date=day(now),id=(c.mode==='production'?'ordinary-':'shadow-')+date;
@@ -18,6 +19,7 @@ export function report(store:Store,now=new Date()):Row {
   const value={schema_version:1,component:'ordinary-news',runtime:{authority:process.env.ORDINARY_STATE_AUTHORITY==='nas'?'nas':'offline',version:VERSION},date,mode:c.mode,shadow_started_on:c.shadow_started_on,first_production_date:c.first_production_date,issue:id,
     content:frozen?{count:frozen.items.length,sorted:frozen.sorted,archive_sha256:frozen.archive_sha256,news_day:frozen.news_day,frozen_at:frozen.frozen_at}:null,
     collection:store.meta('collection'),grading:evidence?{total:evidence.grades.length,valid:evidence.grades.filter((g:Row)=>g.status==='valid').length,failed:evidence.grades.filter((g:Row)=>g.status==='failed').length}:null,
+    subscribers:store.meta('subscriber_audience'),
     delivery:{expected,counts,outcome,first_started_at:first,delay_seconds:first?Math.max(0,Math.floor((Date.parse(first)-at(date,'06:30:00').getTime())/1000)):null,
       finished_at:delivery?.finished_at??null,completed},
     parity:read(store.root+'/shadow/'+date+'-parity.json',{status:'pending'}),inbox:read(store.root+'/feedback/'+date+'.json',{status:'not_verified'}),
@@ -43,6 +45,13 @@ export async function tick(store:Store,now=new Date()):Promise<Row> {
   recover(store);const c=config(store.root),date=day(now),minutes=Number(now.toISOString().slice(11,13))*60+Number(now.toISOString().slice(14,16));
   const localMinutes=(minutes+480)%1440;const errors:Row[]=[];
   const step=async(name:string,fn:()=>any)=>{try{return await fn();}catch(error){const entry={at:new Date().toISOString(),stage:name,error:safeError(error)};errors.push(entry);store.meta('last_error',entry);return null;}};
+  if(c.mode!=='paused'&&localMinutes>=360&&localMinutes<375&&store.meta('subscriber_refresh_day')!==date) {
+    store.meta('subscriber_refresh_day',date);
+    await step('subscriber_refresh',async()=>{
+      try { const audience=await resolveSubscribers(store.root,process.env,at(date,'06:15:00'),false); store.meta('subscriber_audience',audience.report); }
+      catch(error) { store.meta('subscriber_audience',{source:'unavailable',reason:(error as Error).message,at:new Date().toISOString()}); throw error; }
+    });
+  }
   // Delivery takes priority over collection once its window opens.
   if(c.mode!=='paused'&&(c.mode!=='production'||date>=c.first_production_date)&&(c.mode!=='shadow'||date>=c.shadow_started_on)&&localMinutes>=375&&localMinutes<540) {
     if(!store.one('SELECT id FROM issues WHERE id=?',(c.mode==='production'?'ordinary-':'shadow-')+date)) {

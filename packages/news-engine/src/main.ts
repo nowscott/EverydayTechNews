@@ -1,3 +1,4 @@
+import { resolveTestSubscribers } from './subscribers.ts';
 import { verifyQuality } from './quality-acceptance.ts';
 import { morningTime, runMorning, publishMorningReport, archiveStage } from './morning.ts';
 import { appendFileSync, mkdirSync, existsSync, rmSync } from 'node:fs';
@@ -20,7 +21,7 @@ if (flags['sample-revision'] !== undefined && !['initial', 'serif', 'serif-retry
 const root = resolve(flags.data ?? 'premium_data/pool'); mkdirSync(root, { recursive: true });
 if (flags.syncGit && flags.localAuthority) throw new Error('choose_one_state_authority');
 if (flags.localAuthority && process.platform !== 'linux') throw new Error('nas_authority_requires_linux_flock');
-const allowed = ['init', 'run', 'collect', 'assess', 'enrich', 'verify-api', 'launch-sample', 'fresh-sample', 'send-sample', 'compose', 'deliver', 'reconcile', 'status', 'report', 'archive', 'restore-artifact', 'ack-artifact'];
+const allowed = ['init', 'run', 'collect', 'assess', 'enrich', 'verify-api', 'launch-sample', 'fresh-sample', 'send-sample', 'compose', 'deliver', 'reconcile', 'status', 'report', 'archive', 'restore-artifact', 'ack-artifact', 'sync-subscribers'];
 if (!operation || !allowed.includes(operation)) throw new Error('unknown_command');
 let localLock: string | undefined;
 if (!process.env.NEWS_ENGINE_FLOCKED) {
@@ -45,6 +46,11 @@ try {
         atomic(root + '/test-delivery-config.json', { allowed_recipient: RECIPIENT }); store.checkpoint();
       }
       console.log(JSON.stringify({ status: 'initialized_without_enabling' }));
+    } else if (operation === 'sync-subscribers') {
+      if (!store.localAuthority) throw new Error('nas_authority_required');
+      const audience = await resolveTestSubscribers(root, new Date(Date.now() + 120000), false);
+      atomic(root + '/subscriber-backups/premium-report.json', audience.report);
+      console.log(JSON.stringify(audience.report));
     } else if (operation === 'run') {
       try {
         reconcile(store); const plan = due(store); const maintenance = flags['maintenance-only'] !== 'false';

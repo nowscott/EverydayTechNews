@@ -5,7 +5,7 @@ if [ "$#" -gt 1 ]; then echo 'Expected one command only' >&2; exit 2; fi
 operation=${1:-status}
 case "$operation" in
   init|status|report|archive) ;;
-  maintenance|run) ;;
+  maintenance|run|sync-subscribers) ;;
   *) echo 'Allowed commands: init, status, report, archive, maintenance, run' >&2; exit 2 ;;
 esac
 # A NAS uses hydrated local evidence. Never silently ignore remote archive pointers.
@@ -18,6 +18,9 @@ if [ "$operation" = run ]; then
     echo 'NAS_TRIAL_ENABLED must be true after exclusive handover' >&2; exit 2
   fi
   exec node packages/news-engine/src/main.ts run --data /data --local-authority --maintenance-only false
+fi
+if [ "$operation" = sync-subscribers ]; then
+  exec node packages/news-engine/src/main.ts sync-subscribers --data /data --local-authority
 fi
 if [ "$operation" = maintenance ]; then
   exec node packages/news-engine/src/main.ts run --data /data --maintenance-only true

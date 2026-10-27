@@ -4,10 +4,10 @@ import { limitDomains } from './editorial-policy.ts';
 import nodemailer from 'nodemailer';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { Store, files } from './store.ts';
-import { atomic, read, digest, RECIPIENT, trialDeadline, trial, stamp, active, day, localParts, type Row } from './core.ts';
+import { atomic, read, digest, RECIPIENT, trialDeadline, trial, stamp, active, day, at, localParts, type Row } from './core.ts';
 import { isApproved, draftHash } from './quality.ts';
 import { policy } from './core.ts';
-import { internalTestSubscribers } from './subscribers.ts';
+import { internalTestSubscribers, resolveTestSubscribers } from './subscribers.ts';
 import { validate, codepoints } from './model.ts';
 export const escape = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' })[c]!);
 const write = (p: string, value: string) => writeFileSync(p, value, { mode: 0o600 });
@@ -77,9 +77,19 @@ export async function sendOnce(store: Store, issueId: string, deps: DeliveryDeps
   if (!config.enabled || !config.delivery_enabled || now.getTime() >= trialDeadline(config)) return { status: 'trial_or_delivery_disabled_or_expired' };
   if (read(store.root + '/test-delivery-config.json').allowed_recipient !== RECIPIENT) throw new Error('recipient_not_explicitly_authorized');
   if (!store.authoritative && !deps.transport) throw new Error('smtp_requires_authoritative_checkpoint');
-  // Resolve the complete audience before SMTP; Notion failure must fail closed.
+  // Resolve the complete audience before SMTP; only a valid NAS backup can replace an unavailable Notion response.
   // authorize is the legacy single-recipient test seam, never a production fallback.
-  const audience = deps.subscribers ?? (deps.authorize ? async () => await deps.authorize!() ? [RECIPIENT] : [] : () => internalTestSubscribers());
+  const audience = deps.subscribers ?? (deps.authorize ? async () => await deps.authorize!() ? [RECIPIENT] : [] : async () => {
+    if (!store.localAuthority) return internalTestSubscribers();
+    try {
+      const result = await resolveTestSubscribers(store.root, issueId.startsWith('test-') ? at(day(deps.now?.() ?? new Date()), '09:00:00') : new Date((deps.now?.() ?? new Date()).getTime() + 120000));
+      atomic(store.root + '/subscriber-backups/premium-report.json', result.report);
+      return result.subscribers;
+    } catch (error) {
+      atomic(store.root + '/subscriber-backups/premium-report.json', { source: 'unavailable', reason: (error as Error).message, at: new Date().toISOString() });
+      throw error;
+    }
+  });
   const recipients = [...new Set(await audience())];
   if (recipients.some(email => !/^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(email))) throw new Error('invalid_test_subscriber');
   if (!recipients.length) return { status: 'notion_recipient_not_eligible' };

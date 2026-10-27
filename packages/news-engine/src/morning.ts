@@ -1,6 +1,7 @@
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { Store, acknowledgeArtifact } from './store.ts';
 import { command, atomic, read, digest, pyjson, stamp, day, at, active, trial, type Row } from './core.ts';
+import { resolveTestSubscribers } from './subscribers.ts';
 import { collect, assess, enrich, compose, deliver, due, reportTrial } from './pool.ts';
 
 export function morningTime(now: Date): boolean {
@@ -20,6 +21,15 @@ export function archiveStage(store: Store) {
 export async function morningTick(store: Store, now = new Date(), deps = { collect, assess, enrich, compose, deliver }): Promise<Row> {
   if (!active(trial(store.root), now)) return { status: 'trial_disabled_or_expired', terminal: true };
   if (now >= at(day(now), '09:00:00')) return { status: 'deadline_missed', terminal: true };
+  if (store.localAuthority && now >= at(day(now), '06:00:00') && now < at(day(now), '06:15:00')) {
+    const marker = store.root + '/subscriber-backups/refresh-day.json';
+    let refreshed = ''; try { refreshed = read(marker).day; } catch {}
+    if (refreshed !== day(now)) {
+      atomic(marker, { day: day(now) });
+      try { const result = await resolveTestSubscribers(store.root, at(day(now), '06:15:00'), false); atomic(store.root + '/subscriber-backups/premium-report.json', result.report); }
+      catch (error) { atomic(store.root + '/subscriber-backups/premium-report.json', { source: 'unavailable', reason: (error as Error).message, at: new Date().toISOString() }); }
+    }
+  }
   const plan = due(store, now);
   if (now < at(day(now), '06:15:00')) {
     if (plan.collect) { await deps.collect(store); phase(store, 'candidates_ready', now); }
@@ -43,7 +53,8 @@ export async function morningTick(store: Store, now = new Date(), deps = { colle
 }
 export function publishMorningReport(store: Store, now = new Date()) {
   const report = reportTrial(store, now); const today = report.days.find(d => d.day === day(now));
-  const entry = { ...today, at: stamp(now), quality_control: 'ai_fidelity_review' };
+  let subscribers = null; try { subscribers = read(store.root + '/subscriber-backups/premium-report.json'); } catch {}
+  const entry = { ...today, at: stamp(now), quality_control: 'ai_fidelity_review', subscribers };
   atomic(store.root + '/durable/mornings/' + day(now) + '-report.json', entry); store.checkpoint();
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n### 晨间出刊 ${day(now)}\n\n${JSON.stringify(entry)}\n`);
   if (process.env.GITHUB_ACTIONS !== 'true' || !today || (!today.reason && today.status !== 'diagnostic' && !today.delivery.some(s => ['sending', 'unknown_do_not_retry'].includes(s)))) return;
