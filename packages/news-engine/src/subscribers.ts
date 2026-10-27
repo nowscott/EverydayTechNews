@@ -10,9 +10,10 @@ export async function premiumSubscribers(env: Row = process.env, fetcher: typeof
   do {
     const page = await notionRequest('/data_sources/' + id + '/query', env, fetcher, { method: 'POST',
       body: JSON.stringify({ page_size: 100, ...(cursor ? { start_cursor: cursor } : {}) }) });
-    if (!Array.isArray(page.results)) throw new Error('notion_invalid_page');
+    if (!Array.isArray(page.results) || typeof page.has_more !== 'boolean') throw new Error('notion_invalid_page');
     for (const record of page.results) {
       const props = record.properties ?? {}; const status = props['状态'] ?? props.Status;
+      if (!record.archived && !record.in_trash && (!props.Email || !status || !props['高级订阅'] || (internalTest && !props['高级内测']))) throw new Error('notion_invalid_subscriber_record');
       const email = String(props.Email?.email ?? '').trim().toLowerCase();
       if (!record.archived && !record.in_trash && (status?.status?.name ?? status?.select?.name) === '正常'
         && props['高级订阅']?.checkbox === true && (!internalTest || props['高级内测']?.checkbox === true) && /^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(email)) emails.add(email);
@@ -30,4 +31,10 @@ export async function authorizedTestRecipient(env: Row = process.env, fetcher: t
 
 export async function internalTestSubscribers(env: Row = process.env, fetcher: typeof fetch = fetch): Promise<string[]> {
   return premiumSubscribers(env, fetcher, true);
+}
+
+export async function resolveTestSubscribers(root: string, deadline: Date, fallback = true) {
+  const { resolveAudience } = await import('../../news-common/src/subscriber-backup.ts');
+  return resolveAudience<string>({ root, kind: 'premium-internal-test', deadline, fallback, get: () => internalTestSubscribers({...process.env, NOTION_REQUEST_DEADLINE: deadline.getTime()}),
+    valid: (value: unknown): value is string => typeof value === 'string' && /^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(value) });
 }
