@@ -40,12 +40,24 @@ test('DATA uncertainty and interrupted sending are held; explicit pre-DATA failu
   const {store,issue,close}=setup();let sends=0;let clock=new Date(time);
   try{const deps={now:()=>clock,env,getSubscribers:async()=>users(),transport:{sendMail:async()=>{sends++;throw Object.assign(new Error('test failure'),{command:failure,responseCode:failure==='RCPT TO'?550:undefined});},close:()=>{}}};
    for(let i=0;i<5;i++){await deliver(store,issue,deps);clock=new Date(clock.getTime()+4*60000);}
-   assert.equal(sends,failure==='CONN'?3:1);assert.equal(store.all('SELECT * FROM outbox').length,0);
+   assert.equal(sends,failure==='DATA'?1:3);assert.equal(store.all('SELECT * FROM outbox').length,0);
    if(failure==='DATA')assert.equal(store.all('SELECT status FROM deliveries')[0].status,'unknown_do_not_retry');
   }finally{close();}
  }
  const {store,issue,close}=setup();
  try{store.run('INSERT INTO deliveries VALUES (?,?,?,?,?,?)','interrupted',issue.id,'x@example.test','sending',1,JSON.stringify({status:'sending'}));recover(store);assert.equal(store.one('SELECT status FROM deliveries WHERE id=?','interrupted')!.status,'unknown_do_not_retry');}finally{close();}
+});
+test('recipient is marked abnormal only after three consecutive permanent refusals',async()=>{
+ for(const failures of [['permanent','permanent','permanent'],['permanent','temporary','permanent'],['permanent','success']]){
+  const {store,issue,close}=setup('production');let clock=new Date(time),index=0;
+  try{
+   const transport={sendMail:async(m:any)=>{const kind=failures[index++];if(kind==='success')return {accepted:[m.to]};throw Object.assign(new Error('refused'),{command:'RCPT TO',responseCode:kind==='permanent'?550:450});},close:()=>{}};
+   for(let i=0;i<failures.length;i++){await deliver(store,issue,{now:()=>clock,env,getSubscribers:async()=>users(),transport});clock=new Date(clock.getTime()+4*60000);}
+   const row=store.one('SELECT status,data FROM deliveries')!;
+   assert.equal(row.status,failures.length===2?'smtp_accepted':failures[1]==='temporary'?'retries_exhausted_before_data':'permanent_recipient_failure');
+   assert.equal(store.all('SELECT * FROM outbox').length,failures[1]==='permanent'?1:0);
+  }finally{close();}
+ }
 });
 test('subscription changes before resume exclude removed users and sending stops at 09:00',async()=>{
  const {store,issue,close}=setup('production');let clock=new Date(time),calls=0;
@@ -69,6 +81,30 @@ test('a batch-wide SMTP connection failure leaves later recipients pending for r
   clock=new Date(clock.getTime()+2*60000);
   await deliver(store,issue,{...deps,transport:{sendMail:async(m:any)=>({accepted:[m.to]}),close:()=>{}}});
   assert.equal(report(store,clock).delivery.completed,true);
+ }finally{close();}
+});
+test('a real SMTP disconnect before DATA remains retryable',async()=>{
+ const {store,issue,close}=setup('production');const sockets=new Set<net.Socket>();
+ const server=net.createServer(socket=>{sockets.add(socket);socket.on('close',()=>sockets.delete(socket));socket.write('220 test ESMTP\r\n');let buffer='';
+  socket.on('data',data=>{buffer+=data.toString();let index:number;while((index=buffer.indexOf('\r\n'))>=0){const line=buffer.slice(0,index);buffer=buffer.slice(index+2);
+   if(/^EHLO/.test(line))socket.write('250-test\r\n250 SIZE 1000000\r\n');else if(/^MAIL FROM/.test(line)){socket.destroy();return;}
+  }});
+ });await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));const port=(server.address() as net.AddressInfo).port;
+ try{
+  await deliver(store,issue,{now:()=>new Date(time),env,getSubscribers:async()=>users(2),createTransport:onData=>createMailTransport(env,onData,{host:'127.0.0.1',port,secure:false,ignoreTLS:true,auth:undefined})});
+  assert.deepEqual(store.all('SELECT status FROM deliveries ORDER BY email').map(r=>r.status),['retryable_before_data','pending']);
+ }finally{for(const socket of sockets)socket.destroy();await new Promise<void>(resolve=>server.close(()=>resolve()));close();}
+});
+test('connection error without a command leaves later recipients pending and retains diagnostics after recovery',async()=>{
+ const {store,issue,close}=setup('production');let calls=0,clock=new Date(time);
+ try{
+  const transport={sendMail:async()=>{calls++;throw Object.assign(new Error('closed'),{code:'ECONNECTION'});},close:()=>{}};
+  await deliver(store,issue,{now:()=>clock,env,getSubscribers:async()=>users(2),transport});
+  assert.equal(calls,1);assert.deepEqual(store.all('SELECT status FROM deliveries ORDER BY email').map(r=>r.status),['retryable_before_data','pending']);
+  clock=new Date(clock.getTime()+2*60000);
+  await deliver(store,issue,{now:()=>clock,env,getSubscribers:async()=>users(2),transport:{sendMail:async(m:any)=>({accepted:[m.to]}),close:()=>{}}});
+  const saved=JSON.parse(store.one('SELECT data FROM deliveries WHERE email=?','user0@example.test')!.data);
+  assert.equal(saved.status,'smtp_accepted');assert.equal(saved.smtp_error_code,'ECONNECTION');assert.equal(saved.smtp_error_at,new Date(time).toISOString());
  }finally{close();}
 });
 test('Notion failure blocks all SMTP; persistence failure after SMTP acceptance never replays',async()=>{
