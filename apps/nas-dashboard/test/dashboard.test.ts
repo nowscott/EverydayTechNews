@@ -53,6 +53,18 @@ test('states do not confuse normal exits, overdue jobs, SMTP acceptance or parti
  assert.equal(operation({started_at:'2026-10-23T10:00:00+08:00',state:'running'},now).state,'unknown');
  assert.equal(deliveryState([{status:'smtp_accepted'}]),'smtp_accepted');assert.equal(deliveryState([{status:'smtp_accepted'}],2),'pending');assert.equal(deliveryState([{status:'sending'}]),'sending');assert.equal(deliveryState([{status:'smtp_accepted'},{status:'unknown_do_not_retry'}]),'unknown');
 });
+test('a newer successful collection clears only the collection error alert',()=>{
+ const f=fixture();try{
+  const error={stage:'collect',at:'2026-10-29T14:39:16Z',error:'all_collection_sources_failed'};
+  const report={date:f.today,runtime:{version:'1.0.7'},delivery:{expected:1},last_error:error,collection:{at:'2026-10-29T14:38:00Z'}};
+  f.json(f.ordinary+'/status.json',report);
+  assert(f.dashboard.overview()[0].data.alerts.includes('业务报告记录了错误，请查看运行记录'));
+  f.json(f.ordinary+'/status.json',{...report,collection:{at:'2026-10-29T14:40:00Z'}});
+  assert(!f.dashboard.overview()[0].data.alerts.includes('业务报告记录了错误，请查看运行记录'));
+  f.json(f.ordinary+'/status.json',{...report,last_error:{...error,stage:'deliver'},collection:{at:'2026-10-29T14:40:00Z'}});
+  assert(f.dashboard.overview()[0].data.alerts.includes('业务报告记录了错误，请查看运行记录'));
+ }finally{f.close();}
+});
 test('date ranges, filters and pagination reject invalid inputs',()=>{
  assert.throws(()=>range(new URLSearchParams('from=2026-02-30')));assert.throws(()=>range(new URLSearchParams('from=2026-01-01&to=2026-03-01')));assert.throws(()=>range(new URLSearchParams('page=-1')));
  const f=fixture();try{assert.equal(f.dashboard.news('premium',new URLSearchParams({from:f.today,to:f.today,q:'不存在'})).data.total,0);assert.equal(f.dashboard.news('premium',new URLSearchParams({from:f.today,to:f.today,page:'2'})).data.items.length,0);}finally{f.close();}

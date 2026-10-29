@@ -233,7 +233,9 @@ export class Dashboard {
       if (['unknown','overdue','failed'].includes(run.state)) alerts.push(run.reason);
       if (due && enabled && delivery !== 'smtp_accepted') alerts.push('已过当日投递窗口，未见完整的服务器接收记录');
       if (delivery === 'unknown') alerts.push('存在发送结果未知记录，不应自动重发');
-      if (report?.last_error) alerts.push('业务报告记录了错误，请查看运行记录');
+      const recoveredCollection = component === 'ordinary' && report?.last_error?.stage === 'collect'
+        && Date.parse(report.collection?.at) > Date.parse(report.last_error.at);
+      if (report?.last_error && !recoveredCollection) alerts.push('业务报告记录了错误，请查看运行记录');
       if (sources?.sources?.some((s: Row) => !s.ok)) alerts.push('部分新闻来源最近采集失败');
       if (calls.some(c=>c.cost==null)) alerts.push('存在待确认模型费用');
       const dbUnavailable = r.evidence.some(e => e.source === 'state.sqlite3' && e.state !== 'ok');
