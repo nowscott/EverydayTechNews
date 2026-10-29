@@ -9,6 +9,7 @@ services:
         format: raw
     environment:
       TZ: Asia/Shanghai
+      TMPDIR: /data/snapshots
       DASHBOARD_ORDINARY_DATA: /data/ordinary
       DASHBOARD_PREMIUM_DATA: /data/premium
       DASHBOARD_SESSION_FILE: /data/auth/sessions.json
@@ -24,6 +25,7 @@ services:
       - ${DASHBOARD_PREMIUM_DATA:?premium data required}:/data/premium:ro
       - ${DASHBOARD_ROOT}/runtime:/data/runtime:ro
       - ${DASHBOARD_ROOT}/bodies:/data/bodies:ro
+      - ${DASHBOARD_ROOT}/snapshots:/data/snapshots
       - ${DASHBOARD_ROOT}/deployment/ordinary:/data/ordinary-deployment:ro
       - ${DASHBOARD_ROOT}/deployment/premium:/data/premium-deployment:ro
     read_only: true
@@ -44,6 +46,7 @@ services:
     # This process only fetches public publisher pages; it has no credentials.
     environment:
       TZ: Asia/Shanghai
+      TMPDIR: /data/snapshots
       DASHBOARD_ORDINARY_DATA: /data/ordinary
       DASHBOARD_PREMIUM_DATA: /data/premium
       DASHBOARD_BODY_CACHE: /data/bodies
@@ -56,6 +59,7 @@ services:
       - ${DASHBOARD_ORDINARY_DATA}:/data/ordinary:ro
       - ${DASHBOARD_PREMIUM_DATA}:/data/premium:ro
       - ${DASHBOARD_ROOT}/bodies:/data/bodies
+      - ${DASHBOARD_ROOT}/snapshots:/data/snapshots
     read_only: true
     tmpfs: ["/tmp:size=256m,mode=1777"]
     cap_drop: [ALL]

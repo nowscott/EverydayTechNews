@@ -59,7 +59,7 @@ export class Reader {
         for(let attempt=0;attempt<3&&!captured;attempt++) {
           const before = [describe(p),describe(p+'-wal'),describe(p+'-journal')];
           if(before[2] && before[2].size>0n) continue;
-          if(!before[0] || before.reduce((n,s)=>n+Number(s?.size??0),0)>192*1024*1024) throw Error('snapshot_unavailable');
+          if(!before[0] || before.reduce((n,s)=>n+Number(s?.size??0),0)>1024*1024*1024) throw Error('snapshot_unavailable');
           try {
             copyFileSync(p,target);
             rmSync(target+'-wal',{force:true});

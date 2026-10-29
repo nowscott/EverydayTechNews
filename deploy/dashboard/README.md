@@ -8,7 +8,9 @@
 4. 先启动并等待看板健康，再给现有三条 run 调度命令加观察包装。其余 update、sync、health 调度保持原样；不立即执行任何业务任务。原 crontab 完整保存在看板目录 crontab-before.txt；观察记录在下一次自然调度出现。
 5. 初始密码在看板目录 initial-password.txt，权限0600；dashboard.env仅含哈希。用户用局域网地址登录。安装器仅打印密码文件位置，不打印密码。
 
-数据目录0700、业务文件0600，容器以现有NAS UID/GID读取。根文件系统只读，无 Docker socket，无 host 网络，只在指定NAS局域网IPv4绑定端口；restart=unless-stopped，healthcheck每30秒一次。CPU上限1核，内存512MB，临时文件系统256MB用于一致性查询副本和SQLite临时排序。
+数据目录0700、业务文件0600，容器以现有NAS UID/GID读取。根文件系统只读，无 Docker socket，无 host 网络，只在指定NAS局域网IPv4绑定端口；restart=unless-stopped，healthcheck每30秒一次。CPU上限1核，内存512MB，另保留256MB临时文件系统。
+
+业务数据库的一致性副本使用独立的私有 `snapshots` 目录，正常查询结束后删除；单份数据库及 WAL 合计上限为 1 GiB。升级已有安装前，先在看板根目录创建属主与业务进程一致、权限为 0700 的 `snapshots` 目录，再更新 Compose 配置。该目录可能包含订阅数据，不应归档或公开；异常退出后若有残留，确认相关进程已结束再清理。
 
 ## 调度观察
 

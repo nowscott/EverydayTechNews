@@ -92,6 +92,9 @@ export async function deliver(store:Store,issue:Row,deps:DeliveryDeps={}):Promis
         // A successful SMTP acceptance followed by a persistence failure must abort, never classify as retryable.
         if(receipt.status==='smtp_accepted')throw error;
         const e=error as Row;const command=String(e.command??'');
+        if (['CONN','AUTH','EHLO','HELO','STARTTLS','MAIL FROM','RCPT TO','DATA'].includes(command)) receipt.smtp_error_command=command;
+        if (Number.isInteger(e.responseCode)) receipt.smtp_response_code=e.responseCode;
+        if (typeof e.response==='string') receipt.smtp_response=e.response.slice(0,500);
         if(!dataStarted&&command==='RCPT TO'&&Number(e.responseCode)>=500&&Number(e.responseCode)<600) {
           receipt.status='permanent_recipient_failure';
           if(issue.mode==='production'&&user.page_id)store.run('INSERT OR REPLACE INTO outbox VALUES (?,?)',id,JSON.stringify({user,attempts:0}));
@@ -99,11 +102,13 @@ export async function deliver(store:Store,issue:Row,deps:DeliveryDeps={}):Promis
           receipt.status=receipt.attempts>=3?'retries_exhausted_before_data':'retryable_before_data';receipt.retry_after=new Date(clock().getTime()+60000*receipt.attempts).toISOString();
         }else receipt.status='unknown_do_not_retry';
         save(store,id,receipt,user.email);
+        // Connection and sender failures affect the whole batch; leave other recipients pending for the next pass.
+        if (!dataStarted && ['CONN','AUTH','EHLO','HELO','STARTTLS','MAIL FROM'].includes(command)) break;
       }
     }
     // A pending recipient whose subscription was removed is never resumed from the stale queue.
     for(const row of store.all("SELECT * FROM deliveries WHERE issue=? AND status IN ('pending','retryable_before_data')",issue.id))if(!allowed.has(row.email.toLowerCase())) {
-      const receipt={...JSON.parse(row.data),status:'subscription_no_longer_eligible'};save(store,row.id,receipt,row.email);
+      const receipt={...JSON.parse(row.data),attempts:row.attempts,status:'subscription_no_longer_eligible'};save(store,row.id,receipt,row.email);
     }
   }finally {try{transport.close();}catch{/* QUIT cannot undo saved SMTP acceptance. */}}
   const counts=Object.fromEntries(store.all('SELECT status,COUNT(*) n FROM deliveries WHERE issue=? GROUP BY status',issue.id).map(r=>[r.status,r.n]));
@@ -125,6 +130,6 @@ export function createMailTransport(env:Row,onData:()=>void,overrides:Row={}) {
     // Never output the SMTP transcript. Only recognize the DATA boundary before socket.write.
     if(data?.tnx==='client'&&[message,...args].some(v=>typeof v==='string'&&v.replace(/^C:\s*/,'').trim()==='DATA'))onData();
   };
-  return nodemailer.createTransport({host:env.SERVER,port:465,secure:true,auth:{user:env.SENDING_ACCOUNT,pass:env.SENDING_PASSWORD},pool:true,maxConnections:1,maxMessages:100,maxRequeues:0,
+  return nodemailer.createTransport({host:env.SERVER,port:465,secure:true,auth:{user:env.SENDING_ACCOUNT,pass:env.SENDING_PASSWORD},pool:true,maxConnections:1,maxMessages:10,maxRequeues:0,
     connectionTimeout:30000,greetingTimeout:30000,socketTimeout:30000,logger,debug:true,disableFileAccess:true,disableUrlAccess:true,...overrides});
 }
