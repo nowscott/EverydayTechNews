@@ -53,8 +53,22 @@ test('subscription changes before resume exclude removed users and sending stops
   await deliver(store,issue,{now:()=>clock,env,getSubscribers:async()=>users(2),transport});
   clock=new Date('2026-10-21T08:59:59+08:00');
   await deliver(store,issue,{now:()=>clock,env,getSubscribers:async()=>users(1),transport:{sendMail:async(m:any)=>{calls++;clock=new Date('2026-10-21T09:00:00+08:00');return {accepted:[m.to]};},close:()=>{}}});
-  assert.equal(calls,3);assert.equal(store.one('SELECT status FROM deliveries WHERE email=?','user1@example.test')!.status,'subscription_no_longer_eligible');
+  assert.equal(calls,2);assert.equal(store.one('SELECT status FROM deliveries WHERE email=?','user1@example.test')!.status,'subscription_no_longer_eligible');
   assert.equal((await deliver(store,issue,{now:()=>clock,env,getSubscribers:async()=>{throw Error('should not read');},transport})).status,'outside_delivery_window');
+ }finally{close();}
+});
+test('a batch-wide SMTP connection failure leaves later recipients pending for recovery',async()=>{
+ const {store,issue,close}=setup('production');let clock=new Date(time),calls=0;
+ try{
+  const deps={now:()=>clock,env,getSubscribers:async()=>users(3),transport:{sendMail:async()=>{calls++;throw Object.assign(new Error('offline'),{command:'CONN',responseCode:421,response:'421 temporary failure'});},close:()=>{}}};
+  await deliver(store,issue,deps);
+  assert.equal(calls,1);
+  assert.deepEqual(store.all('SELECT status FROM deliveries ORDER BY email').map(r=>r.status),['retryable_before_data','pending','pending']);
+  const receipt=JSON.parse(store.one('SELECT data FROM deliveries WHERE email=?','user0@example.test')!.data);
+  assert.equal(receipt.smtp_error_command,'CONN');assert.equal(receipt.smtp_response_code,421);assert.equal(receipt.smtp_response,'421 temporary failure');
+  clock=new Date(clock.getTime()+2*60000);
+  await deliver(store,issue,{...deps,transport:{sendMail:async(m:any)=>({accepted:[m.to]}),close:()=>{}}});
+  assert.equal(report(store,clock).delivery.completed,true);
  }finally{close();}
 });
 test('Notion failure blocks all SMTP; persistence failure after SMTP acceptance never replays',async()=>{
@@ -95,18 +109,19 @@ test('three consecutive actual shadow days plus inbox confirmation gate cutover'
  }finally{close();}
 });
 
-test('real SMTP pool sends 100 personalized messages through one connection',async()=>{
+test('real SMTP pool rotates connections before the server closes a ten-message session',async()=>{
  const {store,issue,close}=setup('production');let messages=0,connections=0;const sockets=new Set<net.Socket>();
- const server=net.createServer(socket=>{connections++;sockets.add(socket);socket.on('close',()=>sockets.delete(socket));socket.write('220 test ESMTP\r\n');let buffer='',inData=false;
+ const server=net.createServer(socket=>{connections++;sockets.add(socket);socket.on('close',()=>sockets.delete(socket));socket.write('220 test ESMTP\r\n');let buffer='',inData=false,sessionMessages=0;
   socket.on('data',data=>{buffer+=data.toString();let index:number;while((index=buffer.indexOf('\r\n'))>=0){const line=buffer.slice(0,index);buffer=buffer.slice(index+2);
-   if(inData){if(line==='.'){messages++;inData=false;socket.write('250 accepted\r\n');}continue;}
+   if(inData){if(line==='.'){messages++;sessionMessages++;inData=false;socket.write('250 accepted\r\n');}continue;}
    if(/^EHLO/.test(line))socket.write('250-test\r\n250 SIZE 1000000\r\n');
+   else if(/^MAIL FROM/.test(line)&&sessionMessages>=10)socket.end('421 session limit\r\n');
    else if(/^MAIL FROM|^RCPT TO|^RSET/.test(line))socket.write('250 OK\r\n');
    else if(line==='DATA'){inData=true;socket.write('354 send data\r\n');}
    else if(line==='QUIT')socket.end('221 bye\r\n');else socket.write('250 OK\r\n');
   }});
  });await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));const port=(server.address() as net.AddressInfo).port;
  try{await deliver(store,issue,{now:()=>new Date(time),env,getSubscribers:async()=>users(100),createTransport:onData=>createMailTransport(env,onData,{host:'127.0.0.1',port,secure:false,ignoreTLS:true,auth:undefined})});
-  assert.equal(messages,100);assert.equal(connections,1);assert.equal(store.one("SELECT COUNT(*) n FROM deliveries WHERE status='smtp_accepted'")!.n,100);
+  assert.equal(messages,100);assert.equal(connections,10);assert.equal(store.one("SELECT COUNT(*) n FROM deliveries WHERE status='smtp_accepted'")!.n,100);
  }finally{for(const s of sockets)s.destroy();await new Promise<void>(resolve=>server.close(()=>resolve()));close();}
 });
