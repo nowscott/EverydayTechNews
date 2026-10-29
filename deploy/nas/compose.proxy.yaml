@@ -1,9 +1,6 @@
-# NAS-local proxy; no published ports or Mac dependency.
+# Proxy settings, when required, come from the private NAS_ENV_FILE.
 services:
   premium:
     network_mode: host
     environment:
       NODE_USE_ENV_PROXY: '1'
-      HTTP_PROXY: '${NAS_HTTP_PROXY:-http://127.0.0.1:7890}'
-      HTTPS_PROXY: '${NAS_HTTP_PROXY:-http://127.0.0.1:7890}'
-      NO_PROXY: 'localhost,127.0.0.1,::1,192.168.31.10,192.168.31.72'

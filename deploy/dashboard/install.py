@@ -52,6 +52,7 @@ def install(args):
     salt = secrets.token_bytes(16).hex()
     password_hash = 'scrypt:' + salt + ':' + hashlib.scrypt(password.encode(), salt=salt.encode(), n=16384, r=8, p=1, dklen=64).hex()
     (root / 'dashboard.env').write_text('DASHBOARD_PASSWORD_HASH=' + password_hash + '\n')
+    (root / 'proxy.env').write_text('')
     (root / 'initial-password.txt').write_text(password + '\n')
     values = {'DASHBOARD_IMAGE': args.image, 'DASHBOARD_ROOT': str(root), 'DASHBOARD_BIND_IP':args.bind,
               'DASHBOARD_PORT':str(args.port), 'DASHBOARD_ORDINARY_DATA':str(data[0]), 'DASHBOARD_PREMIUM_DATA':str(data[1]),

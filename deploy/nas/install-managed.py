@@ -27,16 +27,21 @@ for path in [private / 'data/durable/state.json', private / '.env']:
 if not existing:
     for name in ['manage.py', 'verify-state.ts', 'compose.managed.yaml', 'compose.proxy.yaml']:
         shutil.copyfile(source / name, root / name)
-spec = importlib.util.spec_from_file_location('nas_manage', root / 'manage.py')
+spec = importlib.util.spec_from_file_location('nas_manage', (source if existing else root) / 'manage.py')
 m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 if existing:
     controller = m.Controller(root)
+    if m.protected(): raise SystemExit('Controller upgrade deferred during morning window')
     if controller.config['data'] != str(private / 'data') or controller.config['env_file'] != str(private / '.env'):
         raise SystemExit('Existing private configuration differs; refusing to replace it')
     tag = m.PREFIX + m.read(source / 'release.json')['version']
     with m.lock(root / 'update.lock'):
+        release = controller.api('releases/tags/' + tag)
+        if release.get('draft') or release.get('prerelease') or not release.get('published_at'):
+            raise SystemExit('Controller requires a published release')
         sha, verified = controller.source(tag)
         with m.lock(Path(controller.config['scheduler_lock'])):
+            if m.protected(): raise SystemExit('Controller upgrade deferred during morning window')
             saved = root / 'controller-backups' / tag
             saved.mkdir(parents=True, exist_ok=True)
             for name in ['manage.py', 'verify-state.ts', 'compose.managed.yaml', 'compose.proxy.yaml']:

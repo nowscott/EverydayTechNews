@@ -35,13 +35,13 @@ NAS 的正式 run 还使用 `--local-authority`，仅在 Linux flock 保护下�
 
 ## 定时运行
 
-NAS 后续已由用户调整为 `192.168.31.10` 并接管家庭网络；当前新闻容器使用 OpenSurge 回环端口 7890。这里仅跟随现有代理，不调整家庭网络。早期代理交接历史见 [交接记录](OPENSURGE-20261019.md)，最终内测接管状态见 [运行记录](NAS-LIVE-20261019.md)。新闻容器需叠加 `compose.proxy.yaml` 才会使用它：
+NAS 使用 OpenWrt 网络。新闻容器叠加 `compose.proxy.yaml` 使用主机网络和 Node 环境代理；代理参数放在私有 `.env`，不填写时使用宿主网络的透明分流。具体配置及版本控制器升级顺序见 [OpenWrt 迁移](OPENWRT-MIGRATION.md)。
 
 ```sh
 docker compose --env-file deploy/nas/.env -f deploy/nas/compose.yaml -f deploy/nas/compose.proxy.yaml run --rm premium maintenance
 ```
 
-代理模式的正式定时命令同样要加上第二个 `-f deploy/nas/compose.proxy.yaml`。该文件启用主机网络，使用 NAS 回环地址的 HTTP 代理与 Node 原生环境代理支持，不发布服务端口。代理独立于 Mac；没有代理服务的其他机器不要套用这个覆盖配置。
+正式定时命令同样要加上第二个 `-f deploy/nas/compose.proxy.yaml`。该文件不发布服务端口；代理凭据不进入源码或发布记录。
 
 NAS 使用 `NEWS_COLLECTION_PROFILE=nas_balanced`：日间约每 30 分钟采集，04:00–06:15 约每 15 分钟采集，06:15–09:00 暂停采集并维持原冻结/发送窗口。以时间桶判断到期，避免任务启动秒数抖动导致漏过一次采集。来源返回 429 后单独冷却 1 小时，跳过期间不顺延冷却终点。
 

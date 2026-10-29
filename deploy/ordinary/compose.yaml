@@ -10,9 +10,6 @@ services:
     environment:
       TZ: Asia/Shanghai
       ORDINARY_STATE_AUTHORITY: nas
-      HTTP_PROXY: http://127.0.0.1:7890
-      HTTPS_PROXY: http://127.0.0.1:7890
-      NO_PROXY: localhost,127.0.0.1
       NODE_USE_ENV_PROXY: "1"
     network_mode: host
     volumes:
@@ -34,8 +31,6 @@ services:
       - path: ${ORDINARY_ROOT}/archive.env
         format: raw
     environment:
-      HTTP_PROXY: http://127.0.0.1:7890
-      HTTPS_PROXY: http://127.0.0.1:7890
       NODE_USE_ENV_PROXY: "1"
     network_mode: host
     entrypoint: [node, packages/ordinary-news/src/sync.ts]

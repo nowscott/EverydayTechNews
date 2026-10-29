@@ -10,6 +10,43 @@ import subprocess
 import sys
 
 
+def upgrade_controller(root, tag):
+    os.umask(0o077)
+    root = Path(root).resolve(); managed = root / 'managed'; source = Path(__file__).resolve().parent
+    spec = importlib.util.spec_from_file_location('ordinary_upgrade_controller', source / 'manage.py')
+    m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+    c = m.Controller(managed)
+    if m.base.protected(): raise RuntimeError('controller_upgrade_deferred_morning_window')
+    with m.base.lock(managed / 'update.lock'):
+        if not m.base.version(tag): raise RuntimeError('controller_release_invalid')
+        release = c.api('releases/tags/' + tag)
+        if release.get('draft') or release.get('prerelease') or not release.get('published_at'):
+            raise RuntimeError('controller_release_invalid')
+        sha, verified = c.source(tag)
+        with m.base.lock(Path(c.config['scheduler_lock'])):
+            with m.base.lock(managed / 'sync.lock'):
+                if m.base.protected(): raise RuntimeError('controller_upgrade_deferred_morning_window')
+                saved = managed / 'controller-backups' / tag
+                saved.mkdir(parents=True, exist_ok=False)
+                files = [('manage.py', verified / 'deploy/ordinary/manage.py'),
+                         ('base-manage.py', verified / 'deploy/nas/manage.py'),
+                         ('verify-state.ts', verified / 'deploy/ordinary/verify-state.ts')]
+                for name, _ in files:
+                    shutil.copyfile(managed / name, saved / name)
+                if (managed / 'controller.json').exists(): shutil.copyfile(managed / 'controller.json', saved / 'controller.json')
+                try:
+                    for name, candidate in files:
+                        temp = managed / (name + '.install')
+                        shutil.copyfile(candidate, temp); os.replace(temp, managed / name)
+                    m.base.atomic(managed / 'controller.json', {'source_sha': sha,
+                        'manage_sha256': m.hashlib.sha256((managed / 'manage.py').read_bytes()).hexdigest(),
+                        'base_sha256': m.hashlib.sha256((managed / 'base-manage.py').read_bytes()).hexdigest()})
+                except Exception:
+                    for name, _ in files: shutil.copyfile(saved / name, managed / name)
+                    raise
+    return {'status': 'controller_upgraded', 'tag': tag, 'sha': sha}
+
+
 def install(root, tag):
     os.umask(0o077)
     root = Path(root).resolve(); source = Path(__file__).resolve().parent
@@ -58,5 +95,5 @@ def install(root, tag):
     return {'status': 'installed_shadow', 'tag': tag, 'sha': sha, 'ordinary_legacy_actions_unchanged': True}
 
 if __name__ == '__main__':
-    p = argparse.ArgumentParser(description=__doc__); p.add_argument('--root', required=True); p.add_argument('--tag', required=True); a = p.parse_args()
-    print(json.dumps(install(a.root, a.tag)))
+    p = argparse.ArgumentParser(description=__doc__); p.add_argument('--root', required=True); p.add_argument('--tag', required=True); p.add_argument('--upgrade-controller', action='store_true'); a = p.parse_args()
+    print(json.dumps(upgrade_controller(a.root, a.tag) if a.upgrade_controller else install(a.root, a.tag)))
