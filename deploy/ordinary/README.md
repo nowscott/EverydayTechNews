@@ -6,6 +6,8 @@
 
 普通版组件标签为 `ordinary-news-vX.Y.Z`，独立于原项目v2.x和高级引擎news-engine版本。源码经PR、main上ordinary-news.yml及相关回归检查后，创建正式非预发布Release，保持`--latest=false`。NAS只部署通过main检查、固定提交与镜像摘要的版本。
 
+OpenWrt 代理、归档发布和控制器私有配置及升级顺序见 [OpenWrt 迁移](../nas/OPENWRT-MIGRATION.md)。
+
 运行目录：`/vol3/1000/Docker/everydaytechnews-ordinary`。其中data为0700私有状态，managed为独立控制器/版本/备份，ordinary.env仅供普通业务容器，archive.env仅供归档发布器，权限均为0600。ordinary.env需要既有SMTP、Notion、APP_BASE_URL及与订阅网站一致的SUBSCRIPTION_CONFIRMATION_SECRET，另设置：
 
 ```

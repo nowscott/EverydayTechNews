@@ -1,6 +1,7 @@
 import datetime as dt
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import threading
@@ -37,6 +38,21 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual(m.choose(rows, (0, 4, 0))['tag_name'], 'news-engine-v0.4.1')
         self.assertIsNone(m.choose(rows, (0, 4, 1)))
         self.assertIsNone(m.version('news-engine-v00.4.0'))
+
+    def test_private_controller_proxy_is_used_without_logging_credentials(self):
+        proxy = self.root / 'proxy.env'
+        proxy.write_text('HTTPS_PROXY=http://user:password@127.0.0.1:7893\nNO_PROXY=localhost\n')
+        proxy.chmod(0o600)
+        with patch.dict(os.environ, {}, clear=True):
+            c = m.Controller(self.root)
+            self.assertEqual(os.environ['https_proxy'], 'http://user:password@127.0.0.1:7893')
+            with patch.object(m.subprocess, 'run') as run:
+                run.return_value.returncode = 1
+                with self.assertRaisesRegex(RuntimeError, 'command_failed:git'): c.command(['git', 'fetch'])
+                self.assertEqual(run.call_args.kwargs['stderr'], m.subprocess.DEVNULL)
+            self.assertNotIn('password', (self.root / 'logs/commands.log').read_text())
+        proxy.chmod(0o644)
+        with self.assertRaisesRegex(RuntimeError, 'proxy_config_permissions_invalid'): m.Controller(self.root)
 
     def test_shanghai_window_boundaries(self):
         for hour, expected in [(3, False), (4, True), (8, True), (9, False)]:

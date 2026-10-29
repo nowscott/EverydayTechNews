@@ -83,6 +83,18 @@ def compatible(manifest, schema, component="news-engine"):
 class Controller:
     def __init__(self, root):
         self.root = Path(root).resolve()
+        proxy_file = self.root / 'proxy.env'
+        self.proxy_configured = proxy_file.exists()
+        if self.proxy_configured:
+            if proxy_file.stat().st_mode & 0o077:
+                raise RuntimeError('proxy_config_permissions_invalid')
+            for line in proxy_file.read_text().splitlines():
+                if not line or line.startswith('#'): continue
+                key, separator, value = line.partition('=')
+                if not separator or key not in ('HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY'):
+                    raise RuntimeError('proxy_config_invalid')
+                os.environ[key] = value
+                os.environ[key.lower()] = value
         self.config = read(self.root / 'config.json')
         if not self.config: raise RuntimeError('controller_not_configured')
         self.data = Path(self.config['data']).resolve()
@@ -93,8 +105,10 @@ class Controller:
     def command(self, args, cwd=None, capture=True, env=None, timeout=1800):
         # Child output stays in the NAS private log; exceptions never print env/credentials.
         with open(self.logs / 'commands.log', 'a') as log:
+            private_output = self.proxy_configured and (args[0] == 'git' or args[:2] == ['docker', 'build'])
             result = subprocess.run(args, cwd=cwd, env=env, text=True,
-                                    stdout=subprocess.PIPE if capture else log, stderr=log, timeout=timeout)
+                                    stdout=subprocess.PIPE if capture else subprocess.DEVNULL if private_output else log,
+                                    stderr=subprocess.DEVNULL if private_output else log, timeout=timeout)
         if result.returncode: raise RuntimeError('command_failed:' + args[0])
         return result.stdout.strip() if capture else ''
 
@@ -149,7 +163,7 @@ class Controller:
 
     def build(self, tag, sha, directory):
         image = self.config.get('image_repository', 'everyday-tech-news-test') + ':' + tag
-        self.command(['docker', 'build', '-f', self.config.get('dockerfile', 'deploy/nas/Dockerfile'), '--build-arg', 'NEWS_VERSION=' + tag,
+        self.command(['docker', 'build', '--build-arg', 'HTTP_PROXY', '--build-arg', 'HTTPS_PROXY', '--build-arg', 'NO_PROXY', '-f', self.config.get('dockerfile', 'deploy/nas/Dockerfile'), '--build-arg', 'NEWS_VERSION=' + tag,
                       '--build-arg', 'NEWS_REVISION=' + sha, '-t', image,
                       '-t', self.config.get('image_repository', 'everyday-tech-news-test') + ':git-' + sha, '.'], cwd=directory, capture=False)
         info = json.loads(self.command(['docker', 'image', 'inspect', image]))[0]

@@ -72,7 +72,7 @@ class Controller(base.Controller):
                 return self.command(['docker', 'run', '--rm', '--network', 'host', '--read-only', '--cap-drop', 'ALL',
                     '--security-opt', 'no-new-privileges:true', '--memory', '256m', '--cpus', '0.5',
                     '--user', str(os.getuid()) + ':' + str(os.getgid()), '--env-file', str(self.root.parent / 'archive.env'),
-                    '-e', 'HTTP_PROXY=http://127.0.0.1:7890', '-e', 'HTTPS_PROXY=http://127.0.0.1:7890', '-e', 'NODE_USE_ENV_PROXY=1',
+                    '-e', 'NODE_USE_ENV_PROXY=1',
                     '-v', str(snapshot / 'archive') + ':/archive:ro', '-v', str(snapshot / 'config.json') + ':/control/config.json:ro',
                     '-v', str(self.data / 'archive-sync') + ':/sync', '--entrypoint', 'node', current['image'],
                     'packages/ordinary-news/src/sync.ts', '/archive', '/sync', '/control/config.json'], capture=False, timeout=1800)

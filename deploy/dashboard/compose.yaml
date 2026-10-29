@@ -44,16 +44,16 @@ services:
     user: "${DASHBOARD_UID:-1000}:${DASHBOARD_GID:-1001}"
     entrypoint: [node, server/collector.ts]
     # This process only fetches public publisher pages; it has no credentials.
+    env_file:
+      - path: ${DASHBOARD_ROOT}/proxy.env
+        format: raw
     environment:
       TZ: Asia/Shanghai
       TMPDIR: /data/snapshots
       DASHBOARD_ORDINARY_DATA: /data/ordinary
       DASHBOARD_PREMIUM_DATA: /data/premium
       DASHBOARD_BODY_CACHE: /data/bodies
-      HTTP_PROXY: http://127.0.0.1:7890
-      HTTPS_PROXY: http://127.0.0.1:7890
       NODE_USE_ENV_PROXY: "1"
-      NO_PROXY: localhost,127.0.0.1
     network_mode: host
     volumes:
       - ${DASHBOARD_ORDINARY_DATA}:/data/ordinary:ro
