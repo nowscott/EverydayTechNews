@@ -79,6 +79,7 @@ export async function deliver(store:Store,issue:Row,deps:DeliveryDeps={}):Promis
       const html=previous.html??buildMessage(user.name,issue.body,date,issue.notifications,unsubscribeLink(user.email,base,secret,clock()));
       const receipt:Row={issue:issue.id,recipient_hash:hash(user.email),status:'sending',message_id:messageId,attempts:(row?.attempts??0)+1,html,subject,
         user,first_started_at:previous.first_started_at??started,started_at:clock().toISOString()};
+      for(const key of ['smtp_error_at','smtp_error_command','smtp_error_code','smtp_response_code','smtp_response'])if(previous[key]!==undefined)receipt[key]=previous[key];
       // FULL synchronous SQLite commit durably claims the recipient before touching SMTP.
       store.tx(()=>store.run('INSERT OR REPLACE INTO deliveries VALUES (?,?,?,?,?,?)',id,issue.id,user.email,'sending',receipt.attempts,JSON.stringify(receipt)));
       if(!window(config(store.root),issue,clock())) {receipt.status='pending';save(store,id,receipt,user.email);break;}
@@ -92,18 +93,27 @@ export async function deliver(store:Store,issue:Row,deps:DeliveryDeps={}):Promis
         // A successful SMTP acceptance followed by a persistence failure must abort, never classify as retryable.
         if(receipt.status==='smtp_accepted')throw error;
         const e=error as Row;const command=String(e.command??'');
+        for(const key of ['smtp_error_command','smtp_error_code','smtp_response_code','smtp_response'])delete receipt[key];
+        receipt.smtp_error_at=clock().toISOString();
         if (['CONN','AUTH','EHLO','HELO','STARTTLS','MAIL FROM','RCPT TO','DATA'].includes(command)) receipt.smtp_error_command=command;
+        if (['ECONNECTION','ETIMEDOUT','EAUTH','ESOCKET'].includes(e.code)) receipt.smtp_error_code=e.code;
         if (Number.isInteger(e.responseCode)) receipt.smtp_response_code=e.responseCode;
         if (typeof e.response==='string') receipt.smtp_response=e.response.slice(0,500);
         if(!dataStarted&&command==='RCPT TO'&&Number(e.responseCode)>=500&&Number(e.responseCode)<600) {
-          receipt.status='permanent_recipient_failure';
-          if(issue.mode==='production'&&user.page_id)store.run('INSERT OR REPLACE INTO outbox VALUES (?,?)',id,JSON.stringify({user,attempts:0}));
-        }else if(!dataStarted&&['CONN','AUTH','EHLO','HELO','STARTTLS','MAIL FROM','RCPT TO'].includes(command)) {
+          receipt.permanent_failures=(previous.permanent_failures??0)+1;
+          if(receipt.permanent_failures>=3) {
+            receipt.status='permanent_recipient_failure';
+            if(issue.mode==='production'&&user.page_id)store.run('INSERT OR REPLACE INTO outbox VALUES (?,?)',id,JSON.stringify({user,attempts:0}));
+          } else {
+            receipt.status=receipt.attempts>=3?'retries_exhausted_before_data':'retryable_before_data';
+            receipt.retry_after=new Date(clock().getTime()+60000*receipt.attempts).toISOString();
+          }
+        }else if(!dataStarted&&(e.code==='ECONNECTION'||['CONN','AUTH','EHLO','HELO','STARTTLS','MAIL FROM','RCPT TO'].includes(command))) {
           receipt.status=receipt.attempts>=3?'retries_exhausted_before_data':'retryable_before_data';receipt.retry_after=new Date(clock().getTime()+60000*receipt.attempts).toISOString();
         }else receipt.status='unknown_do_not_retry';
         save(store,id,receipt,user.email);
         // Connection and sender failures affect the whole batch; leave other recipients pending for the next pass.
-        if (!dataStarted && ['CONN','AUTH','EHLO','HELO','STARTTLS','MAIL FROM'].includes(command)) break;
+        if (!dataStarted && (e.code==='ECONNECTION'||['CONN','AUTH','EHLO','HELO','STARTTLS','MAIL FROM'].includes(command))) break;
       }
     }
     // A pending recipient whose subscription was removed is never resumed from the stale queue.
