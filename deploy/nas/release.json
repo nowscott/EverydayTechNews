@@ -1,6 +1,6 @@
 {
   "component": "news-engine",
-  "version": "0.7.7",
+  "version": "0.7.8",
   "state_schema": 1,
   "automatic_deployment": true,
   "controller_protocol": 1

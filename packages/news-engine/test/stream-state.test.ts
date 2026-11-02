@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { Store } from '../src/store.ts';
+import { assess } from '../src/pool.ts';
 
 test('streamed snapshots restore legacy formatting and keep transaction rollback on a truncated file', () => {
   const root = mkdtempSync(tmpdir() + '/news-stream-state-');
@@ -25,4 +26,19 @@ test('streamed snapshots restore legacy formatting and keep transaction rollback
     const recovered = new Store(root);
     assert.equal(recovered.one('SELECT COUNT(*) n FROM observations')!.n, 2000); recovered.db.close();
   } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('assessment retains the latest snapshot per day without deleting older reports', () => {
+  const root = mkdtempSync(tmpdir() + '/news-daily-assessment-'); const store = new Store(root);
+  try {
+    const dir = root + '/durable/assessments'; mkdirSync(dir, { recursive: true });
+    writeFileSync(dir + '/20261019090000000000.json', '{"legacy":true}');
+    assess(store, new Date('2026-10-19T01:00:00Z'));
+    assess(store, new Date('2026-10-19T02:00:00Z'));
+    assess(store, new Date('2026-10-20T01:00:00Z'));
+    const names = readdirSync(dir).sort(); assert.equal(names.length, 3);
+    assert.equal(names[0], '20261019090000000000.json'); assert.equal(names[1], '20261019235959999999.json');
+    assert.equal(JSON.parse(readFileSync(dir + '/' + names[1], 'utf8')).at, '2026-10-19T10:00:00+08:00');
+    assert.equal(JSON.parse(readFileSync(dir + '/' + names[0], 'utf8')).legacy, true);
+  } finally { store.db.close(); rmSync(root, { recursive: true, force: true }); }
 });
