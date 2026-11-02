@@ -53,6 +53,13 @@ test('new feeds require full encoded content or a verified public article body',
     }) as typeof fetch;
     const { rows } = await fetchSource('techcrunch', root, fetcher);
     assert.equal(rows[0].content_status, 'usable_excerpt'); assert.equal(rows[0].content_origin, 'registered_article_html');
+    const engadget = (async (input: any, options: any) => {
+      const url = String(input); if (url.endsWith('/rss.xml')) return new Response(feed('www.engadget.com', false));
+      assert.equal(options.redirect, 'manual'); assert.ok(url.endsWith('/'));
+      return new Response(`<html><head><meta property="article:published_time" content="2026-10-19T01:00:00Z"><link rel="canonical" href="${url}"></head><body><article>${body}</article></body></html>`);
+    }) as typeof fetch;
+    const result = await fetchSource('engadget', root, engadget);
+    assert.equal(result.rows[0].content_status, 'usable_excerpt'); assert.equal(result.rows[0].content_origin, 'registered_article_html');
   } finally { rmSync(root, { recursive: true, force: true }); t.mock.timers.reset(); }
 });
 

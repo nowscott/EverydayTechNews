@@ -212,7 +212,8 @@ export const REGISTERED_BODIES:Row = {
   google_research:{host:'research.google',prefix:'/blog/',selector:'article, main',slash:true},
   huggingface:{host:'huggingface.co',prefix:'/blog/',selector:'article, main'},
   qbitai:{host:'www.qbitai.com',prefix:'/',selector:'.article, article, .article-content, .entry-content'},
-  techcrunch:{host:'techcrunch.com',prefix:'/',selector:'.entry-content, article',slash:true}
+  techcrunch:{host:'techcrunch.com',prefix:'/',selector:'.entry-content, article',slash:true},
+  engadget:{host:'www.engadget.com',prefix:'/',selector:'article',slash:true}
 };
 export async function supplementRegistered(rows:Row[],folder:string,fetcher:typeof fetch,source:string) {
   const rule=REGISTERED_BODIES[source];if(!rule)return;
