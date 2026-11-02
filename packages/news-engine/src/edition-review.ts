@@ -48,11 +48,16 @@ export async function reviewEdition(store: Store, records: Row[], p: Row, deadli
     output_schema: EDITION_REVIEW_VERSION, content_status: 'usable_excerpt', text: pyjson(input), content_fingerprint: key,
     source_name: '冻结前整期检查', published_at: stamp(), edition_input: input };
   store.run('INSERT OR IGNORE INTO jobs(key,article,status) VALUES (?,?,?)', key, pyjson(a), 'queued');
-  const job = store.one('SELECT * FROM jobs WHERE key=?', key)!;
-  if (job.status === 'failed_validation_review' && job.attempts < Math.min(3, p.max_attempts)
-    && !store.one('SELECT id FROM calls WHERE job=? AND cost IS NULL', key)) store.run("UPDATE jobs SET status='queued' WHERE key=?", key);
   const before = store.one('SELECT COUNT(*) n FROM calls')!.n;
-  const blocked = await paidRequest(store, key, a, p, permit, deps);
+  let blocked: string | null = null;
+  for (;;) {
+    const job = store.one('SELECT * FROM jobs WHERE key=?', key)!;
+    if (job.status === 'failed_validation_review' && job.attempts < Math.min(3, p.max_attempts)
+      && !store.one('SELECT id FROM calls WHERE job=? AND cost IS NULL', key)) store.run("UPDATE jobs SET status='queued' WHERE key=?", key);
+    blocked = await paidRequest(store, key, a, p, permit, deps);
+    const current = store.one('SELECT status,attempts FROM jobs WHERE key=?', key)!;
+    if (blocked || current.status !== 'failed_validation_review' || current.attempts >= Math.min(3, p.max_attempts)) break;
+  }
   const saved = store.one('SELECT result FROM jobs WHERE key=?', key);
   if (saved?.result) {
     const result = JSON.parse(saved.result); validateEditionReview(result, input);
