@@ -100,7 +100,9 @@ export const SOURCES = {
   "deepmind": ["Google DeepMind 官方研究", "https://deepmind.google/blog/rss.xml", "deepmind.google"],
   "google_research": ["Google Research 官方研究", "https://research.google/blog/rss/", "research.google"],
   "huggingface": ["Hugging Face 官方博客", "https://huggingface.co/blog/feed.xml", "huggingface.co"],
-  "qbitai": ["量子位", "https://www.qbitai.com/feed", "www.qbitai.com"]
+  "qbitai": ["量子位", "https://www.qbitai.com/feed", "www.qbitai.com"],
+  "ifanr": ["爱范儿", "https://www.ifanr.com/feed", "www.ifanr.com"],
+  "techcrunch": ["TechCrunch", "https://techcrunch.com/feed/", "techcrunch.com"]
 } as const;
 // Keep the legacy identity for archived evidence/parity; do not poll the blocked IR page.
 export const ACTIVE_SOURCES = Object.keys(SOURCES).filter(source => source !== 'tesla');
@@ -117,5 +119,6 @@ export const ENCODED_REQUIRED_SOURCES = [
   "microsoft_foundry",
   "cloudflare",
   "ars_science",
-  "nvidia"
+  "nvidia",
+  "ifanr"
 ] as const;

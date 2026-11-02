@@ -9,7 +9,7 @@ import { reviewEdition, checkedEdition, editionExclusions } from '../src/edition
 import { limitDomains, publisherKey, publisherCapacityReached } from '../src/editorial-policy.ts';
 import { duplicate, select } from '../src/editor.ts';
 import { evaluate, preferences } from '../src/ranking.ts';
-import { shouldAuditPool } from '../src/pool.ts';
+import { shouldAuditPool, writingOrder } from '../src/pool.ts';
 
 const clock = new Date('2026-10-20T05:40:00+08:00');
 const deadline = '2026-10-20T06:15:00+08:00';
@@ -27,6 +27,14 @@ test('prepare 30 candidates but retain 20 as the edition cap and 15 as the minim
   assert.equal(shouldAuditPool(14, deadline, Date.parse('2026-10-20T06:14:00+08:00')), false);
   const rows = [...records(), ...records().slice(0, 8).map((r, i) => ({ ...r, article: { ...r.article, id: 'extra-' + i, url: `https://extra${i}.example/${i}` } }))];
   assert.equal(rows.length, 30); assert.equal(limitDomains(rows).length, 20);
+});
+test('writing order prepares a diverse publishable set before extra reserves', () => {
+  const rows = [...records(), ...records().slice(0, 12).map((r, i) => ({ ...r, article: { ...r.article, id: 'extra-' + i, url: `https://extra${i}.example/${i}` } }))].map(r => r.article);
+  for (let i = 0; i < 22; i++) rows[i].url = `https://www.ithome.com/${i}`;
+  assert.equal(limitDomains(rows).length, 20);
+  assert.ok(limitDomains(rows.slice(0, 30)).length < 20);
+  assert.equal(limitDomains(writingOrder(rows).slice(0, 30)).length, 20);
+  assert.equal(writingOrder(rows).length, rows.length);
 });
 
 test('IT之家 allows exactly eight overall and two leads across distinct domains, including HN links', () => {

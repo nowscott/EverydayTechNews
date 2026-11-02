@@ -61,6 +61,10 @@ export function candidates(store: Store, cutoff: string, target = Number.MAX_SAF
 export function writingWindow(now = new Date()): [string, string] {
   return [stamp(now), stamp(new Date(now.getTime() - 86400000))];
 }
+export function writingOrder(articles: Row[]): Row[] {
+  const first = limitDomains(articles); const selected = new Set(first.map(a => a.id + '\0' + a.content_fingerprint));
+  return [...first, ...articles.filter(a => !selected.has(a.id + '\0' + a.content_fingerprint))];
+}
 export function shouldAuditPool(count: number, deadline: string, now = Date.now()): boolean {
   return count >= Number(preferences().edition_minimum)
     && (count >= Number(preferences().candidate_target) || now >= Date.parse(deadline) - 8 * 60000);
@@ -122,7 +126,7 @@ export async function enrich(store: Store) {
   const blockedByTime = gate(p, new Date(), true, undefined, trialDeadline(config));
   if (blockedByTime) return { status: blockedByTime, calls: 0 };
   const deadline = stamp(at(day(), '06:15:00')); // Scheduled requests never use an anytime test permit.
-  const [cutoff, floor] = writingWindow(); const [eligible] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER, floor);
+  const [cutoff, floor] = writingWindow(); const [candidatesForWriting] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER, floor); const eligible = writingOrder(candidatesForWriting);
   const completed = recordsReady(store, eligible, deadline, [], false);
   const target = Number(preferences().candidate_target);
   const audit = shouldAuditPool(completed.length, deadline)
@@ -131,7 +135,7 @@ export async function enrich(store: Store) {
   if (completed.length >= target && ready.length >= Number(preferences().edition_maximum)) return { status: 'ready_pool_sufficient', candidates_ready: completed.length, ready: ready.length, calls: audit.calls };
   let reviewCalls = audit.calls;
   for (const a of eligible) {
-    if (publisherCapacityReached(a, recordsReady(store, eligible, deadline, [], false), 1.5)) continue;
+    if (publisherCapacityReached(a, recordsReady(store, eligible, deadline, [], false), 3)) continue;
     const job = store.one('SELECT * FROM jobs WHERE key=?', cacheKey(a, p));
     if (!job?.result) continue;
     if (isApproved(a, JSON.parse(job.result), p, deadline)) continue;
@@ -150,9 +154,9 @@ export async function enrich(store: Store) {
     if (!attempted.has(job.key) && attempted.size >= Number(preferences().new_versions_per_day)) continue;
     const candidate = eligible.find(a => cacheKey(a, p) === job.key)!; const a: Row = { ...candidate, revision_feedback: JSON.parse(job.article).revision_feedback }; if (!a.text || a.evidence_expired_or_missing) continue;
     const completed = recordsReady(store, eligible, deadline, [], false);
-    if (publisherCapacityReached(a, completed, 1.5)) continue;
+    if (publisherCapacityReached(a, completed, 3)) continue;
     if (publisherDraftCapacityReached(store, a, eligible, deadline)) continue;
-    if (completed.filter(r => r.article.domain === analyzeDomain(a).primary).length >= Math.ceil(Number((preferences().domain_policy as Row).maximum_per_domain) * 1.5)) continue;
+    if (completed.filter(r => r.article.domain === analyzeDomain(a).primary).length >= Number((preferences().domain_policy as Row).maximum_per_domain) * 3) continue;
     const before = store.one('SELECT COUNT(*) n FROM calls')!.n;
     const blocked = await paidRequest(store, job.key, a, p); const added = store.one('SELECT COUNT(*) n FROM calls')!.n - before;
     invoked += added; if (added) attempted.add(job.key); statuses.push({ job: job.key, status: blocked ?? store.one('SELECT status FROM jobs WHERE key=?', job.key)!.status });
@@ -208,7 +212,7 @@ export function publisherDraftCapacityReached(store: Store, a: Row, articles: Ro
     if (review?.status === 'uncertain_requires_review' || review?.status === 'failed_validation_review' && review.attempts >= p.max_attempts) return false;
     return !store.one('SELECT id FROM calls WHERE job=? AND cost IS NULL', key);
   });
-  return publisherCapacityReached(a, editionExclusions(store, drafts, deadline), 1.5);
+  return publisherCapacityReached(a, editionExclusions(store, drafts, deadline), 3);
 }
 export function compose(store: Store, now = new Date()) {
   const config = trial(store.root); if (!active(config, now)) return { status: 'trial_disabled_or_expired' };
@@ -234,7 +238,7 @@ export async function launchSample(store: Store, revision: SampleRevision = 'ini
   if (!existsSync(path)) {
     const check = await inspectRules(p); console.log(JSON.stringify({ stage: 'launch_pricing_preflight', ...check }));
     if (!check.verified) return { status: 'official_rules_unconfirmed', pricing: check };
-    const cutoff = stamp(); const [chosen, rejected] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER); queue(store, chosen, p);
+    const cutoff = stamp(); const [selected, rejected] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER); const chosen = writingOrder(selected); queue(store, chosen, p);
     const spec = { id: (revision === 'initial' ? 'sample-ts-launch-' : 'sample-ts-' + revision + '-') + day(), mode: revision === 'makeup' ? 'manual_makeup_24h' : 'current_24h_sample', makeup_for: revision === 'makeup' ? 'test-' + day() : null, pool_edition: true, articles: chosen, rejected, collection_cutoff: cutoff,
       generation_cutoff: stamp(new Date(Math.min(Date.parse(cutoff) + (revision === 'acceptance-retry' ? 75 : 30) * 60000, trialDeadline(t), pricingDeadline(p)))), created_at: stamp(), source_health: status(store).sources };
     atomic(path, store.shrink(spec)); store.checkpoint();
@@ -249,9 +253,9 @@ export async function launchSample(store: Store, revision: SampleRevision = 'ini
     if (recordsReady(store, spec.articles, spec.generation_cutoff, [], false).length >= Number(preferences().candidate_target)
       && recordsReady(store, spec.articles, spec.generation_cutoff, []).length >= Number(preferences().edition_maximum)) break;
     const completed = recordsReady(store, spec.articles, spec.generation_cutoff, [], false);
-    if (publisherCapacityReached(a, completed, 1.5)) continue;
+    if (publisherCapacityReached(a, completed, 3)) continue;
     if (!store.one('SELECT result FROM jobs WHERE key=?', a.job_key)?.result && publisherDraftCapacityReached(store, a, spec.articles, spec.generation_cutoff)) continue;
-    if (completed.filter(r => r.article.domain === analyzeDomain(a).primary).length >= Math.ceil(Number((preferences().domain_policy as Row).maximum_per_domain) * 1.5)) continue;
+    if (completed.filter(r => r.article.domain === analyzeDomain(a).primary).length >= Number((preferences().domain_policy as Row).maximum_per_domain) * 3) continue;
     let job = store.one('SELECT * FROM jobs WHERE key=?', a.job_key)!;
     while (!job.result && job.attempts < p.max_attempts) {
       if (!attempted.has(job.key) && attempted.size >= Number(preferences().new_versions_per_day)) { spec.rejected.push({ id: a.id, content_fingerprint:a.content_fingerprint, reason: 'daily_new_version_limit' }); break processing; }

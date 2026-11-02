@@ -320,15 +320,15 @@ test('publisher capacity blocks additional paid work before pricing or model req
   const { store, p, close } = setup(); let requests = 0;
   try {
     store.syncGit = true; store.push = () => {};
-    for (let i = 0; i < 13; i++) {
+    for (let i = 0; i < 25; i++) {
       const unique = Array.from({ length: 30 }, (_, j) => String.fromCodePoint(0x5000 + i * 31 + j)).join('');
       const input = { ...a, output_schema: 'dual-2', id: `publisher-${i}`, source: 'ithome', title: domainTitles[i % domainTitles.length] + unique,
         url: `https://www.ithome.com/news/${i}`, text: text + unique, content_fingerprint: digest(text + unique),
         published_at: '2026-10-19T04:00:00+08:00', original_article_published_at: '2026-10-19T04:00:00+08:00', fetched_at: '2026-10-19T04:30:00+08:00' };
       const key = cacheKey(input, p);
       store.run('INSERT INTO articles VALUES (?,?,?)', input.id, 'version', pyjson(input));
-      store.run('INSERT INTO jobs(key,article,status,result) VALUES (?,?,?,?)', key, pyjson(input), i < 12 ? 'ai_approved' : 'queued',
-        i < 12 ? pyjson(approved(input, { ...result, generated_at: '2026-10-19T05:01:00+08:00' })) : null);
+      store.run('INSERT INTO jobs(key,article,status,result) VALUES (?,?,?,?)', key, pyjson(input), i < 24 ? 'ai_approved' : 'queued',
+        i < 24 ? pyjson(approved(input, { ...result, generated_at: '2026-10-19T05:01:00+08:00' })) : null);
     }
     const mocked = t.mock.method(globalThis, 'fetch', (async () => { requests++; throw new Error('unexpected_request'); }) as typeof fetch);
     const outcome = await enrich(store); mocked.mock.restore();
@@ -340,20 +340,20 @@ test('unrecoverable review failures do not occupy publisher capacity', () => {
   const { store, p, close } = setup();
   try {
     const inputs: Row[] = [];
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 13; i++) {
       const input = { ...a, id: `capacity-${i}`, source: 'macrumors', source_name: 'MacRumors', title: `New product ${i}`,
         url: `https://www.macrumors.com/news/${i}`, content_fingerprint: digest(text + i) };
       const key = cacheKey(input, p); inputs.push(input);
-      store.run('INSERT INTO jobs(key,article,status,result) VALUES (?,?,?,?)', key, pyjson(input), i < 5 ? 'ai_approved' : i === 5 ? 'pending_ai_review' : 'queued',
-        i < 5 ? pyjson(approved(input)) : i === 5 ? pyjson(result) : null);
+      store.run('INSERT INTO jobs(key,article,status,result) VALUES (?,?,?,?)', key, pyjson(input), i < 11 ? 'ai_approved' : i === 11 ? 'pending_ai_review' : 'queued',
+        i < 11 ? pyjson(approved(input)) : i === 11 ? pyjson(result) : null);
     }
-    const key = reviewKey(inputs[5], result, p);
+    const key = reviewKey(inputs[11], result, p);
     store.run('INSERT INTO jobs(key,article,status,attempts) VALUES (?,?,?,?)', key, '{}', 'failed_validation_review', 1);
-    assert.equal(publisherDraftCapacityReached(store, inputs[6], inputs, permit.expires_at), true);
+    assert.equal(publisherDraftCapacityReached(store, inputs[12], inputs, permit.expires_at), true);
     store.run('UPDATE jobs SET attempts=? WHERE key=?', p.max_attempts, key);
-    assert.equal(publisherDraftCapacityReached(store, inputs[6], inputs, permit.expires_at), false);
+    assert.equal(publisherDraftCapacityReached(store, inputs[12], inputs, permit.expires_at), false);
     store.run("UPDATE jobs SET status='uncertain_requires_review',attempts=1 WHERE key=?", key);
-    assert.equal(publisherDraftCapacityReached(store, inputs[6], inputs, permit.expires_at), false);
+    assert.equal(publisherDraftCapacityReached(store, inputs[12], inputs, permit.expires_at), false);
   } finally { close(); }
 });
 
