@@ -34,6 +34,11 @@ export async function reviewDraft(store: Store, job: Row, a: Row, p: Row, permit
   store.checkpoint();
   return result.verdict === 'pass' ? 'ai_approved' : 'ai_rejected';
 }
+export async function reviewSampleDraft(store: Store, job: Row, a: Row, p: Row, permit?: Row, deps: PaidDependencies = {}): Promise<string> {
+  let outcome = await reviewDraft(store, job, a, p, permit, deps);
+  while (outcome === 'failed_validation_review') outcome = await reviewDraft(store, job, a, p, permit, deps);
+  return outcome;
+}
 export function prepareRevision(store: Store, job: Row, p: Row): boolean {
   if (job.status !== 'ai_rejected' || job.attempts >= Math.min(3, p.max_attempts)
       || store.one('SELECT id FROM calls WHERE job=? AND cost IS NULL', job.key)) return false;

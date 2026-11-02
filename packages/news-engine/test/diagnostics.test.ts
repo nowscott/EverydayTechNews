@@ -14,4 +14,5 @@ test('controlled diagnostics never expose arbitrary exception text; both summari
  assert.equal(errorCode(new SyntaxError('secret')),'invalid_json_response');
  assert.equal(errorCode(new Error('unsupported evidence')),'unsupported_evidence');
  const c=requestConstraints({},'unsupported_evidence');assert.match(c.summary,/150/);assert.match(c.short_summary,/80/);assert.match(c.evidence,/text/);assert.equal(c.previous_error,'unsupported_evidence');
+ const longer=requestConstraints({output_schema:'dual-2'});assert.match(longer.summary,/150–220/);assert.match(longer.short_summary,/80–120/);
 });

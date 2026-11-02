@@ -37,6 +37,25 @@ test('Tesla replacement is publisher-labelled RSS evidence, filtered to Tesla to
   assert.equal(rows[0].content_status, 'discovery_only'); assert.equal(rows[0].published_at, '2026-10-19T09:00:00+08:00');
 });
 
+test('new feeds require full encoded content or a verified public article body', async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: Date.parse('2026-10-19T12:00:00Z') });
+  const root = mkdtempSync(tmpdir() + '/extra-feeds-');
+  const body = 'The company describes a limited product test and its restrictions. '.repeat(15);
+  const item = (host: string, encoded: boolean) => `<item><title>AI model test</title><link>https://${host}/2026/test</link><pubDate>Mon, 19 Oct 2026 01:00:00 +0000</pubDate><description>Short teaser</description>${encoded ? `<content:encoded><![CDATA[<p>${body}</p>]]></content:encoded>` : ''}</item>`;
+  try {
+    const feed = (host: string, encoded: boolean) => `<rss xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel>${item(host, encoded)}</channel></rss>`;
+    assert.equal(parseFeed(feed('www.ifanr.com', true), 'ifanr', '2026-10-19T12:00:00+08:00')[0].content_status, 'usable_excerpt');
+    assert.equal(parseFeed(feed('www.ifanr.com', false), 'ifanr', '2026-10-19T12:00:00+08:00')[0].content_status, 'discovery_only');
+    const fetcher = (async (input: any, options: any) => {
+      const url = String(input); if (url.endsWith('/feed/')) return new Response(feed('techcrunch.com', false));
+      assert.equal(options.redirect, 'manual');
+      return new Response(`<html><head><meta property="article:published_time" content="2026-10-19T01:00:00Z"><link rel="canonical" href="${url}"></head><body><div class="entry-content">${body}</div></body></html>`);
+    }) as typeof fetch;
+    const { rows } = await fetchSource('techcrunch', root, fetcher);
+    assert.equal(rows[0].content_status, 'usable_excerpt'); assert.equal(rows[0].content_origin, 'registered_article_html');
+  } finally { rmSync(root, { recursive: true, force: true }); t.mock.timers.reset(); }
+});
+
 test('Tesla RSS teasers require a public dated article body; redirects, paywalls and old entries are not expanded', async t => {
   t.mock.timers.enable({ apis: ['Date'], now: Date.parse('2026-10-19T12:00:00Z') });
   const root = mkdtempSync(tmpdir() + '/tesla-media-'); const visited: string[] = [];

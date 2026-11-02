@@ -41,7 +41,7 @@ function article(source: string, url: string, title: string, pub: string, fetche
   return { id: digest(url), url, source, source_name: (SOURCES as Row)[source][0], title, published_raw: pub,
     published_at: published, published_time_kind: 'rss_article_publication', original_article_published_at: published,
     fetched_at: fetched, event_time: null, text, content_status: complete(text), content_fingerprint: digest(text),
-    content_origin: 'rss_description', language: ['ithome','qbitai'].includes(source) ? 'zh-CN' : 'en', description_clean: text,
+    content_origin: 'rss_description', language: ['ithome','qbitai','ifanr'].includes(source) ? 'zh-CN' : 'en', description_clean: text,
     rights_status: 'unconfirmed_model_and_distribution' };
 }
 export function parseFeed(raw: string, source: string, fetched: string): Row[] {
@@ -211,7 +211,8 @@ export const REGISTERED_BODIES:Row = {
   deepmind:{host:'deepmind.google',prefix:'/blog/',selector:'article, main',slash:true},
   google_research:{host:'research.google',prefix:'/blog/',selector:'article, main',slash:true},
   huggingface:{host:'huggingface.co',prefix:'/blog/',selector:'article, main'},
-  qbitai:{host:'www.qbitai.com',prefix:'/',selector:'.article, article, .article-content, .entry-content'}
+  qbitai:{host:'www.qbitai.com',prefix:'/',selector:'.article, article, .article-content, .entry-content'},
+  techcrunch:{host:'techcrunch.com',prefix:'/',selector:'.entry-content, article',slash:true}
 };
 export async function supplementRegistered(rows:Row[],folder:string,fetcher:typeof fetch,source:string) {
   const rule=REGISTERED_BODIES[source];if(!rule)return;

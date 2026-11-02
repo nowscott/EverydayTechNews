@@ -69,16 +69,8 @@ controller = m.Controller(root)
 result = controller.update()
 if result.get('status') not in ['deployed', 'up_to_date']:
     print(json.dumps(result)); raise SystemExit('Deployment incomplete; original scheduler remains unchanged')
-runner = '/usr/bin/python3 ' + str(root / 'manage.py') + ' --root ' + str(root)
 present = subprocess.run(['crontab', '-l'], capture_output=True, text=True, check=False).stdout
-lines = [line for line in present.splitlines() if str(private / 'run-scheduled.sh') not in line
-         and str(root / 'manage.py') not in line and line != '# EverydayTechNews managed releases; local time Asia/Shanghai']
-lines.extend([
-    '# EverydayTechNews managed releases; local time Asia/Shanghai',
-    '7,37 0-3,9-23 * * * ' + runner + ' run >> ' + str(root / 'logs/scheduler.log') + ' 2>&1',
-    '7,22,37,52 4-8 * * * ' + runner + ' run >> ' + str(root / 'logs/scheduler.log') + ' 2>&1',
-    '*/15 * * * * ' + runner + ' update >> ' + str(root / 'logs/updater.log') + ' 2>&1',
-])
+lines = m.scheduler_lines(present, private, root)
 with m.lock(Path(controller.config['scheduler_lock'])):
     subprocess.run(['crontab', '-'], input='\n'.join(lines) + '\n', text=True, check=True)
 print(json.dumps({'status': 'installed', 'active': controller.state()['active'], 'automatic_updates': True}))

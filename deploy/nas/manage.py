@@ -79,6 +79,19 @@ def compatible(manifest, schema, component="news-engine"):
     return (manifest.get('component') == component and manifest.get('state_schema') == schema
             and manifest.get('controller_protocol') == 1 and manifest.get('automatic_deployment') is True)
 
+def scheduler_lines(present, private, root):
+    manager = str(root / 'manage.py')
+    marker = '# EverydayTechNews managed releases; local time Asia/Shanghai'
+    lines = [line for line in present.splitlines() if str(private / 'run-scheduled.sh') not in line
+             and (manager not in line or 'record-run.py' in line) and line != marker]
+    runner = '/usr/bin/python3 ' + manager + ' --root ' + str(root)
+    lines.append(marker)
+    for schedule in ['7,37 0-3,9-23 * * *', '7,22,37,52 4-8 * * *']:
+        if not any(line.startswith(schedule + ' ') and manager in line for line in lines):
+            lines.append(schedule + ' ' + runner + ' run >> ' + str(root / 'logs/scheduler.log') + ' 2>&1')
+    lines.append('*/15 * * * * ' + runner + ' update >> ' + str(root / 'logs/updater.log') + ' 2>&1')
+    return lines
+
 
 class Controller:
     def __init__(self, root):

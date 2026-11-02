@@ -8,8 +8,8 @@ import { pricingDeadline, cacheKey, paidRequest, validate, inspectRules, gate } 
 import { fetchSource, mapLimit, SOURCES } from './sources.ts';
 import { limitDomains, analyzeDomain, titleExclusion, articleExclusion, publisherCapacityReached } from './editorial-policy.ts';
 import { ACTIVE_SOURCES } from './constants.ts';
-import { reviewDraft, prepareRevision } from './review.ts';
-import { isApproved } from './quality.ts';
+import { reviewDraft, reviewSampleDraft, prepareRevision } from './review.ts';
+import { isApproved, reviewKey } from './quality.ts';
 import { freezeIssue, sendOnce, type DeliveryDeps } from './mail.ts';
 
 export function rows(store: Store, cutoff = stamp()): Row[] {
@@ -41,7 +41,7 @@ export function candidates(store: Store, cutoff: string, target = Number.MAX_SAF
     const matches = prior.filter(x => duplicate(a, x));
     if (matches.some(x => a.content_fingerprint === x.content_fingerprint)) { reasons.push({ id: a.id, content_fingerprint:a.content_fingerprint, reason: 'already_sent_unchanged' }); continue; }
     if (matches.length) { a.prior_versions = matches.map(x => ({ url: x.url, fingerprint: x.content_fingerprint })); a.prior_evidence = matches.map(x => observed.find(old => old.content_fingerprint === x.content_fingerprint)).filter(x => x && x.text && !x.evidence_expired_or_missing); a.update_review_required = true; }
-    a.output_schema = 'dual-1';
+    a.output_schema = 'dual-2';
     const job = store.one('SELECT result FROM jobs WHERE key=?', cacheKey(a, policy()));
     if (job?.result && !editionExclusions(store, [{ article: a, result: JSON.parse(job.result) }], cutoff, reasons).length) continue;
     articles.push(a);
@@ -61,9 +61,17 @@ export function candidates(store: Store, cutoff: string, target = Number.MAX_SAF
 export function writingWindow(now = new Date()): [string, string] {
   return [stamp(now), stamp(new Date(now.getTime() - 86400000))];
 }
+export function writingOrder(articles: Row[]): Row[] {
+  const first = limitDomains(articles); const selected = new Set(first.map(a => a.id + '\0' + a.content_fingerprint));
+  return [...first, ...articles.filter(a => !selected.has(a.id + '\0' + a.content_fingerprint))];
+}
+export function shouldAuditPool(count: number, deadline: string, now = Date.now()): boolean {
+  return count >= Number(preferences().edition_minimum)
+    && (count >= Number(preferences().candidate_target) || now >= Date.parse(deadline) - 8 * 60000);
+}
 export function attemptedVersions(store: Store, date = day()): Set<string> {
   return new Set(store.all('SELECT DISTINCT c.job,j.article FROM calls c LEFT JOIN jobs j ON j.key=c.job WHERE c.day=?', date)
-    .filter(r => !r.article || JSON.parse(r.article).output_schema === 'dual-1').map(r => r.job));
+    .filter(r => !r.article || ['dual-1', 'dual-2'].includes(JSON.parse(r.article).output_schema)).map(r => r.job));
 }
 function queue(store: Store, articles: Row[], p: Row) {
   for (const a of articles) { a.job_key = cacheKey(a, p); a.queued_at ??= stamp(); a.generation_policy ??= { ...p };
@@ -72,7 +80,7 @@ function queue(store: Store, articles: Row[], p: Row) {
     if (!current) {
       const old = store.all('SELECT * FROM jobs WHERE result IS NOT NULL').find(j => {
         const prior = JSON.parse(j.article); const g = JSON.parse(j.result);
-        return prior.task_kind !== 'review' && prior.output_schema === 'dual-1' && prior.url === a.url && prior.title === a.title
+        return prior.task_kind !== 'review' && prior.output_schema === a.output_schema && prior.url === a.url && prior.title === a.title
           && prior.published_at === a.published_at && prior.content_fingerprint === a.content_fingerprint
           && g.generation_metadata?.model === p.model && g.generation_metadata?.model_version === p.model_version;
       });
@@ -118,15 +126,19 @@ export async function enrich(store: Store) {
   const blockedByTime = gate(p, new Date(), true, undefined, trialDeadline(config));
   if (blockedByTime) return { status: blockedByTime, calls: 0 };
   const deadline = stamp(at(day(), '06:15:00')); // Scheduled requests never use an anytime test permit.
-  const [cutoff, floor] = writingWindow(); const [eligible] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER, floor);
-  const audit = await reviewEdition(store, recordsReady(store, eligible, deadline, [], false), p, deadline);
+  const [cutoff, floor] = writingWindow(); const [candidatesForWriting] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER, floor); const eligible = writingOrder(candidatesForWriting);
+  const completed = recordsReady(store, eligible, deadline, [], false);
+  const target = Number(preferences().candidate_target);
+  const audit = shouldAuditPool(completed.length, deadline)
+    ? await reviewEdition(store, completed, p, deadline) : { calls: 0 };
   const ready = recordsReady(store, eligible, deadline, []);
-  if (ready.length >= Number(preferences().edition_maximum)) return { status: 'ready_pool_sufficient', ready: ready.length, calls: audit.calls };
+  if (completed.length >= target && ready.length >= Number(preferences().edition_maximum)) return { status: 'ready_pool_sufficient', candidates_ready: completed.length, ready: ready.length, calls: audit.calls };
   let reviewCalls = audit.calls;
   for (const a of eligible) {
-    if (publisherCapacityReached(a, recordsReady(store, eligible, deadline, [], false))) continue;
+    if (publisherCapacityReached(a, recordsReady(store, eligible, deadline, [], false), 3)) continue;
     const job = store.one('SELECT * FROM jobs WHERE key=?', cacheKey(a, p));
     if (!job?.result) continue;
+    if (isApproved(a, JSON.parse(job.result), p, deadline)) continue;
     const before = store.one('SELECT COUNT(*) n FROM calls')!.n;
     const outcome = await reviewDraft(store, job, a, p);
     reviewCalls += store.one('SELECT COUNT(*) n FROM calls')!.n - before;
@@ -142,9 +154,9 @@ export async function enrich(store: Store) {
     if (!attempted.has(job.key) && attempted.size >= Number(preferences().new_versions_per_day)) continue;
     const candidate = eligible.find(a => cacheKey(a, p) === job.key)!; const a: Row = { ...candidate, revision_feedback: JSON.parse(job.article).revision_feedback }; if (!a.text || a.evidence_expired_or_missing) continue;
     const completed = recordsReady(store, eligible, deadline, [], false);
-    if (publisherCapacityReached(a, completed)) continue;
+    if (publisherCapacityReached(a, completed, 3)) continue;
     if (publisherDraftCapacityReached(store, a, eligible, deadline)) continue;
-    if (completed.filter(r => r.article.domain === analyzeDomain(a).primary).length >= Number((preferences().domain_policy as Row).maximum_per_domain)) continue;
+    if (completed.filter(r => r.article.domain === analyzeDomain(a).primary).length >= Number((preferences().domain_policy as Row).maximum_per_domain) * 3) continue;
     const before = store.one('SELECT COUNT(*) n FROM calls')!.n;
     const blocked = await paidRequest(store, job.key, a, p); const added = store.one('SELECT COUNT(*) n FROM calls')!.n - before;
     invoked += added; if (added) attempted.add(job.key); statuses.push({ job: job.key, status: blocked ?? store.one('SELECT status FROM jobs WHERE key=?', job.key)!.status });
@@ -185,7 +197,7 @@ function recordsReady(store: Store, articles: Row[], deadline: string, rejected:
   const usable = editionExclusions(store, records, deadline, rejected);
   return restrictDomains ? checkedEdition(store, usable, deadline, rejected) : usable;
 }
-function publisherDraftCapacityReached(store: Store, a: Row, articles: Row[], deadline: string): boolean {
+export function publisherDraftCapacityReached(store: Store, a: Row, articles: Row[], deadline: string): boolean {
   const p = policy();
   const drafts = articles.flatMap(candidate => {
     const job = store.one('SELECT result,status FROM jobs WHERE key=?', cacheKey(candidate, p));
@@ -194,8 +206,13 @@ function publisherDraftCapacityReached(store: Store, a: Row, articles: Row[], de
     if (articleExclusion(candidate) || titleExclusion(result.title ?? '')) return [];
     if (!result.generated_at || !Number.isFinite(Date.parse(result.generated_at)) || Date.parse(result.generated_at) > Date.parse(deadline)) return [];
     try { validate(result, candidate); return [{ article: candidate, result }]; } catch { return []; }
+  }).filter(({ article, result }) => {
+    if (isApproved(article, result, p, deadline)) return true;
+    const key = reviewKey(article, result, p); const review = store.one('SELECT status,attempts FROM jobs WHERE key=?', key);
+    if (review?.status === 'uncertain_requires_review' || review?.status === 'failed_validation_review' && review.attempts >= p.max_attempts) return false;
+    return !store.one('SELECT id FROM calls WHERE job=? AND cost IS NULL', key);
   });
-  return publisherCapacityReached(a, editionExclusions(store, drafts, deadline));
+  return publisherCapacityReached(a, editionExclusions(store, drafts, deadline), 3);
 }
 export function compose(store: Store, now = new Date()) {
   const config = trial(store.root); if (!active(config, now)) return { status: 'trial_disabled_or_expired' };
@@ -207,10 +224,10 @@ export function compose(store: Store, now = new Date()) {
     source_health: status(store).sources, shortfall: Math.max(0, Number(preferences().edition_minimum) - records.length), editorial_policy: preferences().domain_policy, source_policy: preferences().source_policy, ai_review: 'passed', kind: records.length >= Number(preferences().edition_minimum) ? 'newsletter' : 'diagnostic', sendable_count: 0, engine: 'typescript' };
   return freezeIssue(store, issue, records);
 }
-export type SampleRevision = 'initial' | 'serif' | 'serif-retry' | 'makeup' | 'acceptance';
+export type SampleRevision = 'initial' | 'serif' | 'serif-retry' | 'makeup' | 'acceptance' | 'acceptance-retry';
 export function samplePath(root: string, revision: SampleRevision = 'initial') {
-  if (!['initial', 'serif', 'serif-retry', 'makeup', 'acceptance'].includes(revision)) throw new Error('invalid_sample_revision');
-  if (revision === 'acceptance') return root + '/durable/ts-launch-acceptance-' + day() + '.json';
+  if (!['initial', 'serif', 'serif-retry', 'makeup', 'acceptance', 'acceptance-retry'].includes(revision)) throw new Error('invalid_sample_revision');
+  if (revision === 'acceptance' || revision === 'acceptance-retry') return root + '/durable/ts-launch-' + revision + '-' + day() + '.json';
   if (revision === 'makeup') return root + '/durable/ts-launch-makeup-' + day() + '.json';
   return root + (revision === 'initial' ? '/durable/ts-launch.json' : '/durable/ts-launch-' + revision + '.json');
 }
@@ -221,21 +238,24 @@ export async function launchSample(store: Store, revision: SampleRevision = 'ini
   if (!existsSync(path)) {
     const check = await inspectRules(p); console.log(JSON.stringify({ stage: 'launch_pricing_preflight', ...check }));
     if (!check.verified) return { status: 'official_rules_unconfirmed', pricing: check };
-    const cutoff = stamp(); const [chosen, rejected] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER); queue(store, chosen, p);
+    const cutoff = stamp(); const [selected, rejected] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER); const chosen = writingOrder(selected); queue(store, chosen, p);
     const spec = { id: (revision === 'initial' ? 'sample-ts-launch-' : 'sample-ts-' + revision + '-') + day(), mode: revision === 'makeup' ? 'manual_makeup_24h' : 'current_24h_sample', makeup_for: revision === 'makeup' ? 'test-' + day() : null, pool_edition: true, articles: chosen, rejected, collection_cutoff: cutoff,
-      generation_cutoff: stamp(new Date(Math.min(Date.parse(cutoff) + 30 * 60000, trialDeadline(t), pricingDeadline(p)))), created_at: stamp(), source_health: status(store).sources };
+      generation_cutoff: stamp(new Date(Math.min(Date.parse(cutoff) + (revision === 'acceptance-retry' ? 75 : 30) * 60000, trialDeadline(t), pricingDeadline(p)))), created_at: stamp(), source_health: status(store).sources };
     atomic(path, store.shrink(spec)); store.checkpoint();
   }
   const spec = store.expand(read(path)); const out = store.root + '/issues/' + spec.id + '/edition.json'; if (existsSync(out)) return read(out);
   const permit = { mode: 'internal_test_anytime', issue_id: spec.id, expires_at: spec.generation_cutoff }; const attempted = attemptedVersions(store);
-  await reviewEdition(store, recordsReady(store, spec.articles, spec.generation_cutoff, [], false), p, spec.generation_cutoff, permit);
+  const initialPool = recordsReady(store, spec.articles, spec.generation_cutoff, [], false);
+  if (shouldAuditPool(initialPool.length, spec.generation_cutoff))
+    await reviewEdition(store, initialPool, p, spec.generation_cutoff, permit);
   processing: for (const a of spec.articles) {
     // Reuse all valid accumulated drafts before paying for any missing ones.
-    if (recordsReady(store, spec.articles, spec.generation_cutoff, []).length >= Number(preferences().edition_maximum)) break;
+    if (recordsReady(store, spec.articles, spec.generation_cutoff, [], false).length >= Number(preferences().candidate_target)
+      && recordsReady(store, spec.articles, spec.generation_cutoff, []).length >= Number(preferences().edition_maximum)) break;
     const completed = recordsReady(store, spec.articles, spec.generation_cutoff, [], false);
-    if (publisherCapacityReached(a, completed)) continue;
+    if (publisherCapacityReached(a, completed, 3)) continue;
     if (!store.one('SELECT result FROM jobs WHERE key=?', a.job_key)?.result && publisherDraftCapacityReached(store, a, spec.articles, spec.generation_cutoff)) continue;
-    if (completed.filter(r => r.article.domain === analyzeDomain(a).primary).length >= Number((preferences().domain_policy as Row).maximum_per_domain)) continue;
+    if (completed.filter(r => r.article.domain === analyzeDomain(a).primary).length >= Number((preferences().domain_policy as Row).maximum_per_domain) * 3) continue;
     let job = store.one('SELECT * FROM jobs WHERE key=?', a.job_key)!;
     while (!job.result && job.attempts < p.max_attempts) {
       if (!attempted.has(job.key) && attempted.size >= Number(preferences().new_versions_per_day)) { spec.rejected.push({ id: a.id, content_fingerprint:a.content_fingerprint, reason: 'daily_new_version_limit' }); break processing; }
@@ -251,18 +271,20 @@ export async function launchSample(store: Store, revision: SampleRevision = 'ini
     }
     job = store.one('SELECT * FROM jobs WHERE key=?', a.job_key)!;
     if (job.result) {
-      const reviewed = await reviewDraft(store, job, a, p, permit);
+      const reviewed = await reviewSampleDraft(store, job, a, p, permit);
       if (reviewed === 'ai_rejected' && prepareRevision(store, store.one('SELECT * FROM jobs WHERE key=?', job.key)!, p)) {
         const revised = store.one('SELECT * FROM jobs WHERE key=?', job.key)!;
         await paidRequest(store, job.key, JSON.parse(revised.article), p, permit);
         const after = store.one('SELECT * FROM jobs WHERE key=?', job.key)!;
-        if (after.result) await reviewDraft(store, after, a, p, permit);
+        if (after.result) await reviewSampleDraft(store, after, a, p, permit);
       }
     }
-    await reviewEdition(store, recordsReady(store, spec.articles, spec.generation_cutoff, [], false), p, spec.generation_cutoff, permit);
+    const pool = recordsReady(store, spec.articles, spec.generation_cutoff, [], false);
+    if (shouldAuditPool(pool.length, spec.generation_cutoff))
+      await reviewEdition(store, pool, p, spec.generation_cutoff, permit);
     const ready = recordsReady(store, spec.articles, spec.generation_cutoff, []).length;
-    console.log(JSON.stringify({ stage: 'launch_progress', ready, attempted_versions: attempted.size }));
-    if (ready >= Number(preferences().edition_maximum)) break;
+    console.log(JSON.stringify({ stage: 'launch_progress', candidates_ready: pool.length, ready, attempted_versions: attempted.size }));
+    if (pool.length >= Number(preferences().candidate_target) && ready >= Number(preferences().edition_maximum)) break;
   }
   await reviewEdition(store, recordsReady(store, spec.articles, spec.generation_cutoff, [], false), p, spec.generation_cutoff, permit);
   const records = recordsReady(store, spec.articles, spec.generation_cutoff, spec.rejected);
@@ -291,7 +313,7 @@ export async function deliver(store: Store, sample = false, now = new Date(), re
   else id = 'test-' + day(now);
   if (!existsSync(store.root + '/issues/' + id + '/edition.json')) return { status: 'edition_missing_do_not_send' };
   if (!sample) id = refreshDeliveryIssue(store, id, now);
-  return sendOnce(store, id, revision === 'acceptance' && sample ? { ...deps, subscribers: async () => [RECIPIENT] } : deps);
+  return sendOnce(store, id, (revision === 'acceptance' || revision === 'acceptance-retry') && sample ? { ...deps, subscribers: async () => [RECIPIENT] } : deps);
 }
 export function reportTrial(store: Store, now = new Date()) {
   const t = trial(store.root); const receipts = files(store.root + '/deliveries').map(read); const days = [];
