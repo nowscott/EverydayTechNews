@@ -9,6 +9,7 @@
   },
   "edition_minimum": 15,
   "edition_maximum": 20,
+  "candidate_target": 30,
   "lead_count": 5,
   "new_versions_per_day": 100,
   "processing_limit_mode": "daily_versions_and_budget",

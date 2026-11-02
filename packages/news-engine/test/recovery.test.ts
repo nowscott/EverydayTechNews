@@ -6,7 +6,7 @@ import * as tar from 'tar';
 import { Store, extractEvidence } from '../src/store.ts';
 import { atomic, policy, digest, pyjson, EXPIRY, RECIPIENT, stamp, type Row } from '../src/core.ts';
 import { paidRequest, cacheKey, gate, validate, verifyRules } from '../src/model.ts';
-import { candidates, compose, deliver, due, reconcile, collect, assess, writingWindow, reportTrial, launchSample, attemptedVersions, enrich, samplePath } from '../src/pool.ts';
+import { candidates, compose, deliver, due, reconcile, collect, assess, writingWindow, reportTrial, launchSample, attemptedVersions, enrich, samplePath, publisherDraftCapacityReached } from '../src/pool.ts';
 import { preferences } from '../src/ranking.ts';
 import { buildEmail, freezeIssue, sendOnce } from '../src/mail.ts';
 import { mapLimit } from '../src/sources.ts';
@@ -159,6 +159,9 @@ test('explicit acceptance sample sends only to the authorized test mailbox', asy
     const deps = { transport, now: clock, subscribers: async () => ['someone-else@example.org'] };
     assert.equal((await deliver(store, true, clock(), 'acceptance', deps)).status, 'smtp_accepted');
     assert.equal((await deliver(store, true, clock(), 'acceptance', deps)).reused, true); assert.equal(sent, 1);
+    const retry = 'sample-ts-acceptance-retry-unit'; atomic(samplePath(root, 'acceptance-retry'), { id: retry });
+    freezeIssue(store, { id: retry, kind: 'diagnostic', quality_policy: 'fidelity-1', articles: [], rejected: [], collection_cutoff: stamp(clock()), generation_cutoff: stamp(clock()), source_health: null }, []);
+    assert.equal((await deliver(store, true, clock(), 'acceptance-retry', deps)).status, 'smtp_accepted'); assert.equal(sent, 2);
   } finally {
     for (const [key, value] of Object.entries({ SENDING_ACCOUNT: before.sender, SENDING_PASSWORD: before.password, SERVER: before.server })) value === undefined ? delete process.env[key] : process.env[key] = value;
     close();
@@ -265,13 +268,20 @@ test('known-cost repairs stop at the shared three-attempt limit', async () => {
     assert.equal(await paidRequest(store, key, a, p, permit, { now, verify: async () => true, fetcher, token: 'test' }), 'attempt_limit'); assert.equal(count, 3);
   } finally { close(); }
 });
+test('longer summaries use the new schema while legacy length limits remain intact', () => {
+  const longer = { ...result, summary: '中'.repeat(220), short_summary: '中'.repeat(120) };
+  assert.doesNotThrow(() => validate(longer, { ...a, output_schema: 'dual-2' }));
+  assert.throws(() => validate(longer, { ...a, output_schema: 'dual-1' }), /lead_summary_over_150/);
+  assert.throws(() => validate({ ...longer, summary: '中'.repeat(261) }, { ...a, output_schema: 'dual-2' }), /empty or excessive summary/);
+  assert.throws(() => validate({ ...longer, short_summary: '中'.repeat(141) }, { ...a, output_schema: 'dual-2' }), /short_summary_missing_or_over_140/);
+});
 test('100-version limit allows cached pool reuse and admits only remaining new versions', async t => {
   assert.equal(preferences().new_versions_per_day, 100);
   t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-10-18T12:00:00+08:00').getTime() });
   const originalToken = process.env.DEEPSEEK_API_KEY; process.env.DEEPSEEK_API_KEY = 'test-token';
   try {
     for (const cached of [true, false]) {
-      const { store, p, close } = setup(); let posts = 0;
+      const { store, p, close } = setup(); let posts = 0; let reviewedCount = 0;
       try {
         store.syncGit = true; store.push = () => {}; // Offline fixture: checkpoints stay on disk, never touch GitHub.
         const previous = cached ? 100 : 99;
@@ -279,9 +289,9 @@ test('100-version limit allows cached pool reuse and admits only remaining new v
           store.run('INSERT INTO jobs(key,article,status) VALUES (?,?,?)', 'prior-' + i, pyjson({ output_schema: 'dual-1' }), 'pending_human_review');
           store.run('INSERT INTO calls(day,job,reserved,cost,status) VALUES (?,?,?,?,?)', '2026-10-18', 'prior-' + i, .001, .001, 'response_received');
         }
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < (cached ? 30 : 20); i++) {
           const unique = Array.from({ length: 30 }, (_, j) => String.fromCodePoint(0x4e00 + i * 31 + j)).join('');
-          const input = { ...a, id: `cached-${i}`, title: domainTitles[i % 5] + ' ' + unique, url: `https://publisher-${i % 7}.example/cached/${i}`, text: text + unique, content_fingerprint: digest(text + unique) };
+          const input = { ...a, output_schema: 'dual-2', id: `cached-${i}`, title: domainTitles[i % 5] + ' ' + unique, url: `https://publisher-${i % 7}.example/cached/${i}`, text: text + unique, content_fingerprint: digest(text + unique) };
           const key = cacheKey(input, p); store.run('INSERT INTO articles VALUES (?,?,?)', input.id, 'version', pyjson(input));
           if (cached) store.run('INSERT INTO jobs(key,article,status,result) VALUES (?,?,?,?)', key, pyjson(input), 'ai_approved', pyjson(approved(input)));
         }
@@ -289,13 +299,14 @@ test('100-version limit allows cached pool reuse and admits only remaining new v
         const fetchMock = t.mock.method(globalThis, 'fetch', (async (_url: any, options: any) => {
           if (options?.method === 'POST') {
             posts++; const request = JSON.parse(options.body); const evidence = JSON.parse(request.messages[1].content);
-            if (evidence.articles) return Response.json({ usage: { prompt_tokens: 100, completion_tokens: 100 }, choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({ checked_ids: evidence.articles.map((a: Row) => a.id), exclusions: [] }) } }] });
+            if (evidence.articles) { reviewedCount = evidence.articles.length; return Response.json({ usage: { prompt_tokens: 100, completion_tokens: 100 }, choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({ checked_ids: evidence.articles.map((a: Row) => a.id), exclusions: [] }) } }] }); }
             if (evidence.draft) return new Response(JSON.stringify({ usage: { prompt_tokens: 100, completion_tokens: 100 }, choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(approved({ ...a, text: evidence.text }, evidence.draft).ai_review.result) } }] }));
             return goodResponse();
           } return new Response(prices);
         }) as typeof fetch);
         const issue = await launchSample(store, 'serif'); fetchMock.mock.restore();
         assert.equal(issue.articles.length, cached ? 20 : 0); assert.equal(posts, cached ? 1 : 2);
+        if (cached) assert.equal(reviewedCount, 30);
         assert.equal(attemptedVersions(store, '2026-10-18').size, 100);
         const html = readFileSync(store.root + '/issues/' + issue.id + '/email.html', 'utf8');
         if (cached) { assert.ok(html.includes('Songti SC')); assert.ok(html.includes('morning-4-pool-ts-serif')); }
@@ -309,15 +320,15 @@ test('publisher capacity blocks additional paid work before pricing or model req
   const { store, p, close } = setup(); let requests = 0;
   try {
     store.syncGit = true; store.push = () => {};
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < 13; i++) {
       const unique = Array.from({ length: 30 }, (_, j) => String.fromCodePoint(0x5000 + i * 31 + j)).join('');
-      const input = { ...a, id: `publisher-${i}`, source: 'ithome', title: domainTitles[i % domainTitles.length] + unique,
+      const input = { ...a, output_schema: 'dual-2', id: `publisher-${i}`, source: 'ithome', title: domainTitles[i % domainTitles.length] + unique,
         url: `https://www.ithome.com/news/${i}`, text: text + unique, content_fingerprint: digest(text + unique),
         published_at: '2026-10-19T04:00:00+08:00', original_article_published_at: '2026-10-19T04:00:00+08:00', fetched_at: '2026-10-19T04:30:00+08:00' };
       const key = cacheKey(input, p);
       store.run('INSERT INTO articles VALUES (?,?,?)', input.id, 'version', pyjson(input));
-      store.run('INSERT INTO jobs(key,article,status,result) VALUES (?,?,?,?)', key, pyjson(input), i < 8 ? 'ai_approved' : 'queued',
-        i < 8 ? pyjson(approved(input, { ...result, generated_at: '2026-10-19T05:01:00+08:00' })) : null);
+      store.run('INSERT INTO jobs(key,article,status,result) VALUES (?,?,?,?)', key, pyjson(input), i < 12 ? 'ai_approved' : 'queued',
+        i < 12 ? pyjson(approved(input, { ...result, generated_at: '2026-10-19T05:01:00+08:00' })) : null);
     }
     const mocked = t.mock.method(globalThis, 'fetch', (async () => { requests++; throw new Error('unexpected_request'); }) as typeof fetch);
     const outcome = await enrich(store); mocked.mock.restore();
@@ -325,12 +336,33 @@ test('publisher capacity blocks additional paid work before pricing or model req
   } finally { close(); t.mock.timers.reset(); }
 });
 
+test('unrecoverable review failures do not occupy publisher capacity', () => {
+  const { store, p, close } = setup();
+  try {
+    const inputs: Row[] = [];
+    for (let i = 0; i < 7; i++) {
+      const input = { ...a, id: `capacity-${i}`, source: 'macrumors', source_name: 'MacRumors', title: `New product ${i}`,
+        url: `https://www.macrumors.com/news/${i}`, content_fingerprint: digest(text + i) };
+      const key = cacheKey(input, p); inputs.push(input);
+      store.run('INSERT INTO jobs(key,article,status,result) VALUES (?,?,?,?)', key, pyjson(input), i < 5 ? 'ai_approved' : i === 5 ? 'pending_ai_review' : 'queued',
+        i < 5 ? pyjson(approved(input)) : i === 5 ? pyjson(result) : null);
+    }
+    const key = reviewKey(inputs[5], result, p);
+    store.run('INSERT INTO jobs(key,article,status,attempts) VALUES (?,?,?,?)', key, '{}', 'failed_validation_review', 1);
+    assert.equal(publisherDraftCapacityReached(store, inputs[6], inputs, permit.expires_at), true);
+    store.run('UPDATE jobs SET attempts=? WHERE key=?', p.max_attempts, key);
+    assert.equal(publisherDraftCapacityReached(store, inputs[6], inputs, permit.expires_at), false);
+    store.run("UPDATE jobs SET status='uncertain_requires_review',attempts=1 WHERE key=?", key);
+    assert.equal(publisherDraftCapacityReached(store, inputs[6], inputs, permit.expires_at), false);
+  } finally { close(); }
+});
+
 test('enrich prioritizes current selection over stale queued scores', async t => {
   t.mock.timers.enable({ apis: ['Date'], now: Date.parse('2026-10-19T05:10:00+08:00') });
   const { store, p, close } = setup();
   try {
     store.syncGit = true; store.push = () => {};
-    const base = { ...a, source:'macrumors', published_at:'2026-10-19T04:00:00+08:00',
+    const base = { ...a, output_schema:'dual-2', source:'macrumors', published_at:'2026-10-19T04:00:00+08:00',
       original_article_published_at:'2026-10-19T04:00:00+08:00', fetched_at:'2026-10-19T04:30:00+08:00' };
     const launch = { ...base, id:'launch', url:'https://www.macrumors.com/launch',
       title:'Apple Announces New iPad Mini With OLED Display', content_fingerprint:digest(text+'launch'), ranking:{score:70} };

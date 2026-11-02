@@ -44,9 +44,9 @@ export function publisherLeadMaximum(a: Row): number {
   const p = preferences().source_policy as Row;
   return Number(p.lead_overrides?.[publisherKey(a) ?? ''] ?? p.maximum_leads_per_publisher);
 }
-export function publisherCapacityReached(a: Row, records: Row[]): boolean {
+export function publisherCapacityReached(a: Row, records: Row[], reserve = 1): boolean {
   const key = publisherKey(a);
-  return !!key && records.filter(r => publisherKey(r.article ?? r) === key).length >= publisherMaximum(a);
+  return !!key && records.filter(r => publisherKey(r.article ?? r) === key).length >= Math.ceil(publisherMaximum(a) * reserve);
 }
 export function limitDomains<T extends Row>(input: T[], rejected: Row[] = [], maximum = Number(preferences().edition_maximum)): T[] {
   const p = preferences().domain_policy as Row; const counts = new Map<string, number>(); const leads = new Map<string, number>(); const chosen: T[] = []; const deferred: T[] = [];

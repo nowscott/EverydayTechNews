@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { Store } from '../src/store.ts';
 import { atomic, policy, digest, pyjson, RECIPIENT, EXPIRY, type Row } from '../src/core.ts';
 import { displayFields, validateReview, reviewKey, isApproved } from '../src/quality.ts';
-import { reviewDraft, prepareRevision } from '../src/review.ts';
+import { reviewDraft, reviewSampleDraft, prepareRevision } from '../src/review.ts';
 import { cacheKey, paidRequest } from '../src/model.ts';
 import { morningTick, morningTime } from '../src/morning.ts';
 import { due, refreshDeliveryIssue, reportTrial } from '../src/pool.ts';
@@ -57,6 +57,23 @@ test('independent review uses separate prompt and same pre-POST budget ledger; e
     assert.ok(!isApproved(a, result, { ...p, model_version: 'changed' }));
     assert.ok(!isApproved(a, result, p, '2026-10-19T05:34:59+08:00'));
   } finally { close(); }
+});
+test('sample review retries known-cost invalid responses but never unknown-cost calls', async () => {
+  for (const unknown of [false, true]) {
+    const { store, p, key, close } = setup(); let requests = 0;
+    try {
+      const deps = { now, token: 'test', verify: async () => true, fetcher: (async (_url: any, options: any) => {
+        requests++;
+        if (unknown) throw new Error('network unavailable');
+        if (requests === 2) { const input = JSON.parse(JSON.parse(options.body).messages[1].content); assert.match(input.revision_instruction, /审核格式修复/); assert.doesNotMatch(input.revision_instruction, /summary目标/); }
+        return response(requests === 1 ? { verdict: 'invalid' } : good());
+      }) as typeof fetch };
+      const outcome = await reviewSampleDraft(store, store.one('SELECT * FROM jobs WHERE key=?', key)!, a, p, undefined, deps);
+      assert.equal(outcome, unknown ? 'uncertain_requires_review' : 'ai_approved');
+      assert.equal(requests, unknown ? 1 : 2);
+      assert.equal(store.all('SELECT * FROM calls').length, requests);
+    } finally { close(); }
+  }
 });
 test('unknown review usage never retries and budget/time boundaries block review POST', async () => {
   for (const mode of ['unknown', 'budget', 'late']) {

@@ -58,6 +58,17 @@ class DeploymentTests(unittest.TestCase):
         for hour, expected in [(3, False), (4, True), (8, True), (9, False)]:
             self.assertEqual(m.protected(dt.datetime(2026, 10, 19, hour, tzinfo=m.SHANGHAI)), expected)
 
+    def test_controller_upgrade_preserves_dashboard_observer_and_other_jobs(self):
+        wrapped = [schedule + ' /usr/bin/python3 /dashboard/record-run.py --component premium -- /usr/bin/python3 '
+                   + str(self.root / 'manage.py') + ' --root ' + str(self.root) + ' run'
+                   for schedule in ['7,37 0-3,9-23 * * *', '7,22,37,52 4-8 * * *']]
+        other = '* * * * * /other/ordinary-run'
+        existing = '\n'.join(wrapped + ['*/15 * * * * /usr/bin/python3 ' + str(self.root / 'manage.py') + ' --root ' + str(self.root) + ' update', other])
+        lines = m.scheduler_lines(existing, self.root / 'legacy', self.root)
+        self.assertTrue(all(line in lines for line in wrapped)); self.assertIn(other, lines)
+        self.assertEqual(sum(str(self.root / 'manage.py') in line for line in lines), 3)
+        self.assertEqual(m.scheduler_lines('\n'.join(lines), self.root / 'legacy', self.root), lines)
+
     def test_schema_and_manual_migration_gate(self):
         value = {'component': 'news-engine', 'state_schema': 1, 'controller_protocol': 1, 'automatic_deployment': True}
         self.assertTrue(m.compatible(value, 1)); self.assertFalse(m.compatible(value, 2))

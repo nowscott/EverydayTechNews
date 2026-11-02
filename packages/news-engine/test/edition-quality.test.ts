@@ -9,6 +9,7 @@ import { reviewEdition, checkedEdition, editionExclusions } from '../src/edition
 import { limitDomains, publisherKey, publisherCapacityReached } from '../src/editorial-policy.ts';
 import { duplicate, select } from '../src/editor.ts';
 import { evaluate, preferences } from '../src/ranking.ts';
+import { shouldAuditPool } from '../src/pool.ts';
 
 const clock = new Date('2026-10-20T05:40:00+08:00');
 const deadline = '2026-10-20T06:15:00+08:00';
@@ -17,6 +18,16 @@ const records = () => Array.from({length: 22}, (_, i) => ({article: {id: String(
   url: `https://publisher${i % 7}.example/${i}`, source: 'test', source_name: 'test', text: '原文说明各项技术的具体变化与限定条件。'.repeat(20),
   content_fingerprint: 'fingerprint-' + i, content_status: 'usable_excerpt', published_at: '2026-10-20T03:00:00+08:00'},
   result: {title: '中文技术进展 ' + i, summary: '公司公布技术变化，仍为有限测试。', short_summary: '公司公布技术测试。', points: [], why: ''}}));
+
+test('prepare 30 candidates but retain 20 as the edition cap and 15 as the minimum', () => {
+  assert.equal(preferences().candidate_target, 30); assert.equal(preferences().edition_maximum, 20); assert.equal(preferences().edition_minimum, 15);
+  assert.equal(shouldAuditPool(29, deadline, Date.parse('2026-10-20T06:00:00+08:00')), false);
+  assert.equal(shouldAuditPool(30, deadline, Date.parse('2026-10-20T06:00:00+08:00')), true);
+  assert.equal(shouldAuditPool(15, deadline, Date.parse('2026-10-20T06:07:00+08:00')), true);
+  assert.equal(shouldAuditPool(14, deadline, Date.parse('2026-10-20T06:14:00+08:00')), false);
+  const rows = [...records(), ...records().slice(0, 8).map((r, i) => ({ ...r, article: { ...r.article, id: 'extra-' + i, url: `https://extra${i}.example/${i}` } }))];
+  assert.equal(rows.length, 30); assert.equal(limitDomains(rows).length, 20);
+});
 
 test('IT之家 allows exactly eight overall and two leads across distinct domains, including HN links', () => {
   const rows = records();

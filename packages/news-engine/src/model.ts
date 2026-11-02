@@ -1,13 +1,17 @@
 import { EDITION_REVIEW_PROMPT, editionReviewKey, validateEditionReview } from './edition-quality.ts';
 import { errorCode, stageOf, requestConstraints, REQUEST_STRATEGY } from './diagnostics.ts';
 import { load } from 'cheerio/slim';
-import { PROMPT, POOL_PROMPT } from './constants.ts';
+import { PROMPT, POOL_PROMPT, POOL_PROMPT_V2 } from './constants.ts';
 import { digest, pyjson, stamp, day, localParts, at, EXPIRY, trial, trialDeadline, type Row } from './core.ts';
 import { complete, whitespace } from './sources.ts';
 import { titleExclusion, articleExclusion } from './editorial-policy.ts';
 import { Store } from './store.ts';
 import { REVIEW_PROMPT, WRITING_SUFFIX, reviewKey, validateReview } from './quality.ts';
 export const codepoints = (s: string) => Array.from(s).length;
+function writingPrompt(a: Row, p: Row): string {
+  return (a.output_schema === 'dual-2' ? POOL_PROMPT_V2 : a.output_schema === 'dual-1' ? POOL_PROMPT : PROMPT)
+    + (['premium-pool-3', 'premium-pool-4', 'premium-pool-5'].includes(p.prompt_version) ? WRITING_SUFFIX : '');
+}
 function tariff(clock: Date) {
   const { hour } = localParts(clock); const weekday = new Date(clock.getTime() + 8 * 3600000).getUTCDay();
   return weekday >= 1 && weekday <= 5 && ((hour >= 9 && hour < 12) || (hour >= 14 && hour < 18)) ? 2 : 1;
@@ -15,7 +19,7 @@ function tariff(clock: Date) {
 export function cacheKey(a: Row, p: Row): string {
   if (a.task_kind === 'edition_review') return editionReviewKey(a.edition_input, p);
   if (a.task_kind === 'review') return reviewKey(a, a.review_draft, p);
-  const prompt = (a.output_schema === 'dual-1' ? POOL_PROMPT : PROMPT) + (['premium-pool-3', 'premium-pool-4'].includes(p.prompt_version) ? WRITING_SUFFIX : '');
+  const prompt = writingPrompt(a, p);
   const parts = [a.url, a.title, a.published_at, a.content_fingerprint, p.model, p.model_version, p.prompt_version, digest(prompt)];
   if (a.output_schema) parts.push(a.output_schema);
   if (a.confirmed_update_facts?.length) parts.push(digest(pyjson(a.confirmed_update_facts, true)));
@@ -26,11 +30,12 @@ export function validate(result: any, a: Row): Row {
   if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error('not object');
   for (const k of ['title', 'summary', 'why']) if (typeof result[k] !== 'string') throw new Error('text field');
   if (/[A-Za-z]/.test(a.title) && !/[\u4e00-\u9fff]/.test(result.title)) throw new Error('non_chinese_title');
-  if (!result.title || !result.summary || codepoints(result.summary) > 220) throw new Error('empty or excessive summary');
+  if (!result.title || !result.summary || codepoints(result.summary) > (a.output_schema === 'dual-2' ? 260 : 220)) throw new Error('empty or excessive summary');
   if (a.output_schema === 'dual-1') {
     if (codepoints(result.summary) > 150) throw new Error('lead_summary_over_150');
     if (typeof result.short_summary !== 'string' || !result.short_summary || codepoints(result.short_summary) > 80) throw new Error('short_summary_missing_or_over_80');
   }
+  if (a.output_schema === 'dual-2' && (typeof result.short_summary !== 'string' || !result.short_summary || codepoints(result.short_summary) > 140)) throw new Error('short_summary_missing_or_over_140');
   for (const key of ['points', 'uncertainties']) if (!Array.isArray(result[key]) || !result[key].every((s: any) => typeof s === 'string')) throw new Error(key);
   if (result.points.length > 3) {
     result.program_edits ??= []; result.program_edits.push({ action: 'limit_points', original_count: result.points.length, kept_count: 3, note: '仅删除多余要点，未改写事实；完整模型输出在原始响应中保留' }); result.points = result.points.slice(0, 3);
@@ -122,14 +127,16 @@ export async function paidRequest(store: Store, key: string, a: Row, p: Row, per
   const diagnostic=lastDiagnostic?JSON.parse(lastDiagnostic.data):null;
   const evidence: Row = Object.fromEntries(['title', 'url', 'source_name', 'published_at', 'text'].map(k => [k, a[k]]));
   evidence.output_constraints=requestConstraints(a,job.attempts>0?diagnostic?.error_code:undefined);
-  if (job.attempts > 0) evidence.revision_instruction = '这是已知费用的内部校验修复，不是新文章。必须修复output_constraints.previous_error。short_summary目标30–60字符，绝不超过80字符。summary严格限制80–130个中文字符、绝不超过150字符；次要数字留在points，不必把所有事实塞入概括。英文标题译成自然中文。claims每段evidence逐字复制原文一段连续文字，保留换行，不允许拼接表格的不连续单元格。优先保住主体、核心变化、范围和计划/测试等限定。';
+  if (job.attempts > 0) evidence.revision_instruction = a.task_kind === 'review' ? '这是已知费用的审核格式修复。修复output_constraints.previous_error，完整覆盖每个fields字段；只依据原文逐项判断并返回审核JSON，不改写草稿。'
+    : a.task_kind === 'edition_review' ? '这是已知费用的整期审核格式修复。修复output_constraints.previous_error，完整覆盖输入文章并按要求返回审核JSON，不改写文章。'
+    : '这是已知费用的内部校验修复，不是新文章。必须修复output_constraints.previous_error。' + (a.output_schema === 'dual-2' ? 'short_summary目标80–120字符、最多140字符；summary目标150–220字符、最多260字符。' : 'short_summary目标30–60字符，绝不超过80字符。summary严格限制80–130个中文字符、绝不超过150字符。') + '次要数字留在points，不必把所有事实塞入概括。英文标题译成自然中文。claims每段evidence逐字复制原文一段连续文字，保留换行，不允许拼接表格的不连续单元格。优先保住主体、核心变化、范围和计划/测试等限定。';
   if (a.prior_versions?.length) {
     evidence.prior_versions_untrusted = a.prior_versions; evidence.editorial_task = '更新报道：只选当前正文比旧版本新增且有证据的事实，不能确认增量则报告不足；旧发布时间不代表新事件时间。';
     if (a.confirmed_update_facts?.length) { evidence.human_reviewed_new_facts = a.confirmed_update_facts; evidence.editorial_task += '只对human_reviewed_new_facts中经人工确认的增量写作，仍须逐字证据；这不是事实正确保证。'; }
   }
   if (a.task_kind === 'review') Object.assign(evidence, { draft: a.review_draft, fields: a.review_fields, prior_evidence: a.prior_evidence ?? [], update_review_required: !!a.update_review_required });
   else if (a.revision_feedback) evidence.revision_feedback = a.revision_feedback;
-  const prompt = a.task_kind === 'edition_review' ? EDITION_REVIEW_PROMPT : a.task_kind === 'review' ? REVIEW_PROMPT : (a.output_schema === 'dual-1' ? POOL_PROMPT : PROMPT) + (['premium-pool-3', 'premium-pool-4'].includes(p.prompt_version) ? WRITING_SUFFIX : '');
+  const prompt = a.task_kind === 'edition_review' ? EDITION_REVIEW_PROMPT : a.task_kind === 'review' ? REVIEW_PROMPT : writingPrompt(a, p);
   if (a.task_kind === 'edition_review') Object.assign(evidence, { ...a.edition_input, text: '逐篇原文见articles，须连同draft交叉核对。' });
   const maxTokens = a.task_kind === 'edition_review' ? 6000 : 1800;
   const body = { model: p.model, thinking: { type: 'disabled' }, temperature: 0, max_tokens: maxTokens, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: prompt }, { role: 'user', content: pyjson(evidence) }] };
