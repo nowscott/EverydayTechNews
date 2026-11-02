@@ -70,7 +70,7 @@ export function freezeIssue(store: Store, issue: Row, records: Row[]) {
   store.run('INSERT INTO issues VALUES (?,?)', issue.id, JSON.stringify(issue)); store.checkpoint(); return frozen;
 }
 
-type DeliveryDeps = { transport?: any; now?: () => Date; authorize?: () => Promise<boolean>; subscribers?: () => Promise<string[]> };
+export type DeliveryDeps = { transport?: any; now?: () => Date; authorize?: () => Promise<boolean>; subscribers?: () => Promise<string[]> };
 export async function sendOnce(store: Store, issueId: string, deps: DeliveryDeps = {}): Promise<Row> {
   if (!/^[A-Za-z0-9_-]+$/.test(issueId)) throw new Error('invalid_issue');
   const config = trial(store.root); const now = deps.now?.() ?? new Date();

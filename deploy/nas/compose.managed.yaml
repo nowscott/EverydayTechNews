@@ -15,7 +15,7 @@ services:
       - /tmp:size=128m,mode=1777
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    mem_limit: 2g
+    mem_limit: 3g
     cpus: 2
     restart: "no"
     labels:

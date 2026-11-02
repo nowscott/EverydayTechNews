@@ -1,7 +1,8 @@
 import { DatabaseSync } from 'node:sqlite';
-import { mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync, unlinkSync, lstatSync, existsSync } from 'node:fs';
+import { mkdirSync, readFileSync, readSync, writeFileSync, readdirSync, rmSync, unlinkSync, lstatSync, existsSync, openSync, closeSync, fsyncSync, renameSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import * as tar from 'tar';
+import { JSONParser } from '@streamparser/json';
 import { atomic, command, contained, digest, pyjson, read, stamp, day, type Row } from './core.ts';
 
 const TABLES = ['articles', 'observations', 'jobs', 'issues', 'calls', 'meta'];
@@ -91,19 +92,29 @@ export class Store {
     return obj;
   }
   restore() {
-    const doc = read(this.root + '/durable/state.json'); if (doc.schema_version !== 1) throw new Error('unsupported_state_version');
-    if (TABLES.some(t => !Array.isArray(doc.tables[t]))) throw new Error('missing_state_table');
     this.tx(() => {
       for (const table of [...TABLES, 'responses']) this.db.exec('DELETE FROM ' + table);
-      for (const [table, rows] of Object.entries(doc.tables)) {
-        if (!TABLES.includes(table)) throw new Error('unknown_state_table');
-        const columns = new Set(this.all('PRAGMA table_info(' + table + ')').map(r => r.name));
-        for (const original of rows as Row[]) {
-          const row = { ...original }; if (Object.keys(row).some(k => !columns.has(k))) throw new Error('unknown_state_column');
-          for (const field of ['data', 'article', 'result']) if (row[field]) row[field] = pyjson(this.expand(JSON.parse(row[field])));
-          const keys = Object.keys(row); this.run(`INSERT INTO ${table} (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`, ...keys.map(k => row[k]));
+      const columns = Object.fromEntries(TABLES.map(table => [table, new Set(this.all('PRAGMA table_info(' + table + ')').map(r => r.name))]));
+      const seen = new Set<string>(); let version: unknown;
+      const parser = new JSONParser({ paths: ['$.schema_version', '$.tables.*', '$.tables.*.*'], keepStack: false });
+      parser.onValue = ({ value, key, parent, stack }) => {
+        if (stack.length === 1 && key === 'schema_version') { version = value; return; }
+        if (stack.length === 2) {
+          const table = String(key); if (!TABLES.includes(table)) throw new Error('unknown_state_table');
+          if (!Array.isArray(value)) throw new Error('missing_state_table'); seen.add(table); return;
         }
-      }
+        const table = String(stack[2].key); if (!TABLES.includes(table)) throw new Error('unknown_state_table');
+        if (!Array.isArray(parent) || !value || typeof value !== 'object' || Array.isArray(value)) throw new Error('invalid_state_row');
+        const row: Row = { ...value }; if (Object.keys(row).some(k => !columns[table].has(k))) throw new Error('unknown_state_column');
+        for (const field of ['data', 'article', 'result']) if (row[field]) row[field] = pyjson(this.expand(JSON.parse(row[field])));
+        const keys = Object.keys(row); this.run(`INSERT INTO ${table} (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`, ...keys.map(k => row[k]));
+        delete parent[key as number];
+      };
+      const fd = openSync(this.root + '/durable/state.json', 'r'); const buffer = Buffer.allocUnsafe(256 * 1024);
+      try { let size: number; while ((size = readSync(fd, buffer, 0, buffer.length, null)) > 0) parser.write(buffer.subarray(0, size)); if (!parser.isEnded) parser.end(); }
+      finally { closeSync(fd); }
+      if (version !== 1) throw new Error('unsupported_state_version');
+      if (TABLES.some(table => !seen.has(table))) throw new Error('missing_state_table');
       for (const path of files(this.root + '/transient/responses')) {
         const ref = relative(this.root + '/transient', path); const entry = this.objects[ref];
         if (!entry || Date.now() >= Date.parse(entry.expires_at)) continue;
@@ -117,16 +128,25 @@ export class Store {
     if (this.run("UPDATE jobs SET status=CASE WHEN result IS NULL THEN 'queued' ELSE 'pending_ai_review' END WHERE status='pending_human_review'").changes) this.checkpoint();
   }
   checkpoint() {
-    const tables: Row = {};
-    for (const table of TABLES) {
-      tables[table] = this.all('SELECT * FROM ' + table + ' ORDER BY rowid').map(raw => {
-        const row = { ...raw }; for (const field of ['data', 'article', 'result']) if (row[field]) row[field] = pyjson(this.shrink(JSON.parse(row[field])), true);
-        return row;
-      });
-    }
     for (const row of this.all('SELECT * FROM responses')) this.putBulk('responses/' + row.call_id + '.json', Buffer.from(pyjson(row)));
     for (const path of files(this.root + '/feeds')) { this.putBulk('raw/feeds/' + relative(this.root + '/feeds', path), readFileSync(path)); unlinkSync(path); }
-    atomic(this.root + '/archive-manifests/objects.json', this.objects); atomic(this.root + '/durable/state.json', { schema_version: 1, tables });
+    const path = this.root + '/durable/state.json'; mkdirSync(dirname(path), { recursive: true });
+    const temp = path + '.tmp'; const fd = openSync(temp, 'w', 0o600);
+    try {
+      let buffer = ''; const append = (text: string) => { buffer += text; if (buffer.length >= 262144) { writeFileSync(fd, buffer); buffer = ''; } };
+      append('{"schema_version":1,"tables":{');
+      for (const [index, table] of TABLES.entries()) {
+        append((index ? ',' : '') + JSON.stringify(table) + ':['); let first = true;
+        for (const raw of this.db.prepare('SELECT * FROM ' + table + ' ORDER BY rowid').iterate() as Iterable<Row>) {
+          const row = { ...raw }; for (const field of ['data', 'article', 'result']) if (row[field]) row[field] = pyjson(this.shrink(JSON.parse(row[field])), true);
+          append((first ? '' : ',') + JSON.stringify(row)); first = false;
+        }
+        append(']');
+      }
+      append('}}\n'); writeFileSync(fd, buffer); fsyncSync(fd);
+    } finally { closeSync(fd); }
+    atomic(this.root + '/archive-manifests/objects.json', this.objects); renameSync(temp, path);
+    const dir = openSync(dirname(path), 'r'); try { fsyncSync(dir); } finally { closeSync(dir); }
     if (this.syncGit) this.push();
   }
   push() {

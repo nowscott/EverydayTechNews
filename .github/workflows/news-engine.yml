@@ -54,6 +54,8 @@ jobs:
 
       - run: python -m unittest discover -s ../../deploy/nas/tests -v
       - run: docker build -f ../../deploy/nas/Dockerfile ../.. -t news-engine-ci
+      - name: Verify runtime does not require Python
+        run: docker run --rm --network none --entrypoint sh news-engine-ci -c '! command -v python && ! command -v python3'
       - name: Start managed container without news credentials
         env:
           NAS_IMAGE: news-engine-ci

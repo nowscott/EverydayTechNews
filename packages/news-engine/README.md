@@ -23,6 +23,8 @@ node packages/news-engine/src/main.ts status --data /tmp/premium-offline
 
 `--launch true --sample-revision makeup`仅供明确人工授权的当日补发：独立每日冻结期号、最多30分钟生成授权、唯一测试收件人；不覆盖原漏发期刊，不作为定时任务绕过07:00截止的通道。报告分别保留原定时投递和manual_makeup_delivery状态。
 
+`--launch true --sample-revision acceptance` 用于明确授权的当日验收样刊，有独立的每日冻结期号和最多30分钟的生成许可；仅发送到已配置的管理员测试邮箱，不读取订阅名单，不覆盖定时期刊，也不会重复发送已接收或状态不明的邮件。
+
 状态格式继续为schema_version=1，SQLite可重建；提示词、哈希、缓存和账本不重置。未知费用、未知SMTP结果、Git推送失败均不会自动重放外部动作。任何回退都必须保留TS之后的新账本与发送记录。
 
 ## 定时运行的边界

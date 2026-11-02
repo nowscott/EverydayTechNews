@@ -63,6 +63,15 @@ class DeploymentTests(unittest.TestCase):
         self.assertTrue(m.compatible(value, 1)); self.assertFalse(m.compatible(value, 2))
         self.assertFalse(m.compatible({**value, 'automatic_deployment': False}, 1))
 
+    def test_each_release_uses_its_own_offline_verifier(self):
+        with patch.object(self.c, 'startup'), patch.object(self.c, 'command') as command:
+            self.c.validate(self.new, self.data)
+            args = command.call_args.args[0]
+            self.assertIn(str(Path(self.new['source']) / 'deploy/nas/verify-state.ts') + ':/app/verify-state.ts:ro', args)
+            self.c.validate({**self.old, 'legacy': True}, self.data)
+            args = command.call_args.args[0]
+            self.assertIn(str(self.c.root / 'verify-state.ts') + ':/app/verify-state.ts:ro', args)
+
     def test_lock_excludes_overlapping_scheduler(self):
         with m.lock(Path(self.config['scheduler_lock'])):
             with m.lock(Path(self.config['scheduler_lock']), blocking=False) as acquired:

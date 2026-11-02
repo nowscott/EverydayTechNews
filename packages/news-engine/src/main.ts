@@ -17,7 +17,7 @@ for (let i = 0; i < args.length; i += 2) {
   flags[args[i].slice(2)] = args[i + 1];
 }
 for (const key of ['maintenance-only', 'launch', 'verify-api', 'verify-quality']) if (flags[key] !== undefined && !['true', 'false'].includes(flags[key])) throw new Error('invalid_boolean');
-if (flags['sample-revision'] !== undefined && !['initial', 'serif', 'serif-retry', 'makeup'].includes(flags['sample-revision'])) throw new Error('invalid_sample_revision');
+if (flags['sample-revision'] !== undefined && !['initial', 'serif', 'serif-retry', 'makeup', 'acceptance'].includes(flags['sample-revision'])) throw new Error('invalid_sample_revision');
 const root = resolve(flags.data ?? 'premium_data/pool'); mkdirSync(root, { recursive: true });
 if (flags.syncGit && flags.localAuthority) throw new Error('choose_one_state_authority');
 if (flags.localAuthority && process.platform !== 'linux') throw new Error('nas_authority_requires_linux_flock');
