@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { Store } from '../src/store.ts';
 import { atomic, policy, pyjson, digest } from '../src/core.ts';
-import { editionInput, validateEditionReview } from '../src/edition-quality.ts';
+import { editionInput, editionReviewKey, validateEditionReview } from '../src/edition-quality.ts';
 import { reviewEdition, checkedEdition, editionExclusions } from '../src/edition-review.ts';
 import { limitDomains, publisherKey, publisherCapacityReached } from '../src/editorial-policy.ts';
 import { duplicate, select } from '../src/editor.ts';
@@ -152,4 +152,13 @@ test('malformed known-cost edition responses get at most three attempts; budget 
     assert.equal((await reviewEdition(store,changed,policy(),deadline,undefined,deps)).status,'budget_exhausted');
     assert.equal(posts,3);
   } finally {store.db.close();rmSync(root,{recursive:true,force:true});}
+});
+
+test('restored body metadata does not change edition identity; body changes do', () => {
+  const input = editionInput(records()); const p = policy(); const key = editionReviewKey(input, p);
+  const restored = structuredClone(input);
+  for (const a of restored.articles) Object.assign(a, { _body_ref: 'bodies/test.json', description_clean: '' });
+  assert.equal(editionReviewKey(restored, p), key);
+  restored.articles[0].text += '正文变化';
+  assert.notEqual(editionReviewKey(restored, p), key);
 });
