@@ -102,7 +102,8 @@ export const SOURCES = {
   "huggingface": ["Hugging Face 官方博客", "https://huggingface.co/blog/feed.xml", "huggingface.co"],
   "qbitai": ["量子位", "https://www.qbitai.com/feed", "www.qbitai.com"],
   "ifanr": ["爱范儿", "https://www.ifanr.com/feed", "www.ifanr.com"],
-  "techcrunch": ["TechCrunch", "https://techcrunch.com/feed/", "techcrunch.com"]
+  "techcrunch": ["TechCrunch", "https://techcrunch.com/feed/", "techcrunch.com"],
+  "engadget": ["Engadget", "https://www.engadget.com/rss.xml", "www.engadget.com"]
 } as const;
 // Keep the legacy identity for archived evidence/parity; do not poll the blocked IR page.
 export const ACTIVE_SOURCES = Object.keys(SOURCES).filter(source => source !== 'tesla');
