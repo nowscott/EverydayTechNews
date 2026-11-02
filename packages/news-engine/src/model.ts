@@ -10,7 +10,8 @@ import { REVIEW_PROMPT, WRITING_SUFFIX, reviewKey, validateReview } from './qual
 export const codepoints = (s: string) => Array.from(s).length;
 function writingPrompt(a: Row, p: Row): string {
   return (a.output_schema === 'dual-2' ? POOL_PROMPT_V2 : a.output_schema === 'dual-1' ? POOL_PROMPT : PROMPT)
-    + (['premium-pool-3', 'premium-pool-4', 'premium-pool-5'].includes(p.prompt_version) ? WRITING_SUFFIX : '');
+    + (p.prompt_version === 'premium-pool-5' ? WRITING_SUFFIX.replace('再压缩字数', '再在有依据的范围内充分说明')
+      : ['premium-pool-3', 'premium-pool-4'].includes(p.prompt_version) ? WRITING_SUFFIX : '');
 }
 function tariff(clock: Date) {
   const { hour } = localParts(clock); const weekday = new Date(clock.getTime() + 8 * 3600000).getUTCDay();
