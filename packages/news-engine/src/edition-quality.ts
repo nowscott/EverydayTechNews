@@ -12,7 +12,9 @@ export function editionInput(records: Row[]): Row {
   return { articles };
 }
 export function editionReviewKey(input: Row, p: Row): string {
-  return digest(pyjson([EDITION_REVIEW_VERSION, EDITION_REVIEW_PROMPT, input, p.model, p.model_version, preferences().source_policy, preferences().domain_policy], true));
+  const canonical = { articles: input.articles.map((a: Row) => Object.fromEntries(
+    ['id', 'url', 'source', 'content_origin', 'content_fingerprint', 'title', 'text', 'published_at', 'draft'].map(k => [k, a[k]]))) };
+  return digest(pyjson([EDITION_REVIEW_VERSION, EDITION_REVIEW_PROMPT, canonical, p.model, p.model_version, preferences().source_policy, preferences().domain_policy], true));
 }
 export function validateEditionReview(value: any, input: Row): Row {
   const articles: Row[] = input.articles;
