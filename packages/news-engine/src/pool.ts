@@ -93,7 +93,8 @@ export function assess(store: Store, now = new Date()) {
   const excluded: Row = {}; for (const r of rejected) excluded[r.reason] = (excluded[r.reason] ?? 0) + 1;
   const report = { at: stamp(now), ranking_version: VERSION, config, selected: selected.map(a => ({ id: a.id, fingerprint: a.content_fingerprint, title: a.title, domain: a.domain, domain_analysis: a.domain_analysis, ranking: a.ranking })),
     rejections: rejected, funnel: { total_versions: rows(store).length, selected: selected.length, excluded } };
-  atomic(store.root + '/durable/assessments/' + stamp(now).replaceAll(/[^0-9]/g, '') + '.json', report); store.checkpoint(); return report;
+  // Sort after legacy timestamped reports so the dashboard reads this day's latest snapshot.
+  atomic(store.root + '/durable/assessments/' + day(now).replaceAll('-', '') + '235959999999.json', report); store.checkpoint(); return report;
 }
 export async function collect(store: Store, workers = 4, fetcher: typeof fetch = fetch) {
   if (!Number.isInteger(workers) || workers < 1 || workers > 4) throw new Error('collection_workers_must_be_1_to_4');

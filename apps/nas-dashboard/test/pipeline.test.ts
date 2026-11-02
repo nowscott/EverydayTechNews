@@ -4,6 +4,15 @@ import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {Reader} from '../server/data.ts';
 import {assessmentIndex,processingStage,currentReview,eligibilityReason,attempts} from '../server/pipeline.ts';
+test('daily snapshot supersedes the legacy intraday report',()=>{
+ const root=mkdtempSync(tmpdir()+'/assessment-daily-'),r=new Reader(root);
+ try{
+  mkdirSync(root+'/durable/assessments',{recursive:true});
+  writeFileSync(root+'/durable/assessments/20261024120000000000.json',JSON.stringify({at:'2026-10-24T12:00:00+08:00',selected:[],rejections:[{id:'a',content_fingerprint:'v',reason:'old_news'}]}));
+  writeFileSync(root+'/durable/assessments/20261024235959999999.json',JSON.stringify({at:'2026-10-24T13:00:00+08:00',selected:[{id:'a',fingerprint:'v',ranking:{score:90}}],rejections:[]}));
+  assert.equal(assessmentIndex(r,'2026-10-01').get('a\0v')!.candidate,true);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});
 test('assessment index preserves real zero scores and content-version boundaries; missing and damaged reports are distinct',()=>{
  const root=mkdtempSync(tmpdir()+'/assessment-test-'),r=new Reader(root);
  try{
