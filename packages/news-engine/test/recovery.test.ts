@@ -6,7 +6,7 @@ import * as tar from 'tar';
 import { Store, extractEvidence } from '../src/store.ts';
 import { atomic, policy, digest, pyjson, EXPIRY, RECIPIENT, stamp, type Row } from '../src/core.ts';
 import { paidRequest, cacheKey, gate, validate, verifyRules } from '../src/model.ts';
-import { candidates, compose, due, reconcile, collect, assess, writingWindow, reportTrial, launchSample, attemptedVersions, enrich, samplePath } from '../src/pool.ts';
+import { candidates, compose, deliver, due, reconcile, collect, assess, writingWindow, reportTrial, launchSample, attemptedVersions, enrich, samplePath } from '../src/pool.ts';
 import { preferences } from '../src/ranking.ts';
 import { buildEmail, freezeIssue, sendOnce } from '../src/mail.ts';
 import { mapLimit } from '../src/sources.ts';
@@ -146,6 +146,22 @@ test('single recipient, frozen hashes, sending claim, duplicate attempt and QUIT
     await assert.rejects(() => sendOnce(store, issue.id, { transport, now, authorize: async () => true }), /frozen_content_changed/);
   } finally {
     for (const [key, value] of [['SENDING_ACCOUNT', before.sender], ['SENDING_PASSWORD', before.password], ['SERVER', before.server]]) { if (value === undefined) delete process.env[key!]; else process.env[key!] = value; } close();
+  }
+});
+test('explicit acceptance sample sends only to the authorized test mailbox', async () => {
+  const { store, root, close } = setup(); const before = { sender: process.env.SENDING_ACCOUNT, password: process.env.SENDING_PASSWORD, server: process.env.SERVER };
+  process.env.SENDING_ACCOUNT = 'sender@example.org'; process.env.SENDING_PASSWORD = 'test'; process.env.SERVER = 'smtp.example.org';
+  try {
+    const clock = () => new Date('2026-10-19T12:00:00+08:00'); const id = 'sample-ts-acceptance-unit';
+    atomic(samplePath(root, 'acceptance'), { id });
+    freezeIssue(store, { id, kind: 'diagnostic', quality_policy: 'fidelity-1', articles: [], rejected: [], collection_cutoff: stamp(clock()), generation_cutoff: stamp(clock()), source_health: null }, []);
+    let sent = 0; const transport = { sendMail: async (message: Row) => { sent++; assert.equal(message.to, RECIPIENT); return { accepted: [RECIPIENT] }; }, close: () => {} };
+    const deps = { transport, now: clock, subscribers: async () => ['someone-else@example.org'] };
+    assert.equal((await deliver(store, true, clock(), 'acceptance', deps)).status, 'smtp_accepted');
+    assert.equal((await deliver(store, true, clock(), 'acceptance', deps)).reused, true); assert.equal(sent, 1);
+  } finally {
+    for (const [key, value] of Object.entries({ SENDING_ACCOUNT: before.sender, SENDING_PASSWORD: before.password, SERVER: before.server })) value === undefined ? delete process.env[key] : process.env[key] = value;
+    close();
   }
 });
 test('unknown SMTP result persists and is never automatically resent', async () => {

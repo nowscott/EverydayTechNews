@@ -1,7 +1,7 @@
 import { reviewEdition, checkedEdition, editionExclusions } from './edition-review.ts';
 import { mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { Store, files } from './store.ts';
-import { atomic, read, pyjson, digest, policy, trial, active, stamp, day, localParts, at, trialDeadline, type Row } from './core.ts';
+import { atomic, read, pyjson, digest, policy, trial, active, stamp, day, localParts, at, trialDeadline, RECIPIENT, type Row } from './core.ts';
 import { preferences, VERSION } from './ranking.ts';
 import { duplicate, select } from './editor.ts';
 import { pricingDeadline, cacheKey, paidRequest, validate, inspectRules, gate } from './model.ts';
@@ -10,7 +10,7 @@ import { limitDomains, analyzeDomain, titleExclusion, articleExclusion, publishe
 import { ACTIVE_SOURCES } from './constants.ts';
 import { reviewDraft, prepareRevision } from './review.ts';
 import { isApproved } from './quality.ts';
-import { freezeIssue, sendOnce } from './mail.ts';
+import { freezeIssue, sendOnce, type DeliveryDeps } from './mail.ts';
 
 export function rows(store: Store, cutoff = stamp()): Row[] {
   const last = new Map(store.all('SELECT id,fingerprint,MAX(observed_at) observed FROM observations WHERE observed_at<=? GROUP BY id,fingerprint', cutoff).map(r => [r.id + '\0' + r.fingerprint, r.observed]));
@@ -207,9 +207,10 @@ export function compose(store: Store, now = new Date()) {
     source_health: status(store).sources, shortfall: Math.max(0, Number(preferences().edition_minimum) - records.length), editorial_policy: preferences().domain_policy, source_policy: preferences().source_policy, ai_review: 'passed', kind: records.length >= Number(preferences().edition_minimum) ? 'newsletter' : 'diagnostic', sendable_count: 0, engine: 'typescript' };
   return freezeIssue(store, issue, records);
 }
-export type SampleRevision = 'initial' | 'serif' | 'serif-retry' | 'makeup';
+export type SampleRevision = 'initial' | 'serif' | 'serif-retry' | 'makeup' | 'acceptance';
 export function samplePath(root: string, revision: SampleRevision = 'initial') {
-  if (!['initial', 'serif', 'serif-retry', 'makeup'].includes(revision)) throw new Error('invalid_sample_revision');
+  if (!['initial', 'serif', 'serif-retry', 'makeup', 'acceptance'].includes(revision)) throw new Error('invalid_sample_revision');
+  if (revision === 'acceptance') return root + '/durable/ts-launch-acceptance-' + day() + '.json';
   if (revision === 'makeup') return root + '/durable/ts-launch-makeup-' + day() + '.json';
   return root + (revision === 'initial' ? '/durable/ts-launch.json' : '/durable/ts-launch-' + revision + '.json');
 }
@@ -282,7 +283,7 @@ export async function verifyApi(store: Store) {
   const result = { status: blocked ?? store.one('SELECT status FROM jobs WHERE key=?', job.key)!.status, mail_sent: false, is_trial_day: false, accounting: status(store).calls };
   atomic(store.root + '/durable/ts-api-verification.json', result); store.checkpoint(); return result;
 }
-export async function deliver(store: Store, sample = false, now = new Date(), revision: SampleRevision = 'initial') {
+export async function deliver(store: Store, sample = false, now = new Date(), revision: SampleRevision = 'initial', deps: DeliveryDeps = {}) {
   const t = trial(store.root); const { hour, minute } = localParts(now);
   if (!sample && (!active(t, now) || hour < 6 || hour >= 9 || hour === 6 && minute < 30)) return { status: 'outside_0630_0900_delivery_window' };
   let id: string;
@@ -290,7 +291,7 @@ export async function deliver(store: Store, sample = false, now = new Date(), re
   else id = 'test-' + day(now);
   if (!existsSync(store.root + '/issues/' + id + '/edition.json')) return { status: 'edition_missing_do_not_send' };
   if (!sample) id = refreshDeliveryIssue(store, id, now);
-  return sendOnce(store, id);
+  return sendOnce(store, id, revision === 'acceptance' && sample ? { ...deps, subscribers: async () => [RECIPIENT] } : deps);
 }
 export function reportTrial(store: Store, now = new Date()) {
   const t = trial(store.root); const receipts = files(store.root + '/deliveries').map(read); const days = [];
