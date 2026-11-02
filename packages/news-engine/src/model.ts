@@ -138,7 +138,9 @@ export async function paidRequest(store: Store, key: string, a: Row, p: Row, per
   if (a.task_kind === 'review') Object.assign(evidence, { draft: a.review_draft, fields: a.review_fields, prior_evidence: a.prior_evidence ?? [], update_review_required: !!a.update_review_required });
   else if (a.revision_feedback) evidence.revision_feedback = a.revision_feedback;
   const prompt = a.task_kind === 'edition_review' ? EDITION_REVIEW_PROMPT : a.task_kind === 'review' ? REVIEW_PROMPT : writingPrompt(a, p);
-  if (a.task_kind === 'edition_review') Object.assign(evidence, { ...a.edition_input, text: '逐篇原文见articles，须连同draft交叉核对。' });
+  const compactEdition = a.task_kind === 'edition_review'
+    ? { articles: a.edition_input.articles.map((item: Row, index: number) => ({ ...item, id: String(index) })) } : null;
+  if (compactEdition) Object.assign(evidence, { ...compactEdition, text: '逐篇原文见articles，须连同draft交叉核对。' });
   const maxTokens = a.task_kind === 'edition_review' ? 6000 : 1800;
   const body = { model: p.model, thinking: { type: 'disabled' }, temperature: 0, max_tokens: maxTokens, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: prompt }, { role: 'user', content: pyjson(evidence) }] };
   const clock = now(); const multiplier = tariff(clock);
@@ -173,7 +175,15 @@ export async function paidRequest(store: Store, key: string, a: Row, p: Row, per
       const estimated = cost(raw.usage, p, multiplier);
       store.run("UPDATE calls SET cost=?,usage=?,status='response_received' WHERE id=?", estimated, pyjson(raw.usage), callId);
       if (raw.choices?.[0]?.finish_reason !== 'stop') throw new Error('incomplete response');
-      const result = a.task_kind === 'edition_review' ? validateEditionReview(JSON.parse(raw.choices[0].message.content), a.edition_input) : a.task_kind === 'review' ? validateReview(JSON.parse(raw.choices[0].message.content), a) : validate(JSON.parse(raw.choices[0].message.content), a);
+      const value = JSON.parse(raw.choices[0].message.content);
+      let result: Row;
+      if (compactEdition) {
+        const checked = validateEditionReview(value, compactEdition); const ids = a.edition_input.articles.map((item: Row) => item.id);
+        result = { ...checked, checked_ids: checked.checked_ids.map((id: string) => ids[Number(id)]), exclusions: checked.exclusions.map((finding: Row) => ({
+          ...finding, id: ids[Number(finding.id)], related_ids: finding.related_ids.map((id: string) => ids[Number(id)]),
+          evidence: finding.evidence.map((item: Row) => ({ ...item, id: ids[Number(item.id)] })) })) };
+        validateEditionReview(result, a.edition_input);
+      } else result = a.task_kind === 'review' ? validateReview(value, a) : validate(value, a);
       result.generated_at = stamp(now()); result.generation_metadata = { model: p.model, model_version: p.model_version, prompt_version: p.prompt_version, prompt_sha256: digest(prompt), output_schema: a.output_schema ?? 'legacy-1' };
       result.request_strategy = REQUEST_STRATEGY;
       store.run("UPDATE jobs SET result=?,status='pending_ai_review' WHERE key=?", pyjson(result), key);

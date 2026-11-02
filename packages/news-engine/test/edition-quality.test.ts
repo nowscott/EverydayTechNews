@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { Store } from '../src/store.ts';
-import { atomic, policy, pyjson } from '../src/core.ts';
+import { atomic, policy, pyjson, digest } from '../src/core.ts';
 import { editionInput, validateEditionReview } from '../src/edition-quality.ts';
 import { reviewEdition, checkedEdition, editionExclusions } from '../src/edition-review.ts';
 import { limitDomains, publisherKey, publisherCapacityReached } from '../src/editorial-policy.ts';
@@ -78,6 +78,26 @@ test('edition review requires complete coverage and attributable verbatim confli
   assert.throws(()=>validateEditionReview({...valid,checked_ids:valid.checked_ids.slice(1)},input));
   assert.throws(()=>validateEditionReview({...valid,exclusions:[{...valid.exclusions[0],evidence:[{id:'0',quote:'编造的证据根本不存在'}]}]},input));
   assert.throws(()=>validateEditionReview({...valid,exclusions:[{...valid.exclusions[0],related_ids:['999']}]},input));
+});
+
+test('edition review retries incomplete known-cost coverage with compact IDs, but not unknown-cost calls', async () => {
+  for (const unknown of [false, true]) {
+    const root=mkdtempSync(tmpdir()+'/edition-retry-'); const store=new Store(root);
+    atomic(root+'/trial.json',{schema_version:1,mode:'internal_test',enabled:true,model_enabled:true,production_enabled:false,start:'2026-10-19',days:7,expires_at:'2026-10-26T00:00:00+08:00',allowed_recipient:'nowscott@qq.com',daily_budget_cny:2});
+    const rows=records().map(r=>({...r,article:{...r.article,id:digest(r.article.id)}})); let posts=0;
+    try {
+      const deps={now:()=>clock,verify:async()=>true,token:'test-token',fetcher:(async (_url:any,options:any)=>{
+        posts++; if (unknown) throw new Error('connection interrupted');
+        const input=JSON.parse(JSON.parse(options.body).messages[1].content); assert.deepEqual(input.articles.map((a:any)=>a.id),rows.map((_,i)=>String(i)));
+        const ids=input.articles.map((a:any)=>a.id); if(posts===1)ids.pop();
+        return Response.json({usage:{prompt_tokens:100,completion_tokens:100},choices:[{finish_reason:'stop',message:{content:JSON.stringify({checked_ids:ids,exclusions:[]})}}]});
+      }) as typeof fetch};
+      const result=await reviewEdition(store,rows,policy(),deadline,undefined,deps);
+      assert.equal(posts,unknown?1:2); assert.equal(result.status,unknown?'edition_review_pending':'edition_reviewed');
+      if(!unknown){const saved=JSON.parse(store.one('SELECT result FROM jobs WHERE key=?',result.key)!.result);assert.deepEqual(saved.checked_ids,rows.map(r=>r.article.id));assert.equal(checkedEdition(store,rows,deadline).length,20);}
+      else {await reviewEdition(store,rows,policy(),deadline,undefined,deps);assert.equal(posts,1);}
+    } finally {store.db.close();rmSync(root,{recursive:true,force:true});}
+  }
 });
 
 test('audited reserve replaces rejected article; changed draft, next day and unaudited pool fail closed', async () => {
