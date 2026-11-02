@@ -27,8 +27,9 @@ export function candidates(store: Store, cutoff: string, target = Number.MAX_SAF
       && day(new Date(edition.collection_cutoff)) < day(new Date(cutoff))) return [];
     return edition.articles;
   });
-  const articles: Row[] = []; const reasons: Row[] = [];
-  for (const a of rows(store, cutoff)) {
+  const articles: Row[] = []; const reasons: Row[] = []; const observed = rows(store, cutoff);
+  for (const source of observed) {
+    const a = { ...source };
     const exclusion = articleExclusion(a);
     if (exclusion) { reasons.push({ id: a.id, content_fingerprint:a.content_fingerprint, title: a.title, ...exclusion }); continue; }
     let reason: string | null = null;
@@ -39,7 +40,7 @@ export function candidates(store: Store, cutoff: string, target = Number.MAX_SAF
     if (reason) { reasons.push({ id: a.id, content_fingerprint:a.content_fingerprint, reason }); continue; }
     const matches = prior.filter(x => duplicate(a, x));
     if (matches.some(x => a.content_fingerprint === x.content_fingerprint)) { reasons.push({ id: a.id, content_fingerprint:a.content_fingerprint, reason: 'already_sent_unchanged' }); continue; }
-    if (matches.length) { a.prior_versions = matches.map(x => ({ url: x.url, fingerprint: x.content_fingerprint })); a.prior_evidence = matches.map(x => rows(store, cutoff).find(old => old.content_fingerprint === x.content_fingerprint)).filter(x => x && x.text && !x.evidence_expired_or_missing); a.update_review_required = true; }
+    if (matches.length) { a.prior_versions = matches.map(x => ({ url: x.url, fingerprint: x.content_fingerprint })); a.prior_evidence = matches.map(x => observed.find(old => old.content_fingerprint === x.content_fingerprint)).filter(x => x && x.text && !x.evidence_expired_or_missing); a.update_review_required = true; }
     a.output_schema = 'dual-1';
     const job = store.one('SELECT result FROM jobs WHERE key=?', cacheKey(a, policy()));
     if (job?.result && !editionExclusions(store, [{ article: a, result: JSON.parse(job.result) }], cutoff, reasons).length) continue;

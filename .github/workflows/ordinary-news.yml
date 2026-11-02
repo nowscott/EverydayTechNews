@@ -29,6 +29,7 @@ jobs:
         run: |
           chmod -R go-rwx packages/ordinary-news packages/news-common config deploy/ordinary
           docker build -f deploy/ordinary/Dockerfile . -t ordinary-ci
+          docker run --rm --network none --entrypoint sh ordinary-ci -c '! command -v python && ! command -v python3'
       - name: Cold startup, private state and offline validator
         run: |
           export ORDINARY_ROOT=$(mktemp -d)

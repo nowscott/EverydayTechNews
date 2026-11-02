@@ -187,10 +187,11 @@ class Controller:
 
     def validate(self, candidate, snapshot):
         self.startup(candidate, snapshot)
+        verifier = self.root / 'verify-state.ts' if candidate.get('legacy') else Path(candidate['source']) / 'deploy/nas/verify-state.ts'
         self.command(['docker', 'run', '--rm', '--network', 'none', '--read-only', '--cap-drop', 'ALL',
                       '--security-opt', 'no-new-privileges:true', '--user', str(os.getuid()) + ':' + str(os.getgid()),
                       '--tmpfs', '/tmp:rw,size=128m,mode=1777', '-v', str(snapshot) + ':/data',
-                      '-v', str(self.root / 'verify-state.ts') + ':/app/verify-state.ts:ro',
+                      '-v', str(verifier) + ':/app/verify-state.ts:ro',
                       '--entrypoint', 'node', candidate['image'], '/app/verify-state.ts'])
 
     def activate(self, candidate, rollback=False):
