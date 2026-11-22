@@ -184,13 +184,13 @@ export function deliveryState(rows: Row[], expected?: number): string {
   if (rows.every(r => ['smtp_accepted','subscription_no_longer_eligible'].includes(r.status)) && rows.some(r => r.status === 'smtp_accepted') && (expected == null || rows.length === expected)) return 'smtp_accepted';
   return 'pending';
 }
-export function operation(record: Row | null, now = new Date(), component: Component = 'ordinary'): Row {
+export function operation(record: Row | null, now = new Date(), component: Component = 'ordinary', options: {maxAgeMs?: number} = {}): Row {
   if (!record) return { state: 'unknown', reason: '暂无任务执行记录' };
   const elapsed = now.getTime() - Date.parse(record.started_at);
   if (record.state === 'running') return { ...record, state: elapsed >= 45*60000 ? 'unknown' : 'running', reason: elapsed >= 45*60000 ? '任务超过45分钟，结果待确认' : null };
   if (record.exit_code !== 0) return { ...record, state: 'failed', reason: '最近一次任务退出失败' };
   const local = new Date(now.getTime()+28800000), h = local.getUTCHours();
-  const maxAge = component === 'ordinary' ? 3*60000 : (h >= 4 && h < 9 ? 20 : 40)*60000;
+  const maxAge = options.maxAgeMs ?? (component === 'ordinary' ? 3*60000 : (h >= 4 && h < 9 ? 20 : 40)*60000);
   return { ...record, state: now.getTime()-Date.parse(record.finished_at) > maxAge ? 'overdue' : 'waiting', reason: now.getTime()-Date.parse(record.finished_at) > maxAge ? '超过预期调度间隔，尚无新记录' : null };
 }
 export function range(params: URLSearchParams, now = new Date()) {
@@ -218,7 +218,14 @@ export class Dashboard {
       const current = allReceipts.filter(v => todayIssues.some(i => i.id === v.issue));
       const calls = component === 'premium' ? r.query('SELECT cost,reserved,status FROM calls WHERE day=?',date) : [];
       const runtime = new Reader(this.config.runtime); let run: Row;
-      try { run = operation(runtime.file(component+'/latest.json'),now,component); } finally { r.evidence.push(...runtime.evidence.map(e=>({...e,source:'runtime/'+e.source}))); runtime.close(); }
+      try { run = runtime.file(component+'/latest.json'); } finally { r.evidence.push(...runtime.evidence.map(e=>({...e,source:'runtime/'+e.source}))); runtime.close(); }
+      const scheduler = component === 'ordinary' ? (r.file('scheduler/status.json','json',{optional:true})?.scheduler ?? null) : null;
+      const resident = scheduler?.last_tick?.at ? {run_id:'resident-'+scheduler.last_tick.at, component, started_at:scheduler.last_tick.at,
+        finished_at:scheduler.last_tick.at, state:'completed', exit_code:scheduler.last_tick.status==='failed'?1:0} : null;
+      if (resident && (!run || Date.parse(resident.finished_at) > Date.parse(run.finished_at ?? run.started_at ?? 0))) run = resident;
+      const localHour = new Date(now.getTime()+28800000).getUTCHours();
+      const maxAgeMs = component === 'ordinary' ? (scheduler ? (localHour >= 4 && localHour < 9 ? 5 : 35)*60000 : 3*60000) : undefined;
+      run = operation(run, now, component, {maxAgeMs});
       const deploymentPath = this.config[component === 'ordinary' ? 'ordinaryDeployment' : 'premiumDeployment']; let version = report?.runtime?.version ?? null;
       if (deploymentPath) { const dep = new Reader(deploymentPath); try { version = dep.file('deployment.json')?.active?.tag ?? version; r.evidence.push(...dep.evidence.map(e=>({...e,source:'deployment/'+e.source}))); } finally { dep.close(); } }
       const feedback = component === 'ordinary' ? r.file('feedback/'+date+'.json','json',{optional:true}) : null;
@@ -236,6 +243,11 @@ export class Dashboard {
       const recoveredCollection = component === 'ordinary' && report?.last_error?.stage === 'collect'
         && Date.parse(report.collection?.at) > Date.parse(report.last_error.at);
       if (report?.last_error && !recoveredCollection) alerts.push('业务报告记录了错误，请查看运行记录');
+      if (scheduler) {
+        if (scheduler.stopping) alerts.push('常驻调度正在停止，出刊可能中断');
+        const beat = Date.parse(scheduler.heartbeat_at);
+        if (Number.isFinite(beat) && now.getTime()-beat > (maxAgeMs ?? 3*60000)*2) alerts.push('常驻调度心跳超时，未确认进程存活');
+      }
       if (sources?.sources?.some((s: Row) => !s.ok)) alerts.push('部分新闻来源最近采集失败');
       if (calls.some(c=>c.cost==null)) alerts.push('存在待确认模型费用');
       const dbUnavailable = r.evidence.some(e => e.source === 'state.sqlite3' && e.state !== 'ok');
@@ -244,7 +256,7 @@ export class Dashboard {
       if (!report || !config) alerts.push('业务报告或运行配置缺失，当前运行状态待确认');
       if (reportTime && now.getTime()-Date.parse(reportTime) > (component === 'ordinary' ? 10 : 90)*60000) alerts.push('业务报告已超过预期更新时间');
       return { date, mode: component === 'ordinary' ? config?.mode : config?.production_enabled ? 'production' : config?.mode ?? 'unknown', version,
-        operation: run, collected: dbUnavailable ? null : all.length, stages: dbUnavailable ? {} : byStage, delivery, inbox: feedback?.status === 'received_confirmed' ? 'received_confirmed' : 'not_verified',
+        operation: run, scheduler, collected: dbUnavailable ? null : all.length, stages: dbUnavailable ? {} : byStage, delivery, inbox: feedback?.status === 'received_confirmed' ? 'received_confirmed' : 'not_verified',
         issues: todayIssues.map(({data,...v})=>v), calls: component === 'premium' && !dbUnavailable ? calls.length : null,
         estimated_cny: component === 'premium' && !dbUnavailable ? calls.reduce((n,c)=>n+Number(c.cost??0),0) : null,
         unknown_reserved_cny: component === 'premium' && !dbUnavailable ? calls.reduce((n,c)=>n+(c.cost==null?Number(c.reserved??0):0),0) : null,
@@ -315,11 +327,26 @@ export class Dashboard {
   }
   runs(component: Component, params: URLSearchParams) {
     const {from,to,page}=range(params), r=new Reader(this.config.runtime);
+    let resident: Reader | undefined;
     try {
-      const records=r.list(component).filter(n=>/^\d.*\.json$/.test(n)).reverse().filter(n=>n.slice(0,10)>=from&&n.slice(0,10)<=to);
-      const data=records.slice((page-1)*30,page*30).flatMap(n=>{const v=r.file(component+'/'+n);return v?[v.state==='running' && Date.now()-Date.parse(v.started_at)>=45*60000 ? {...v,state:'unknown'} : v]:[];});
+      const items: Row[] = [];
+      const collect = (reader: Reader, directory: string, names: string[]) => {
+        for (const n of names) {
+          const v = reader.file(directory + n); if (!v) continue;
+          items.push(v.state==='running' && Date.now()-Date.parse(v.started_at)>=45*60000 ? {...v,state:'unknown'} : v);
+        }
+      };
+      collect(r, component+'/', r.list(component).filter(n=>/^\d.*\.json$/.test(n)));
+      if (component === 'ordinary') {
+        resident = new Reader(this.config.ordinary);
+        collect(resident, 'scheduler/runs/', resident.list('scheduler/runs', true).filter(n=>/^\d.*\.json$/.test(n)));
+      }
+      const inRange = items.filter(v=>{const d=String(v.started_at ?? '').slice(0,10);return d>=from&&d<=to;});
+      inRange.sort((a,b)=>Date.parse(b.started_at)-Date.parse(a.started_at));
+      const data=inRange.slice((page-1)*30,page*30);
+      if (resident) r.evidence.push(...resident.evidence.map(e=>({...e,source:'ordinary/'+e.source})));
       const business=this.read(component,b=>{const s=b.file('status.json');return {sources:component==='premium'?b.file('source-health.json'):s?.collection,last_error:s?.last_error,report_time:s?.at??b.evidence.find(e=>e.source==='status.json')?.source_time};});
-      return redact({component,read_at:new Date().toISOString(),read_state:r.evidence.some(isEvidenceFailure)?'partial':'ok',evidence:r.evidence,data:{items:data,total:records.length,page,page_size:30,business}});
-    } finally {r.close();}
+      return redact({component,read_at:new Date().toISOString(),read_state:r.evidence.some(isEvidenceFailure)?'partial':'ok',evidence:r.evidence,data:{items:data,total:inRange.length,page,page_size:30,business}});
+    } finally {resident?.close();r.close();}
   }
 }

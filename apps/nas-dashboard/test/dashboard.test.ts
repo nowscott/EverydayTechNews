@@ -41,6 +41,23 @@ test('read-only real SQLite adapters preserve ledger, separate rewrite/review, m
   assert.deepEqual(hashes(f.root),before);
  }finally{f.close();}
 });
+test('resident scheduler records feed runs and overview heartbeat',()=>{
+ const f=fixture();try{
+  const started='2026-11-22T11:07:00.019Z', runId=started+'-abcd1234';
+  mkdirSync(f.ordinary+'/scheduler/runs',{recursive:true});
+  f.json(f.ordinary+'/scheduler/runs/'+runId.replace(/:/g,'-')+'.json',{run_id:runId,component:'ordinary',started_at:started,finished_at:'2026-11-22T11:07:01.500Z',state:'completed',exit_code:0});
+  const status={version:'2.7.3',heartbeat_at:new Date().toISOString(),last_tick:{at:started,status:'completed'},next_tick:'2026-11-22T11:37:00.000Z',ticks:1,errors:0,stopping:false};
+  f.json(f.ordinary+'/scheduler/status.json',{scheduler:status});
+  const runs=f.dashboard.runs('ordinary',new URLSearchParams({from:'2026-11-22',to:'2026-11-22'}));
+  assert.ok(runs.data.items.some((v:any)=>v.run_id===runId));
+  const summary=f.dashboard.overview();
+  assert.equal(summary[0].data.scheduler.ticks,1);assert.equal(summary[0].data.operation.state,'waiting');
+  assert.deepEqual(summary[0].data.operation.ended_at,undefined);
+  assert.equal(summary[1].data.scheduler,null);
+  f.json(f.ordinary+'/scheduler/status.json',{scheduler:{...status,heartbeat_at:new Date(Date.now()-90*60000).toISOString()}});
+  const stale=f.dashboard.overview();assert(stale[0].data.alerts.some((s:string)=>s.includes('心跳')));
+ }finally{f.close();}
+});
 test('query_only and readOnly prevent SQLite writes, including WAL reads',()=>{const f=fixture();try{const r=new Reader(f.ordinary);assert.equal(r.query('SELECT * FROM issues').length,1);assert.throws(()=>r.db!.exec("INSERT INTO issues VALUES('x','x','x','x')"));r.close();}finally{f.close();}});
 test('missing/corrupt/locked evidence stays explicit',()=>{
  const f=fixture();try{writeFileSync(f.ordinary+'/status.json','bad JSON');const result=f.dashboard.overview();assert.equal(result[0].read_state,'partial');assert(result[0].evidence.some((e:any)=>e.source==='status.json'&&e.state==='unreadable'));f.p.exec("BEGIN EXCLUSIVE; INSERT INTO articles VALUES('uncommitted','f','{}')");const r=new Reader(f.premium);r.query('SELECT * FROM articles');assert(r.evidence.some(v=>v.state==='busy'));r.close();f.p.exec('ROLLBACK');}finally{f.close();}
