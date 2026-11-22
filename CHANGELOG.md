@@ -1,5 +1,18 @@
 # 更新日志
 
+## ordinary-news-v2.7.16
+
+- 与看板、高级版同号发布；普通版本身无功能改动，仅版本口径跟随。
+- 安装器兼容补丁入库：NAS 已删除 `manage.py`/`base-manage.py`，控制器升级的备份、回滚与哈希计算改为“存在才处理”，不再中途卡住。
+
+## nas-dashboard-v2.7.16
+
+- 采集并入网页容器：删除 `etn-dashboard-collector`，`DASHBOARD_COLLECT=1` 时网页进程内启动采集循环（首轮即跑，之后 5 分钟一轮），常驻容器 2 → 1。
+- `/api/health` 与启动日志的版本号改为读 `package.json`，不再硬编码 `1.4.3`。
+
+## news-engine-v2.7.16
+
+- compose 项目名 `everyday-tech-news-test` → `etn-premium`，容器名仍是 `etn-premium-scheduler`；控制器拉起调度前会摘掉旧项目同名容器，避免 `container_name` 冲突。
 ## ordinary-news-v2.7.15
 
 - 看板：高级版“最近运行”改读 `/data/premium/scheduler/status.json`（cron 记录已停更），并复用同一套调度投影（含耗时、退出码、600s 超时阈值）。

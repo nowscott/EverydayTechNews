@@ -1,4 +1,4 @@
-name: everyday-tech-news-test
+name: etn-premium
 services:
   premium:
     image: ${NAS_IMAGE:?versioned image required}

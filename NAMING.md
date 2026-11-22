@@ -9,9 +9,9 @@
 | 容器 | compose 项目 | 服务名 | 角色 | 常驻 |
 |---|---|---|---|---|
 | `etn-ordinary-scheduler` | `etn-ordinary` | `scheduler` | 常驻调度 + 采集/出刊 | 是 |
-| `etn-dashboard-web` | `etn-dashboard` | `web` | 看板 Web/API（入站） | 是 |
-| `etn-dashboard-collector` | `etn-dashboard` | `collector` | 抓取正文（纯出站、无凭据） | 是 |
-| `etn-premium-run-<时间戳>` | 高级版 compose | 临时服务 | 高级版单轮执行 | 否（`run --rm`） |
+| `etn-dashboard-web` | `etn-dashboard` | `web` | 看板 Web/API + 正文采集（进程内） | 是 |
+| `etn-premium-scheduler` | `etn-premium` | `scheduler` | 高级版常驻调度 | 是 |
+| `etn-premium-run-<时间戳>` | `etn-premium` | 临时服务 | 高级版单轮执行 | 否（`run --rm`） |
 
 规则：
 

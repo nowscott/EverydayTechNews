@@ -72,8 +72,19 @@ export async function collectBodies(config: Config, cacheRoot: string, deps:{now
   const status={version:'1.1.0',checked_at:new Date().toISOString(),candidate_count:rows.length,queued:selected.length,completed:done,failed};
   mkdirSync(cacheRoot,{recursive:true,mode:0o700});const temp=join(cacheRoot,'status.tmp');writeFileSync(temp,JSON.stringify(status),{mode:0o600});renameSync(temp,join(cacheRoot,'status.json'));return status;
 }
+/** 跑一轮采集，返回本轮状态；失败不抛出，只记录日志。 */
+export async function collectOnce(config: Config, root: string): Promise<void> {
+  mkdirSync(root,{recursive:true,mode:0o700});
+  writeFileSync(join(root,'status.json'),JSON.stringify({version:'1.1.0',state:'starting',checked_at:new Date().toISOString()}),{mode:0o600});
+  try { console.log(JSON.stringify(await collectBodies(config,root))); } catch { console.error('article_collection_unavailable'); }
+}
+/** 在进程内启动正文采集循环；网页进程与采集合并部署时使用。 */
+export async function startCollector(config: Config, root: string, intervalMs=300000): Promise<never> {
+  await collectOnce(config,root);
+  for(;;) { await delay(intervalMs); await collectOnce(config,root); }
+}
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const config={ordinary:process.env.DASHBOARD_ORDINARY_DATA??'/data/ordinary',premium:process.env.DASHBOARD_PREMIUM_DATA??'/data/premium',runtime:'/data/runtime'},root=process.env.DASHBOARD_BODY_CACHE??'/data/bodies';
-  mkdirSync(root,{recursive:true,mode:0o700});writeFileSync(join(root,'status.json'),JSON.stringify({version:'1.1.0',state:'starting',checked_at:new Date().toISOString()}),{mode:0o600});
-  do{try{console.log(JSON.stringify(await collectBodies(config,root)));}catch{console.error('article_collection_unavailable');}if(process.argv.includes('--once'))break;await delay(300000);}while(true);
+  if(process.argv.includes('--once')) await collectOnce(config,root);
+  else await startCollector(config,root);
 }

@@ -363,6 +363,13 @@ export class Controller {
     if (!active?.source || !active?.image) throw new Error('no_active_release');
     const env = { NAS_IMAGE: active.image, NAS_DATA_DIR: this.config.data, NAS_ENV_FILE: this.config.env_file,
       NAS_UID: String(os.userInfo().uid), NAS_GID: String(os.userInfo().gid) };
+    if (action === 'up') {
+      // 旧部署项目名是 everyday-tech-news-test；固定 container_name 会与新的 etn-premium 冲突，先摘掉旧容器。
+      try {
+        const project = this.command(['docker', 'inspect', 'etn-premium-scheduler', '--format', '{{index .Config.Labels "com.docker.compose.project"}}']).trim();
+        if (project && project !== 'etn-premium') this.command(['docker', 'rm', '-f', 'etn-premium-scheduler']);
+      } catch { /* 容器不存在时 inspect 失败，按未占用处理。 */ }
+    }
     return this.command(['docker', 'compose', '--env-file', this.config.env_file,
       '-f', path.join(active.source, 'deploy/nas/compose.managed.yaml'), '-f', path.join(active.source, 'deploy/nas/compose.proxy.yaml'),
       action === 'up' ? 'up' : 'stop', ...(action === 'up' ? ['-d', '--no-deps', 'scheduler'] : ['scheduler'])], { env });

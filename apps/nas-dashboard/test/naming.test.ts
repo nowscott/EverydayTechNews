@@ -20,7 +20,7 @@ test('compose 项目名使用短名', () => {
 test('常驻服务固定 container_name 且不叠词', () => {
   assert.match(ordinaryCompose, /container_name: etn-ordinary-scheduler/);
   assert.match(dashboardCompose, /container_name: etn-dashboard-web/);
-  assert.match(dashboardCompose, /container_name: etn-dashboard-collector/);
+  assert.ok(!dashboardCompose.includes('etn-dashboard-collector'), '采集已并入 web，不再单独起容器');
   for (const text of [ordinaryCompose, dashboardCompose]) assert.ok(!/container_name: .*-[a-z]+-[a-z]+-[a-z]+-/.test(text));
 });
 

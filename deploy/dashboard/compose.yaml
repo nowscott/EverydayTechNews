@@ -8,9 +8,14 @@ services:
     env_file:
       - path: ${DASHBOARD_ROOT:?dashboard root required}/dashboard.env
         format: raw
+      # 采集需要的 NAS 本机代理，与登录凭据分开存放。
+      - path: ${DASHBOARD_ROOT}/proxy.env
+        format: raw
     environment:
       TZ: Asia/Shanghai
       TMPDIR: /data/snapshots
+      DASHBOARD_COLLECT: "1"
+      NODE_USE_ENV_PROXY: "1"
       DASHBOARD_ORDINARY_DATA: /data/ordinary
       DASHBOARD_PREMIUM_DATA: /data/premium
       DASHBOARD_SESSION_FILE: /data/auth/sessions.json
@@ -25,7 +30,7 @@ services:
       - ${DASHBOARD_ORDINARY_DATA:?ordinary data required}:/data/ordinary:ro
       - ${DASHBOARD_PREMIUM_DATA:?premium data required}:/data/premium:ro
       - ${DASHBOARD_ROOT}/runtime:/data/runtime:ro
-      - ${DASHBOARD_ROOT}/bodies:/data/bodies:ro
+      - ${DASHBOARD_ROOT}/bodies:/data/bodies
       - ${DASHBOARD_ROOT}/snapshots:/data/snapshots
       - ${DASHBOARD_ROOT}/deployment/ordinary:/data/ordinary-deployment:ro
       - ${DASHBOARD_ROOT}/deployment/premium:/data/premium-deployment:ro
@@ -36,42 +41,5 @@ services:
     mem_limit: 512m
     cpus: 1
     restart: unless-stopped
-    labels: {com.centurylinklabs.watchtower.enable: "false"}
-    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
-
-  collector:
-    container_name: etn-dashboard-collector
-    image: ${DASHBOARD_IMAGE:?pinned dashboard image required}
-    init: true
-    user: "${DASHBOARD_UID:-1000}:${DASHBOARD_GID:-1001}"
-    entrypoint: [node, server/collector.ts]
-    # This process only fetches public publisher pages; it has no credentials.
-    env_file:
-      - path: ${DASHBOARD_ROOT}/proxy.env
-        format: raw
-    environment:
-      TZ: Asia/Shanghai
-      TMPDIR: /data/snapshots
-      DASHBOARD_ORDINARY_DATA: /data/ordinary
-      DASHBOARD_PREMIUM_DATA: /data/premium
-      DASHBOARD_BODY_CACHE: /data/bodies
-      NODE_USE_ENV_PROXY: "1"
-    volumes:
-      - ${DASHBOARD_ORDINARY_DATA}:/data/ordinary:ro
-      - ${DASHBOARD_PREMIUM_DATA}:/data/premium:ro
-      - ${DASHBOARD_ROOT}/bodies:/data/bodies
-      - ${DASHBOARD_ROOT}/snapshots:/data/snapshots
-    read_only: true
-    tmpfs: ["/tmp:size=256m,mode=1777"]
-    cap_drop: [ALL]
-    security_opt: [no-new-privileges:true]
-    mem_limit: 512m
-    cpus: 0.5
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "node", "-e", "const s=JSON.parse(require('node:fs').readFileSync('/data/bodies/status.json','utf8'));process.exit(Date.now()-Date.parse(s.checked_at)<900000?0:1)"]
-      interval: 30s
-      timeout: 5s
-      start_period: 15s
     labels: {com.centurylinklabs.watchtower.enable: "false"}
     logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}

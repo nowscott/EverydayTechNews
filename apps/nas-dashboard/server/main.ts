@@ -80,5 +80,6 @@ if(process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url))
   const server=createApp({ordinary:process.env.DASHBOARD_ORDINARY_DATA??'/data/ordinary',premium:process.env.DASHBOARD_PREMIUM_DATA??'/data/premium',runtime:process.env.DASHBOARD_RUNTIME??'/data/runtime',ordinaryDeployment:process.env.DASHBOARD_ORDINARY_DEPLOYMENT,bodies:process.env.DASHBOARD_BODY_CACHE??'/data/bodies',premiumDeployment:process.env.DASHBOARD_PREMIUM_DEPLOYMENT},process.env.DASHBOARD_PASSWORD_HASH??'',process.env.DASHBOARD_SECURE_COOKIE==='true',process.env.DASHBOARD_SESSION_FILE);
   server.requestTimeout=10000;server.headersTimeout=10000;server.maxRequestsPerSocket=200;
   server.listen(Number(process.env.PORT??3080),process.env.DASHBOARD_HOST??'0.0.0.0',()=>console.log(`NAS dashboard ${VERSION} listening`));
+  if(process.env.DASHBOARD_COLLECT==='1'){ const bodies=process.env.DASHBOARD_BODY_CACHE??'/data/bodies'; void import('./collector.ts').then(m=>m.startCollector({ordinary:process.env.DASHBOARD_ORDINARY_DATA??'/data/ordinary',premium:process.env.DASHBOARD_PREMIUM_DATA??'/data/premium',runtime:process.env.DASHBOARD_RUNTIME??'/data/runtime'},bodies)).catch(e=>console.error('collector_start_failed',e)); }
   for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>server.close(()=>process.exit(0)));
 }
