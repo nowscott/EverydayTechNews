@@ -11,7 +11,6 @@ services:
       TZ: Asia/Shanghai
       ORDINARY_STATE_AUTHORITY: nas
       NODE_USE_ENV_PROXY: "1"
-    network_mode: host
     volumes:
       - ${ORDINARY_ROOT}/data:/data
     command: [run, --data, /data]
@@ -24,27 +23,3 @@ services:
     restart: "no"
     labels: {com.centurylinklabs.watchtower.enable: "false"}
     logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
-  publisher:
-    image: ${ORDINARY_IMAGE:?pinned image required}
-    user: "${ORDINARY_UID:-1000}:${ORDINARY_GID:-1001}"
-    env_file:
-      - path: ${ORDINARY_ROOT}/archive.env
-        format: raw
-    environment:
-      NODE_USE_ENV_PROXY: "1"
-    network_mode: host
-    entrypoint: [node, packages/ordinary-news/src/sync.ts]
-    command: [/archive, /sync, /control/config.json]
-    volumes:
-      - ${ORDINARY_ROOT}/data/news_archive:/archive:ro
-      - ${ORDINARY_ROOT}/data/archive-sync:/sync
-      - ${ORDINARY_ROOT}/data/config.json:/control/config.json:ro
-    read_only: true
-    tmpfs: ["/tmp:size=64m,mode=1777"]
-    cap_drop: [ALL]
-    security_opt: [no-new-privileges:true]
-    mem_limit: 256m
-    cpus: 0.5
-    restart: "no"
-    labels: {com.centurylinklabs.watchtower.enable: "false"}
-    logging: {driver: json-file, options: {max-size: 5m, max-file: "2"}}

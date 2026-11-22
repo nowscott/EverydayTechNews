@@ -1,5 +1,13 @@
 # 更新日志
 
+## ordinary-news-v2.7.1
+
+- 出刊容器与归档发布器改用 Docker 默认 bridge 网络；实测 SMTP 465、Notion、GitHub 均可达，不再共享宿主网络栈。
+- 移除 compose 中未被调用的 publisher 服务；归档发布统一由 `manage.py sync` 执行，避免两份参数漂移。
+- 归档同步不再生成恒为空的 `archive.log`：容器输出进入 `commands.log`，stderr 进入 `sync.err`。
+- 日志轮转脚本纳入仓库（`deploy/ordinary/rotate-logs.sh`），安装时部署到 `~/bin` 并挂周任务，覆盖 commands.log、sync.err、scheduler.log、updater.log。
+- 安装器 cron 模板与实际调度对齐：05–09 点每 2 分钟、其余 :07/:37，每小时更新，每天 4 次归档同步。
+
 ## ordinary-news-v2.7.0
 
 - 版本线从 1.0.x 切换为产品版本 v2.7.0（承接旧 Python 版 v2.6.4），后续在 2.7.x 上迭代；一个版本号贯穿 `release.json`、包版本、CHANGELOG、git tag 与 Docker 镜像 tag。

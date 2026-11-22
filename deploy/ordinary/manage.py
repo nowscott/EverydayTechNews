@@ -69,7 +69,7 @@ class Controller(base.Controller):
                     if (self.data / 'archive-journal.json').exists(): return {'status': 'archive_recovery_pending'}
                     shutil.copytree(self.data / 'news_archive', snapshot / 'archive')
                     shutil.copyfile(self.data / 'config.json', snapshot / 'config.json')
-                return self.command(['docker', 'run', '--rm', '--network', 'host', '--read-only', '--cap-drop', 'ALL',
+                return self.command(['docker', 'run', '--rm', '--read-only', '--cap-drop', 'ALL',
                     '--security-opt', 'no-new-privileges:true', '--memory', '256m', '--cpus', '0.5',
                     '--user', str(os.getuid()) + ':' + str(os.getgid()), '--env-file', str(self.root.parent / 'archive.env'),
                     '-e', 'NODE_USE_ENV_PROXY=1',

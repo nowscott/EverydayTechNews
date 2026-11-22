@@ -86,9 +86,16 @@ def install(root, tag):
     (root / 'crontab-before.txt').write_text(existing)
     runner = '/usr/bin/python3 ' + str(managed / 'manage.py') + ' --root ' + str(managed)
     lines = existing.rstrip('\n') + '\n# EverydayTechNews ordinary shadow; separate from premium\n'
-    lines += '* * * * * ' + runner + ' run >> ' + str(managed / 'scheduler.log') + ' 2>&1\n'
-    lines += '*/15 * * * * ' + runner + ' update >> ' + str(managed / 'updater.log') + ' 2>&1\n'
-    lines += '7,37 * * * * ' + runner + ' sync >> ' + str(managed / 'archive.log') + ' 2>&1\n'
+    lines += '*/2 5-9 * * * ' + runner + ' run >> ' + str(managed / 'scheduler.log') + ' 2>&1\n'
+    lines += '7,37 0-4,10-23 * * * ' + runner + ' run >> ' + str(managed / 'scheduler.log') + ' 2>&1\n'
+    lines += '17 * * * * ' + runner + ' update >> ' + str(managed / 'updater.log') + ' 2>&1\n'
+    lines += '40 6,8,12,20 * * * ' + runner + ' sync 1>/dev/null 2>> ' + str(managed / 'logs' / 'sync.err') + '\n'
+    lines += '30 4 * * 0 /home/nowscott/bin/etn-logrotate.sh ' + str(managed / 'logs') + ' >/dev/null 2>&1\n'
+    rotate_source = Path(__file__).resolve().parent / 'rotate-logs.sh'
+    bin_dir = Path.home() / 'bin'
+    bin_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    (bin_dir / 'etn-logrotate.sh').write_text(rotate_source.read_text())
+    (bin_dir / 'etn-logrotate.sh').chmod(0o755)
     subprocess.run(['crontab', '-'], input=lines, text=True, check=True)
     m.base.atomic(managed / 'controller.json', {'source_sha': sha, 'manage_sha256': m.hashlib.sha256((managed / 'manage.py').read_bytes()).hexdigest(),
         'base_sha256': m.hashlib.sha256((managed / 'base-manage.py').read_bytes()).hexdigest()})
