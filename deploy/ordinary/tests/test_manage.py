@@ -124,4 +124,14 @@ class OrdinaryControllerTests(unittest.TestCase):
   text=(Path(__file__).parents[1]/'install-managed.py').read_text()
   self.assertNotIn("' run >> '",text);self.assertIn("scheduler-up",text);self.assertIn("'resident_scheduler': True",text)
 
+ def test_validation_uses_ordinary_verifier(self):
+  source=self.root/'release';(source/'deploy/ordinary').mkdir(parents=True,exist_ok=True)
+  (source/'deploy/ordinary/verify-state.ts').write_text('ordinary verifier')
+  seen=[]
+  def command(args,**kwargs):
+   seen.append(args);return ''
+  with patch.object(self.c,'startup'),patch.object(self.c,'command',side_effect=command):self.c.validate({'source':str(source),'image':'pinned'},self.data)
+  mount=[a for a in seen[0] if a.endswith('verify-state.ts:ro')]
+  self.assertIn(str(source/'deploy/ordinary/verify-state.ts')+':/app/verify-state.ts:ro',mount)
+
 if __name__=='__main__':unittest.main()

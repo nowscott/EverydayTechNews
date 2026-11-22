@@ -1,5 +1,10 @@
 # 更新日志
 
+## ordinary-news-v2.7.4
+
+- 修复：控制器切到新版基类后，普通版部署校验误用了高级版 `verify-state.ts`（依赖 news-engine 的模块），导致 2.7.3 构建成功但校验阶段失败、未激活。现在普通版固定使用 `deploy/ordinary/verify-state.ts`，并有测试锁定。
+- 2.7.3 的调度运行记录改动随本版一并上线。
+
 ## ordinary-news-v2.7.3
 
 - 常驻调度每次 tick 按看板运行记录的同一格式原子写 `data/scheduler/runs/<run_id>.json` 与 `latest.json`（含 started_at / finished_at / state / exit_code），保留最近 500 份。

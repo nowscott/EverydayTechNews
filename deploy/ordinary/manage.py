@@ -88,6 +88,16 @@ class Controller(base.Controller):
         return {'status': 'running' if self.scheduler_running(current) else 'stopped', 'active': current['tag'],
                 'last': base.read(path)}
 
+    def validate(self, candidate, snapshot):
+        # 普通版必须用普通版的验证脚本：高级版 verify-state 依赖 news-engine 的模块，普通镜像里没有。
+        self.startup(candidate, snapshot)
+        verifier = Path(candidate['source']) / 'deploy/ordinary/verify-state.ts'
+        self.command(['docker', 'run', '--rm', '--network', 'none', '--read-only', '--cap-drop', 'ALL',
+                      '--security-opt', 'no-new-privileges:true', '--user', str(os.getuid()) + ':' + str(os.getgid()),
+                      '--tmpfs', '/tmp:rw,size=128m,mode=1777', '-v', str(snapshot) + ':/data',
+                      '-v', str(verifier) + ':/app/verify-state.ts:ro',
+                      '--entrypoint', 'node', candidate['image'], '/app/verify-state.ts'], capture=False)
+
     def run(self):
         with base.lock(Path(self.config['scheduler_lock']), blocking=False) as acquired:
             if not acquired: return {'status': 'scheduler_busy'}
