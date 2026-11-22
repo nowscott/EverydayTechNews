@@ -17,6 +17,7 @@
   "include": [
     "nas/base-manage.ts",
     "nas/manage.ts",
-    "ordinary/manage.ts"
+    "ordinary/manage.ts",
+    "dashboard/record-run.ts"
   ]
 }

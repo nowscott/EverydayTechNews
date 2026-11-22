@@ -1,5 +1,10 @@
 # 更新日志
 
+## ordinary-news-v2.7.8
+
+- 运行记录器迁到 TS：`deploy/dashboard/record-run.ts` 取代 Python 版，输出字段、退出码传递与 127 启动失败记录完全一致（新增 Python/TS 对照测试）。
+- 宿主侧命令已全部为 Node：控制器、运行记录器、归档 sync 均为 TS 入口；Python 脚本只保留为回退与安装器。
+
 ## ordinary-news-v2.7.7
 
 - 修复 TS 控制器在 NAS 上调用 GitHub API 失败：子进程改用当前 node 可执行文件（PATH 里没有 node），并为子进程显式传环境。
@@ -87,6 +92,10 @@
 - 收件人仅在连续三次 SMTP 收件人阶段永久拒收后标记异常；临时故障和不足三次的拒收不会更新订阅状态。
 - SMTP 连接在 DATA 前关闭且未提供命令时，保留安全重试，暂停当前轮次，避免误判为发送结果未知。
 - 即使后续发送恢复，私人账本仍保留该收件人的最近一次 SMTP 错误信息，便于排查。
+
+## nas-dashboard-v2.7.8
+
+- 运行记录器改为 `record-run.ts`（宿主执行），看板数据格式不变；版本随普通版同号。
 
 ## nas-dashboard-v2.7.7
 
