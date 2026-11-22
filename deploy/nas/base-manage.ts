@@ -149,6 +149,15 @@ export function schedulerLines(present: string, privateRoot: string, root: strin
   return lines;
 }
 
+// 看门狗判定：容器在跑不等于调度活着，还要看心跳；心跳超过 5 分钟没更新视为卡死。
+export function schedulerHealth(status: unknown, now: Date = new Date(), staleMs = 5 * 60000): { healthy: boolean; heartbeat_age_ms: number | null; reason: string | null } {
+  const beat = Date.parse(((status as Record<string, any>)?.scheduler?.heartbeat_at) ?? '');
+  if (!Number.isFinite(beat)) return { healthy: false, heartbeat_age_ms: null, reason: 'heartbeat_missing' };
+  const age = now.getTime() - beat;
+  if (age > staleMs) return { healthy: false, heartbeat_age_ms: age, reason: 'heartbeat_stale' };
+  return { healthy: true, heartbeat_age_ms: age, reason: null };
+}
+
 export interface CommandOptions { cwd?: string; capture?: boolean; env?: Record<string, string>; timeout?: number }
 
 export class Controller {

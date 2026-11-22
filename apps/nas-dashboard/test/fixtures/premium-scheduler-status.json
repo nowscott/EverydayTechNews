@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "component": "premium",
+  "scheduler": {
+    "version": "2.7.14",
+    "pid": 7,
+    "mode": "resident",
+    "policy": "04-06:14:15m,else:30m",
+    "started_at": "2026-11-22T10:00:10.000Z",
+    "heartbeat_at": "2026-11-22T10:12:00.000Z",
+    "stopping": false,
+    "ticks": 1,
+    "failures": 0,
+    "last_tick": {
+      "at": "2026-11-22T10:05:48.357Z",
+      "status": "completed",
+      "exit_code": 0,
+      "seconds": 319.827
+    },
+    "next_tick": "2026-11-22T10:30:00.000Z"
+  }
+}

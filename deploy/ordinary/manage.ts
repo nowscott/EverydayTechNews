@@ -215,8 +215,18 @@ async function main(): Promise<number> {
     else {
     const current = controller.state().active;
     if (!current) throw new Error('no_active_ordinary_release');
-    controller.schedulerControl(current, operation === 'scheduler-up' ? 'up' : 'down');
-    result = { status: operation === 'scheduler-up' ? 'scheduler_up' : 'scheduler_down', active: current.tag };
+    if (operation === 'scheduler-up' && controller.schedulerRunning(current)) {
+      // 容器在跑但心跳停了（例如进程卡死），重启一次而不是放着不管。
+      const health = base.schedulerHealth(base.readJson(path.join(controller.data, 'scheduler/status.json'), null));
+      if (!health.healthy) {
+        controller.schedulerControl(current, 'down');
+        controller.schedulerControl(current, 'up');
+        result = { status: 'scheduler_restarted_stale', active: current.tag, reason: health.reason, heartbeat_age_ms: health.heartbeat_age_ms };
+      } else result = { status: 'scheduler_healthy', active: current.tag, heartbeat_age_ms: health.heartbeat_age_ms };
+    } else {
+      controller.schedulerControl(current, operation === 'scheduler-up' ? 'up' : 'down');
+      result = { status: operation === 'scheduler-up' ? 'scheduler_up' : 'scheduler_down', active: current.tag };
+    }
     }
   } else if (operation === 'update') result = await controller.update();
   else if (operation === 'run') result = controller.run();

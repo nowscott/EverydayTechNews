@@ -17,3 +17,4 @@ export function describe():string {
 export function startupTickEnabled(args:string[]):boolean {
   return !args.includes('--no-startup-tick');
 }
+

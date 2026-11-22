@@ -76,7 +76,12 @@ try {
           if (quality && result.status !== 'passed') throw new Error('quality_acceptance_not_passed');
         }
         else if (!maintenance && plan.enrich) console.log(JSON.stringify({ stage: 'enrichment', result: await enrich(store) }));
-        if (maintenance) archiveStage(store);
+        if (maintenance) {
+          // 缓存回收 + 只归档当日证据：4.2GB 全量 gzip 是单轮 5 分钟的主要来源。
+          const pruned = store.pruneTransient(Number(flags['keep-transient-days'] ?? process.env.NEWS_TRANSIENT_KEEP_DAYS ?? 30));
+          if (pruned.files) console.log(JSON.stringify({ stage: 'prune', result: pruned }));
+          archiveStage(store);
+        }
         }
       } finally {
         publishMorningReport(store);
@@ -87,7 +92,7 @@ try {
           if (process.env.GITHUB_ACTIONS === 'true') console.log('::warning::Premium daily delivery deadline missed; this workflow success is not proof of email delivery. No automatic send after 09:00.');
         }
         if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Premium daily delivery\n\n${report.days.map(d => `- ${d.day}: ${d.status}; SMTP=${d.delivery.join(',') || 'not_attempted'}${d.reason ? '; ' + d.reason : ''}`).join('\n')}\n`);
-        store.archive(process.env.GITHUB_ACTIONS === 'true' ? day() : undefined);
+        store.archive(day());
         if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `archive_ready=true\nartifact_name=pool-evidence-${day()}-${process.env.GITHUB_RUN_ID}\n`);
         console.log(JSON.stringify({ stage: 'final', result: status(store) }));
       }

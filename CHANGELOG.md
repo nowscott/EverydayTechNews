@@ -1,5 +1,20 @@
 # 更新日志
 
+## ordinary-news-v2.7.15
+
+- 看板：高级版“最近运行”改读 `/data/premium/scheduler/status.json`（cron 记录已停更），并复用同一套调度投影（含耗时、退出码、600s 超时阈值）。
+- 看门狗升级：`scheduler-up` 除检查容器在跑，还校验 `scheduler/status.json` 心跳；心跳超过 5 分钟无更新（`heartbeat_stale`/`heartbeat_missing`）自动重启一次，正常时返回 `scheduler_healthy`。
+- 看板用例修正：常驻调度用例改用相对当前时刻的时间戳，避免随真实时钟漂移误判 overdue。
+
+## nas-dashboard-v2.7.15
+
+- 高级版调度状态接入：`schedulerRun(component, status)` 把常驻调度 last_tick 投影为运行记录；高级版与普通版共用同一展示逻辑。
+- 新增 `test/scheduler-run.test.ts`（4 项）与 fixture，锁定耗时/退出码/超时字段投影。
+
+## news-engine-v2.7.15
+
+- 单轮归档只打包当日证据（`store.archive(day())`），不再每次 gzip 全部 4.2GB 临时证据；配合 `pruneTransient`（默认 30 天、只删未登记为证据的 raw 缓存）。
+- 常驻调度补 60 秒心跳（独立于轮次），看板与看门狗据此判断进程存活。
 ## ordinary-news-v2.7.14
 
 - 版本口径收敛：普通版、NAS 看板、高级版引擎统一到同一版本号（本轮 `2.7.14`），三个组件各自仍用独立 tag 前缀（`ordinary-news-v` / `nas-dashboard-v` / `news-engine-v`）。

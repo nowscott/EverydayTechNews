@@ -211,6 +211,18 @@ export function lastDelivery(report: Row | null): Row | null {
     count: d.counts ? (d.counts.smtp_accepted ?? null) : null };
 }
 
+// 常驻调度一轮的轻量投影：普通版 last_tick 只有状态，高级版还带耗时与退出码。
+export function schedulerRun(component: Component, scheduler: Row | null): Row | null {
+  const tick = scheduler?.last_tick;
+  if (!tick?.at) return null;
+  const seconds = Number(tick.seconds);
+  const finished = Number.isFinite(seconds) && seconds > 0 ? new Date(Date.parse(tick.at) + seconds * 1000).toISOString() : tick.at;
+  const exit = Number.isFinite(Number(tick.exit_code)) ? Number(tick.exit_code) : (tick.status === 'failed' ? 1 : 0);
+  return { run_id: 'resident-' + tick.at, component, started_at: tick.at, finished_at: finished, state: 'completed', exit_code: exit,
+    duration_ms: Number.isFinite(seconds) && seconds > 0 ? Math.round(seconds * 1000) : null,
+    timeout_s: component === 'premium' ? 600 : null };
+}
+
 export function operation(record: Row | null, now = new Date(), component: Component = 'ordinary', options: {maxAgeMs?: number} = {}): Row {
   if (!record) return { state: 'unknown', reason: '暂无任务执行记录' };
   const timing = runTiming(record, now.getTime());
@@ -247,9 +259,9 @@ export class Dashboard {
       const calls = component === 'premium' ? r.query('SELECT cost,reserved,status FROM calls WHERE day=?',date) : [];
       const runtime = new Reader(this.config.runtime); let run: Row;
       try { run = runtime.file(component+'/latest.json'); } finally { r.evidence.push(...runtime.evidence.map(e=>({...e,source:'runtime/'+e.source}))); runtime.close(); }
-      const scheduler = component === 'ordinary' ? (r.file('scheduler/status.json','json',{optional:true})?.scheduler ?? null) : null;
-      const resident = scheduler?.last_tick?.at ? {run_id:'resident-'+scheduler.last_tick.at, component, started_at:scheduler.last_tick.at,
-        finished_at:scheduler.last_tick.at, state:'completed', exit_code:scheduler.last_tick.status==='failed'?1:0} : null;
+      // 两个版本都已常驻调度：状态文件在各自 data/scheduler/status.json。
+      const scheduler = r.file('scheduler/status.json','json',{optional:true})?.scheduler ?? null;
+      const resident = schedulerRun(component, scheduler);
       if (resident && (!run || Date.parse(resident.finished_at) > Date.parse(run.finished_at ?? run.started_at ?? 0))) run = resident;
       const localHour = new Date(now.getTime()+28800000).getUTCHours();
       const maxAgeMs = component === 'ordinary' ? (scheduler ? (localHour >= 4 && localHour < 9 ? 5 : 35)*60000 : 3*60000) : undefined;

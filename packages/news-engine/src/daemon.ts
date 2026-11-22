@@ -64,7 +64,7 @@ function main(): void {
   for (const dir of [scheduler, scheduler + '/runs', scheduler + '/logs']) mkdirSync(dir, { recursive: true, mode: 0o700 });
   const statusPath = scheduler + '/status.json';
   const started = new Date().toISOString();
-  let timer: NodeJS.Timeout | undefined, busy = false, stopping = false, ticks = 0, failures = 0;
+  let timer: NodeJS.Timeout | undefined, beat: NodeJS.Timeout | undefined, busy = false, stopping = false, ticks = 0, failures = 0;
   let last: Record<string, unknown> | null = null;
   let next: Date | null = null;
 
@@ -114,6 +114,7 @@ function main(): void {
     if (stopping) return;
     stopping = true;
     if (timer) clearTimeout(timer);
+    if (beat) clearInterval(beat);
     publish({ stopped_at: new Date().toISOString(), signal });
     const finish = () => process.exit(0);
     if (busy) { const wait = setInterval(() => { if (!busy) { clearInterval(wait); finish(); } }, 200); } else finish();
@@ -131,6 +132,8 @@ function main(): void {
   process.on('exit', () => { try { rmSync(lock, { force: true }); } catch { /* ignore */ } });
 
   publish();
+  // 心跳独立于轮次：一轮可能跑 5 分钟，看板要靠心跳判断进程是否存活。
+  beat = setInterval(() => publish(), 60000);
   console.log(JSON.stringify({ at: new Date().toISOString(), status: 'scheduler_started', policy: policy(), version: VERSION }));
   if (options.once) { void cycle().then(() => { if (timer) clearTimeout(timer); }); return; }
   // 部署完先跑一轮：不等下一个整点，立即执行一轮真实 run。

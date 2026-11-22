@@ -6,6 +6,8 @@ import { JSONParser } from '@streamparser/json';
 import { atomic, command, contained, digest, pyjson, read, stamp, day, type Row } from './core.ts';
 
 const TABLES = ['articles', 'observations', 'jobs', 'issues', 'calls', 'meta'];
+const listFiles = (root: string): string[] => files(root);
+
 export function files(root: string): string[] {
   if (!existsSync(root)) return [];
   return readdirSync(root, { withFileTypes: true }).flatMap(entry => {
@@ -155,6 +157,20 @@ export class Store {
     const changed = command(['git', 'diff', '--cached', '--name-only'], this.root);
     if (changed.trim()) command(['git', 'commit', '-m', 'Persist internal TS newsletter state'], this.root);
     command(['git', 'push', 'origin', 'HEAD:main'], this.root);
+  }
+  // 正文/响应缓存按「保留天数 + 未登记为证据」回收：证据受 objects.json 90 天保护，其余只留 30 天。
+  pruneTransient(keepDays = 30): { files: number; bytes: number; keep_days: number } {
+    const cutoff = Date.now() - keepDays * 86400000;
+    const referenced = new Set(Object.keys(this.objects));
+    let files = 0, bytes = 0;
+    for (const path of listFiles(this.root + '/transient/raw')) {
+      const ref = relative(this.root + '/transient', path);
+      if (referenced.has(ref)) continue;
+      const stat = lstatSync(path);
+      if (stat.mtimeMs > cutoff) continue;
+      bytes += stat.size; files += 1; unlinkSync(path);
+    }
+    return { files, bytes, keep_days: keepDays };
   }
   expire() {
     for (const [ref, entry] of Object.entries(this.objects) as [string, Row][]) if (Date.now() >= Date.parse(entry.expires_at)) {

@@ -43,10 +43,11 @@ test('read-only real SQLite adapters preserve ledger, separate rewrite/review, m
 });
 test('resident scheduler records feed runs and overview heartbeat',()=>{
  const f=fixture();try{
-  const started='2026-11-22T11:07:00.019Z', runId=started+'-abcd1234';
+  // 用「相对当前时刻」的时间戳，避免用例随真实时钟漂移变成 overdue。
+  const nowMs=Date.now(), started=new Date(nowMs-90000).toISOString(), runId=started+'-abcd1234';
   mkdirSync(f.ordinary+'/scheduler/runs',{recursive:true});
-  f.json(f.ordinary+'/scheduler/runs/'+runId.replace(/:/g,'-')+'.json',{run_id:runId,component:'ordinary',started_at:started,finished_at:'2026-11-22T11:07:01.500Z',state:'completed',exit_code:0});
-  const status={version:'2.7.3',heartbeat_at:new Date().toISOString(),last_tick:{at:started,status:'completed'},next_tick:'2026-11-22T11:37:00.000Z',ticks:1,errors:0,stopping:false};
+  f.json(f.ordinary+'/scheduler/runs/'+runId.replace(/:/g,'-')+'.json',{run_id:runId,component:'ordinary',started_at:started,finished_at:started,state:'completed',exit_code:0});
+  const status={version:'2.7.3',heartbeat_at:new Date(nowMs-30000).toISOString(),last_tick:{at:started,status:'completed'},next_tick:new Date(nowMs+1800000).toISOString(),ticks:1,errors:0,stopping:false};
   f.json(f.ordinary+'/scheduler/status.json',{scheduler:status});
   const runs=f.dashboard.runs('ordinary',new URLSearchParams({from:'2026-11-22',to:'2026-11-22'}));
   assert.ok(runs.data.items.some((v:any)=>v.run_id===runId));
