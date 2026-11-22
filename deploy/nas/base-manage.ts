@@ -39,6 +39,9 @@ export function choose(releases: Release[], floor: Triple): Release | null {
 
 export interface Release { tag_name?: string; draft?: boolean; prerelease?: boolean; published_at?: string }
 
+/** 控制器自身文件；update 发现与 release 不一致时自动同步，避免「改了 base-manage 却没生效」。 */
+export const CONTROLLER_FILES = ['manage.ts', 'base-manage.ts', 'verify-state.ts', 'compose.managed.yaml', 'compose.proxy.yaml'];
+
 export function compare(a: Triple, b: Triple): number {
   for (let i = 0; i < 3; i += 1) if (a[i] !== b[i]) return a[i] - b[i];
   return 0;
@@ -67,6 +70,19 @@ export function atomicWrite(file: string, value: unknown): void {
 }
 
 /** 与 Python 版 flock 语义对齐：非阻塞拿不到锁时返回 acquired=false。 */
+/** 读取锁文件里的持有者信息；内容不是 JSON 或没有 pid 时返回 null。 */
+export function lockHolder(file: string): { pid?: number; at?: string } | null {
+  try {
+    const value = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return value && typeof value === 'object' ? value : null;
+  } catch { return null; }
+}
+
+/** 判断 pid 是否还活着；没有权限探测（EPERM）也按存活处理。 */
+export function pidAlive(pid: number): boolean {
+  try { process.kill(pid, 0); return true; } catch (error) { return (error as NodeJS.ErrnoException).code === 'EPERM'; }
+}
+
 export function withLock<T>(file: string, blocking: boolean, fn: (acquired: boolean) => T, options: { timeoutMs?: number; staleMs?: number } = {}): T {
   const { timeoutMs = 30_000, staleMs = 3_600_000 } = options;
   fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
@@ -79,6 +95,9 @@ export function withLock<T>(file: string, blocking: boolean, fn: (acquired: bool
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
       try {
+        const holder = lockHolder(file);
+        // 进程已经不在了就立即回收，不必等满 staleMs；mtime 只作为兜底。
+        if (holder?.pid && !pidAlive(holder.pid)) { fs.unlinkSync(file); continue; }
         if (Date.now() - fs.statSync(file).mtimeMs > staleMs) { fs.unlinkSync(file); continue; }
       } catch { continue; }
       if (!blocking) return fn(false);
@@ -161,6 +180,8 @@ export function schedulerHealth(status: unknown, now: Date = new Date(), staleMs
 export interface CommandOptions { cwd?: string; capture?: boolean; env?: Record<string, string>; timeout?: number }
 
 export class Controller {
+  /** 目标文件名 → release 内相对路径；普通版 manage/verify 在 deploy/ordinary，base 共用 deploy/nas。 */
+  controllerSources: Record<string, string> = Object.fromEntries(CONTROLLER_FILES.map((name) => [name, 'deploy/nas/' + name]));
   root: string;
   data: string;
   statePath: string;
@@ -231,6 +252,37 @@ export class Controller {
     atomicWrite(path.join(this.root, 'status.json'), value);
     fs.appendFileSync(path.join(this.logs, 'deployments.jsonl'), JSON.stringify(value) + '\n');
     return value;
+  }
+
+  /** 记录当前阶段，供人工排查“到底在等什么”；同时写文件与一行 stdout。 */
+  progress(phase: string, detail: Record<string, unknown> = {}): void {
+    const value = { phase, at: shanghai(), pid: process.pid, ...detail };
+    atomicWrite(path.join(this.root, 'update-progress.json'), value);
+    fs.appendFileSync(path.join(this.logs, 'updater.log'), JSON.stringify(value) + '\n');
+    console.log('progress ' + JSON.stringify(value));
+  }
+
+  /** 比较 release 内控制器文件与 managed 现文件；把变化的文件备份后覆盖。 */
+  syncController(source: string, tag: string, sha: string): Record<string, unknown> | null {
+    const hash = (file: string) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+    const changed: string[] = [];
+    for (const [name, relative] of Object.entries(this.controllerSources)) {
+      const from = path.join(source, relative), to = path.join(this.root, name);
+      if (!fs.existsSync(from)) continue;
+      if (!fs.existsSync(to) || hash(from) !== hash(to)) changed.push(name);
+    }
+    if (!changed.length) return null;
+    const backup = path.join(this.root, 'controller-backups', tag);
+    fs.mkdirSync(backup, { recursive: true, mode: 0o700 });
+    for (const name of changed) {
+      const from = path.join(source, this.controllerSources[name]), to = path.join(this.root, name);
+      if (fs.existsSync(to)) fs.copyFileSync(to, path.join(backup, name));
+      fs.copyFileSync(from, to);
+    }
+    const manage = path.join(this.root, 'manage.ts'), base = path.join(this.root, 'base-manage.ts');
+    atomicWrite(path.join(this.root, 'controller.json'), { version: tag, sha,
+      manage_sha256: hash(manage), base_sha256: hash(base) });
+    return { tag, files: changed, backup };
   }
 
   schema(): unknown {
@@ -334,14 +386,16 @@ export class Controller {
         fs.mkdirSync(backup, { recursive: true, mode: 0o700 });
         const temp = fs.mkdtempSync(path.join(this.root, 'validate-'));
         try {
+          this.progress('backup', { pending: candidate.tag });
           const snapshot = path.join(temp, 'data');
           this.snapshot(snapshot);
           fs.chmodSync(snapshot, 0o700);
           this.command(['tar', '-czf', path.join(backup, 'state.tar.gz'), '-C', temp, 'data'], { capture: false });
+          this.progress('validate_candidate', { pending: candidate.tag });
           this.validate(candidate, snapshot);
           let previous = state.active as Candidate | null;
           if (previous && previous.runtime_failed) previous = state.history.find((item) => !item.runtime_failed) || null;
-          if (previous) this.validate(previous, snapshot);
+          if (previous) { this.progress('validate_previous', { tag: previous.tag }); this.validate(previous, snapshot); }
         } finally { fs.rmSync(temp, { recursive: true, force: true }); }
         if (before !== this.ledger()) throw new Error('live_ledger_changed_during_validation');
         if (protectedWindow()) return this.event('deferred_morning_window', { pending: candidate.tag });
@@ -350,6 +404,7 @@ export class Controller {
         state.active = deployed;
         state.history = history;
         state.high_water = maxTriple((state.high_water || [0, 0, 0]) as Triple, version(deployed.tag) || [0, 0, 0]);
+        this.progress('switch', { pending: candidate.tag });
         atomicWrite(this.statePath, state);
         this.afterChange(state);
         try { this.prune(state); } catch { this.event('cleanup_deferred', { active: deployed }); }
@@ -415,8 +470,11 @@ export class Controller {
 
   async update(): Promise<Record<string, unknown>> {
     const marker = path.join(this.root, 'update.inprogress');
-    return withLock(path.join(this.root, 'update.lock'), false, (acquired) => {
-      if (!acquired) return { status: 'update_already_running' };
+    const lock = path.join(this.root, 'update.lock');
+    return withLock(lock, false, (acquired) => {
+      if (!acquired) return { status: 'update_already_running',
+        holder: lockHolder(lock),
+        progress: readJson<Record<string, unknown> | null>(path.join(this.root, 'update-progress.json'), null) };
       atomicWrite(marker, { at: shanghai(), pid: process.pid });
       try { return this.updateUnlocked(); }
       finally { try { fs.rmSync(marker, { force: true }); } catch { /* 标记清理失败不影响部署结果 */ } }
@@ -425,6 +483,7 @@ export class Controller {
 
   updateUnlocked(): Record<string, unknown> {
     const state = this.state();
+    this.progress('release_check');
     let release: Release | null = null;
     try { release = choose(this.apiSync('releases?per_page=100') as Release[], state.high_water as Triple); }
     catch { return this.event('release_check_failed', { reason: 'github_api_unavailable' }); }
@@ -433,9 +492,15 @@ export class Controller {
     if (state.blocked[tag]) return this.event('blocked_release', { pending: tag, reason: state.blocked[tag] });
     if (protectedWindow()) return this.event('deferred_morning_window', { pending: tag });
     try {
+      this.progress('source', { tag });
       const { sha, directory } = this.source(tag);
+      this.progress('build', { tag, sha });
       const candidate = this.build(tag, sha, directory);
-      return this.activate(candidate);
+      const synced = this.syncController(directory, tag, sha);
+      if (synced) this.progress('controller_synced', synced);
+      const result = this.activate(candidate);
+      this.progress('done', { tag });
+      return result;
     } catch (error) {
       const reason = (error as Error).message.startsWith('command_failed') || ['release_main_checks_not_passed', 'release_worktree_modified',
         'release_requires_manual_data_migration', 'image_provenance_mismatch'].includes((error as Error).message)

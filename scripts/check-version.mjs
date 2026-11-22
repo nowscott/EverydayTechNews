@@ -30,10 +30,11 @@ const COMPONENTS = {
 
 const args = process.argv.slice(2);
 const index = args.indexOf('--component');
-const selected = index >= 0 && args[index + 1] ? [args[index + 1]] : ['ordinary-news'];
+const selected = index >= 0 && args[index + 1] ? [args[index + 1]] : Object.keys(COMPONENTS);
 
 const json = (path) => JSON.parse(readFileSync(resolve(root, path), 'utf8'));
 const failures = [];
+const found = new Map();
 
 for (const name of selected) {
   const spec = COMPONENTS[name];
@@ -68,6 +69,12 @@ for (const name of selected) {
   if (!changelog.includes(heading)) failures.push(`${name}: CHANGELOG 缺少标题 "${heading}"`);
 
   if (failures.length === 0) console.log(`OK ${heading}`);
+  found.set(name, version);
+}
+
+if (found.size > 1) {
+  const versions = new Set(found.values());
+  if (versions.size !== 1) failures.push(`三端版本未统一 ${JSON.stringify(Object.fromEntries(found))}`);
 }
 
 if (failures.length) {

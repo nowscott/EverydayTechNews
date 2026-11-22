@@ -1,5 +1,20 @@
 # 更新日志
 
+## ordinary-news-v2.7.17
+
+- `update` 自动同步控制器：发现 `managed/` 里的 `manage.ts`、`base-manage.ts`、`verify-state.ts` 与 release 不一致时，先备份到 `controller-backups/<tag>` 再覆盖，并更新 `controller.json` 哈希；不再需要每次手工 `--upgrade-controller`（2.7.17 本身仍需 bootstrap 一次）。
+- `update` 增加阶段进度：`release_check → source → build → controller_synced → backup → validate_candidate → validate_previous → switch → done` 写入 `update-progress.json` 和一行 stdout，长跑时能看出在等什么。
+- 锁按 PID 判活：`update.lock` 的持有进程已退出时立即回收，不再等满 1 小时；`update_already_running` 会附带 holder 与当前阶段。
+
+## news-engine-v2.7.17
+
+- 与普通版共用同一套控制器改动：自动同步控制器文件、阶段进度、锁按 PID 回收；高级版的控制器文件为 `deploy/nas/{manage.ts,base-manage.ts,verify-state.ts,compose.managed.yaml,compose.proxy.yaml}`。
+
+## nas-dashboard-v2.7.17
+
+- 新增 `deploy/dashboard/upgrade.ts`：一条命令完成「拉 tag 源码 → 构建镜像 → 记录 installation → 切换 compose → /api/health 版本校验」，失败自动恢复 `compose.env` 与 `installation.json` 并重启旧镜像。
+- 升级时自动同步 `deploy/dashboard/compose.yaml`（与仓库不一致则备份后覆盖），解决“仓库改了线上不生效”。
+- 新增 `--dry-run` 与 `--rollback`：先看计划再执行，回滚用上一条部署记录。
 ## ordinary-news-v2.7.16
 
 - 与看板、高级版同号发布；普通版本身无功能改动，仅版本口径跟随。

@@ -20,6 +20,7 @@
     "ordinary/manage.ts",
     "dashboard/record-run.ts",
     "dashboard/install.ts",
+    "dashboard/upgrade.ts",
     "nas/runtime.ts",
     "nas/prune-images.ts",
     "nas/health-check.ts",

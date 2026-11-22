@@ -34,6 +34,11 @@ function pyJson(value: unknown): string {
 }
 
 class Controller extends base.Controller {
+  override controllerSources = {
+    'manage.ts': 'deploy/ordinary/manage.ts',
+    'base-manage.ts': 'deploy/nas/base-manage.ts',
+    'verify-state.ts': 'deploy/ordinary/verify-state.ts',
+  };
   override schema(): number { return 1; }
 
   override ledger(): string {
