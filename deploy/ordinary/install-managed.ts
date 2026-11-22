@@ -49,7 +49,8 @@ function upgradeController(rootInput: string, tag: string): Record<string, unkno
       const saved = path.join(managed, 'controller-backups', tag);
       fs.mkdirSync(saved, { recursive: false, mode: 0o700 });
       const legacy = [['manage.py', path.join(directory, 'deploy/ordinary/manage.py')], ['base-manage.py', path.join(directory, 'deploy/nas/manage.py')]];
-      for (const [name] of legacy) fs.copyFileSync(path.join(managed, name), path.join(saved, name));
+      // NAS 侧可能已按计划删除 Python 控制器（2.7.12 起），备份只保留仍存在的文件。
+      for (const [name] of legacy) if (fs.existsSync(path.join(managed, name))) fs.copyFileSync(path.join(managed, name), path.join(saved, name));
       for (const name of ['manage.ts', 'base-manage.ts', 'controller.json', 'verify-state.ts']) {
         if (fs.existsSync(path.join(managed, name))) fs.copyFileSync(path.join(managed, name), path.join(saved, name));
       }
@@ -61,11 +62,11 @@ function upgradeController(rootInput: string, tag: string): Record<string, unkno
         fs.copyFileSync(path.join(directory, 'deploy/ordinary/verify-state.ts'), path.join(managed, 'verify-state.ts.install'));
         fs.renameSync(path.join(managed, 'verify-state.ts.install'), path.join(managed, 'verify-state.ts'));
         writeTsController(managed, path.join(directory, 'deploy/ordinary'));
+        const sha256 = (file: string) => fs.existsSync(file) ? crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex') : null;
         base.atomicWrite(path.join(managed, 'controller.json'), { source_sha: sha,
-          manage_sha256: crypto.createHash('sha256').update(fs.readFileSync(path.join(managed, 'manage.py'))).digest('hex'),
-          base_sha256: crypto.createHash('sha256').update(fs.readFileSync(path.join(managed, 'base-manage.py'))).digest('hex') });
+          manage_sha256: sha256(path.join(managed, 'manage.py')), base_sha256: sha256(path.join(managed, 'base-manage.py')) });
       } catch (error) {
-        for (const [name] of legacy) fs.copyFileSync(path.join(saved, name), path.join(managed, name));
+        for (const [name] of legacy) if (fs.existsSync(path.join(saved, name))) fs.copyFileSync(path.join(saved, name), path.join(managed, name));
         for (const name of ['manage.ts', 'base-manage.ts', 'controller.json']) if (fs.existsSync(path.join(saved, name))) fs.copyFileSync(path.join(saved, name), path.join(managed, name));
         throw error;
       }
