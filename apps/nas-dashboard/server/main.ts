@@ -8,6 +8,7 @@ import { usage } from './usage.ts';
 import { PREVIEW_CSP } from './mail-preview.ts';
 import { verifyPassword } from './security.ts';
 const base = resolve(fileURLToPath(new URL('..',import.meta.url)));
+const VERSION = (() => { try { return JSON.parse(readFileSync(resolve(base,'package.json'),'utf8')).version ?? '0.0.0'; } catch { return '0.0.0'; } })();
 export function createApp(config: Config, passwordHash: string, secure = false, sessionFile?: string) {
   if (!/^scrypt:[a-f0-9]{32}:[a-f0-9]{128}$/.test(passwordHash)) throw Error('valid_dashboard_password_hash_required');
   const dashboard = new Dashboard(config), sessions = new Sessions(passwordHash,sessionFile), attempts = new Map<string,{n:number;until:number}>();
@@ -20,7 +21,7 @@ export function createApp(config: Config, passwordHash: string, secure = false, 
     res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
     try {
       const url=new URL(req.url??'/', 'http://dashboard.local'),path=url.pathname;
-      if(path==='/api/health'&&req.method==='GET')return send(res,200,{status:'ok',version:'1.4.3'});
+      if(path==='/api/health'&&req.method==='GET')return send(res,200,{status:'ok',version:VERSION});
       if(path==='/api/login'&&req.method==='POST') {
         if(req.headers.origin && req.headers.origin !== `${secure?'https':'http'}://${req.headers.host}`)return send(res,403,{error:'origin_rejected'});
         const ip=req.socket.remoteAddress??'unknown',now=Date.now();
@@ -78,6 +79,6 @@ export function createApp(config: Config, passwordHash: string, secure = false, 
 if(process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const server=createApp({ordinary:process.env.DASHBOARD_ORDINARY_DATA??'/data/ordinary',premium:process.env.DASHBOARD_PREMIUM_DATA??'/data/premium',runtime:process.env.DASHBOARD_RUNTIME??'/data/runtime',ordinaryDeployment:process.env.DASHBOARD_ORDINARY_DEPLOYMENT,bodies:process.env.DASHBOARD_BODY_CACHE??'/data/bodies',premiumDeployment:process.env.DASHBOARD_PREMIUM_DEPLOYMENT},process.env.DASHBOARD_PASSWORD_HASH??'',process.env.DASHBOARD_SECURE_COOKIE==='true',process.env.DASHBOARD_SESSION_FILE);
   server.requestTimeout=10000;server.headersTimeout=10000;server.maxRequestsPerSocket=200;
-  server.listen(Number(process.env.PORT??3080),process.env.DASHBOARD_HOST??'0.0.0.0',()=>console.log('NAS dashboard 1.4.3 listening'));
+  server.listen(Number(process.env.PORT??3080),process.env.DASHBOARD_HOST??'0.0.0.0',()=>console.log(`NAS dashboard ${VERSION} listening`));
   for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>server.close(()=>process.exit(0)));
 }
