@@ -32,6 +32,8 @@ record-run.py 用独立的非阻塞锁避免重叠，原业务锁仍保留。开
 
 验证桌面和手机宽度、筛选/分页/详情、脱敏与登录；核对真实数据库数量、费用和发送状态。只读隔离验证应在无业务写入的短窗口内，对数据库、WAL、durable/state和发送文件做前后哈希，查询调用数和账本行数。观察到并行业务任务时，应明确区分自然调度写入，不能归因于看板，也不能声称哈希不变。
 
+安装器自 2.7.9 起为 `install.ts`：`--image` 必须是 `sha256:` digest，安装前校验镜像 digest、镜像内版本与源码版本一致、业务数据存在、调度 cron 存在；同名 compose 项目已被占用时拒绝安装。`--check` 可只校验不创建。
+
 运行记录器自 2.7.8 起为 `record-run.ts`（宿主 Node 执行，`--disable-warning=ExperimentalWarning`），用法与 `record-run.py` 相同；Python 版保留为回退，两者输出字段与退出码一致（`test_record_run_ts.py` 对照）。
 
 测试：`npm test --prefix apps/nas-dashboard`、`npm run build --prefix apps/nas-dashboard`、`python3 -m unittest discover -s deploy/dashboard -p 'test_*.py'`。
