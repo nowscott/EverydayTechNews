@@ -53,7 +53,7 @@ CI（`.github/workflows/ordinary-news.yml`）会在 PR 与 main 上运行 `check
 
 ## 现状（2026-11-22）
 
-- 当前版本：`ordinary-news-v2.7.11`（数字承接旧 Python 版的 `v2.6.4`，此后普通版在 `2.7.x` 上迭代）；看板 `nas-dashboard-v2.7.11` 与普通版同号发布
+- 当前版本：`ordinary-news-v2.7.12`（数字承接旧 Python 版的 `v2.6.4`，此后普通版在 `2.7.x` 上迭代）；看板 `nas-dashboard-v2.7.12` 与普通版同号发布
 - 版本线切换：旧 `1.0.x` 系列就此终止；`v1.x` / `v2.0–2.6` 的旧 Python 实现仍为冻结归档，不再发版
 - Docker 侧 `:git-<sha>` 别名自本版起不再生成；旧别名随部署清理
 - GitHub 的 Latest 指向 `ordinary-news-v2.7.0`（发布时设置），不再停留在 `v2.6.4`

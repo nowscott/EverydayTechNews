@@ -1,5 +1,18 @@
 # 更新日志
 
+## ordinary-news-v2.7.12
+
+- 运行记录器新增 `timeout_s` / `duration_ms` / `timed_out`，`--timeout` 可调（默认 600 秒）；看板任务表新增“耗时”列，超时标红。
+- 看板新增“最近出刊成功时间”（只认 `delivery.completed` 的 `finished_at`）与“归档同步”状态。
+- 归档告警：`archive_sync` 非 `synced` 立即告警，`synced` 但超过 36 小时未更新同样告警，避免再次出现积压 6 天才发现。
+- 镜像治理：新增 `deploy/nas/prune-images.ts`（每个仓库保留最近 N 个 image id，被引用的镜像与运行中容器强制保留，默认只打印计划，`--cache` 才清构建缓存）。
+- Python 回退件下线：NAS 上 `managed/{manage.py,base-manage.py}`、看板 `record-run.py`、`verify-live.py` 已移除；高级版健康检查迁到 `deploy/nas/health-check.ts`，etn 相关 cron 不再调用 python3。
+- 已知问题（未修）：高级版 `health.ts` 在容器内触发 1.5GB 堆上限 OOM，`premium run` 持续 `exit_code=1`，属引擎侧内存问题，不在本次范围内。
+
+## nas-dashboard-v2.7.12
+
+- 任务表“耗时/超时标红”，概览新增“最近出刊成功”“归档同步”，归档状态异常进告警列表。
+
 ## ordinary-news-v2.7.11
 
 - 修复 2.7.10 迁移暴露的双调度风险：`update` 全程写 `update.inprogress` 标记，cron 的 `scheduler-up` 看门狗命中标记时返回 `update_in_progress` 不再重建调度。

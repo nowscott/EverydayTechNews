@@ -184,14 +184,42 @@ export function deliveryState(rows: Row[], expected?: number): string {
   if (rows.every(r => ['smtp_accepted','subscription_no_longer_eligible'].includes(r.status)) && rows.some(r => r.status === 'smtp_accepted') && (expected == null || rows.length === expected)) return 'smtp_accepted';
   return 'pending';
 }
+// 运行耗时与超时：优先用记录器写入的 duration_ms/timed_out，缺字段时按 timeout_s（默认 600）自行计算。
+export function runTiming(record: Row, now = Date.now()): { duration_ms: number | null; timeout_s: number; timed_out: boolean } {
+  const timeout_s = Number(record.timeout_s ?? 600);
+  const start = Date.parse(record.started_at), end = record.finished_at ? Date.parse(record.finished_at) : now;
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return { duration_ms: null, timeout_s, timed_out: false };
+  const duration_ms = typeof record.duration_ms === 'number' ? record.duration_ms : Math.max(0, end - start);
+  const timed_out = record.timed_out === true || duration_ms > timeout_s * 1000;
+  return { duration_ms, timeout_s, timed_out };
+}
+
+// 归档同步状态：未 synced 立即告警；synced 但超过 36 小时未更新同样告警（远端积压往往就是这样被忽略的）。
+export function archiveState(report: Row | null, now = new Date()): Row {
+  const sync = report?.archive_sync ?? null;
+  if (!sync) return { status: null, at: null, stale: false, alerts: [] };
+  const age = sync.at ? now.getTime() - Date.parse(sync.at) : Infinity, stale = age > 36 * 3600000, alerts: string[] = [];
+  if (sync.status !== 'synced') alerts.push('归档同步未完成（' + String(sync.status ?? 'unknown') + '），远端可能落后');
+  else if (stale) alerts.push('归档同步超过 36 小时未成功，远端可能落后');
+  return { status: sync.status ?? null, at: sync.at ?? null, stale, alerts };
+}
+
+export function lastDelivery(report: Row | null): Row | null {
+  const d = report?.delivery;
+  if (!d) return null;
+  return { at: d.completed === false ? null : (d.finished_at ?? null), outcome: d.outcome ?? null,
+    count: d.counts ? (d.counts.smtp_accepted ?? null) : null };
+}
+
 export function operation(record: Row | null, now = new Date(), component: Component = 'ordinary', options: {maxAgeMs?: number} = {}): Row {
   if (!record) return { state: 'unknown', reason: '暂无任务执行记录' };
+  const timing = runTiming(record, now.getTime());
   const elapsed = now.getTime() - Date.parse(record.started_at);
-  if (record.state === 'running') return { ...record, state: elapsed >= 45*60000 ? 'unknown' : 'running', reason: elapsed >= 45*60000 ? '任务超过45分钟，结果待确认' : null };
-  if (record.exit_code !== 0) return { ...record, state: 'failed', reason: '最近一次任务退出失败' };
+  if (record.state === 'running') return { ...record, ...timing, state: elapsed >= 45*60000 ? 'unknown' : 'running', reason: elapsed >= 45*60000 ? '任务超过45分钟，结果待确认' : null };
+  if (record.exit_code !== 0) return { ...record, ...timing, state: 'failed', reason: '最近一次任务退出失败' };
   const local = new Date(now.getTime()+28800000), h = local.getUTCHours();
   const maxAge = options.maxAgeMs ?? (component === 'ordinary' ? 3*60000 : (h >= 4 && h < 9 ? 20 : 40)*60000);
-  return { ...record, state: now.getTime()-Date.parse(record.finished_at) > maxAge ? 'overdue' : 'waiting', reason: now.getTime()-Date.parse(record.finished_at) > maxAge ? '超过预期调度间隔，尚无新记录' : null };
+  return { ...record, ...timing, state: now.getTime()-Date.parse(record.finished_at) > maxAge ? 'overdue' : 'waiting', reason: now.getTime()-Date.parse(record.finished_at) > maxAge ? '超过预期调度间隔，尚无新记录' : null };
 }
 export function range(params: URLSearchParams, now = new Date()) {
   const to = params.get('to') ?? day(now), from = params.get('from') ?? day(new Date(now.getTime()-6*86400000));
@@ -235,6 +263,10 @@ export class Dashboard {
       const due = now >= new Date(date+'T09:00:00+08:00');
       const enabled = config && (component === 'ordinary' ? config.mode !== 'paused' && date >= (config.mode === 'production' ? config.first_production_date : config.shadow_started_on) : config.enabled && config.delivery_enabled && (!config.expires_at || now < new Date(config.expires_at)));
       const alerts: string[] = [];
+      const archive = component === 'ordinary' ? archiveState(report, now) : null;
+      const delivered = component === 'ordinary' ? lastDelivery(report) : null;
+      if (run.timed_out) alerts.push('最近一次运行超过超时阈值（' + String(run.timeout_s) + ' 秒），请核对任务结果');
+      if (archive) alerts.push(...archive.alerts);
       const latestToday=[...todayIssues].sort(newestIssue)[0];
       if(latestToday?.kind==='diagnostic')alerts.push('今日生成的是诊断刊，未形成新闻早报；请查看期刊说明与处理记录');
       if (['unknown','overdue','failed'].includes(run.state)) alerts.push(run.reason);
@@ -256,7 +288,7 @@ export class Dashboard {
       if (!report || !config) alerts.push('业务报告或运行配置缺失，当前运行状态待确认');
       if (reportTime && now.getTime()-Date.parse(reportTime) > (component === 'ordinary' ? 10 : 90)*60000) alerts.push('业务报告已超过预期更新时间');
       return { date, mode: component === 'ordinary' ? config?.mode : config?.production_enabled ? 'production' : config?.mode ?? 'unknown', version,
-        operation: run, scheduler, collected: dbUnavailable ? null : all.length, stages: dbUnavailable ? {} : byStage, delivery, inbox: feedback?.status === 'received_confirmed' ? 'received_confirmed' : 'not_verified',
+        operation: run, scheduler, archive_sync: archive, last_delivery: delivered, collected: dbUnavailable ? null : all.length, stages: dbUnavailable ? {} : byStage, delivery, inbox: feedback?.status === 'received_confirmed' ? 'received_confirmed' : 'not_verified',
         issues: todayIssues.map(({data,...v})=>v), calls: component === 'premium' && !dbUnavailable ? calls.length : null,
         estimated_cny: component === 'premium' && !dbUnavailable ? calls.reduce((n,c)=>n+Number(c.cost??0),0) : null,
         unknown_reserved_cny: component === 'premium' && !dbUnavailable ? calls.reduce((n,c)=>n+(c.cost==null?Number(c.reserved??0):0),0) : null,
@@ -333,7 +365,8 @@ export class Dashboard {
       const collect = (reader: Reader, directory: string, names: string[]) => {
         for (const n of names) {
           const v = reader.file(directory + n); if (!v) continue;
-          items.push(v.state==='running' && Date.now()-Date.parse(v.started_at)>=45*60000 ? {...v,state:'unknown'} : v);
+          const timing = runTiming(v);
+          items.push({...v, ...timing, ...(v.state==='running' && Date.now()-Date.parse(v.started_at)>=45*60000 ? {state:'unknown'} : {})});
         }
       };
       collect(r, component+'/', r.list(component).filter(n=>/^\d.*\.json$/.test(n)));

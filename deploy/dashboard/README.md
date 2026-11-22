@@ -53,3 +53,8 @@ record-run.py 用独立的非阻塞锁避免重叠，原业务锁仍保留。开
 `GET /api/usage`（需登录，只读）接收`from`、`to`、`stage`（generation/review/edition_review/unknown）、`status`、`q`、`page`。返回标准读取证据及data中的summary、daily、stages、statuses、items和分页字段；统计覆盖全部筛选结果。数量字段input/output/total/cache_hit的单位为Token，避免与凭据脱敏规则冲突。summary包含missing_usage/missing_input/missing_output/missing_cache与unknown_cost_calls；available=false时summary=null，不把读取异常当作零消耗。
 
 重复调用按同一非空job完整历史的最小调用id判断；日期和其他筛选不改变首次记录。无job的旧记录标为无法判断。精确时间来自已保存的call_diagnostic，缺失时仅显示账本日期；失败原因复用已有受控诊断或validation_error。接口不返回原始提示、模型响应、任务全文或凭据。
+
+## 2.7.12 起：超时与归档告警
+
+- 运行记录器新增 `--timeout`（默认 600 秒），记录 `timeout_s` / `duration_ms` / `timed_out`；任务表按耗时排序展示，超时行标红。
+- 概览新增「最近出刊成功」（只认 `delivery.completed` 的 `finished_at`）与「归档同步」；`archive_sync` 非 `synced` 或超过 36 小时未更新会进入告警列表。

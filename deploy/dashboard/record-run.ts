@@ -21,11 +21,12 @@ function atomic(file: string, value: unknown): void {
 
 interface RunRecord {
   run_id: string; component: string; started_at: string; finished_at: string | null;
-  state: string; exit_code: number | null;
+  state: string; exit_code: number | null; timeout_s: number;
+  duration_ms: number | null; timed_out: boolean;
   [key: string]: unknown;
 }
 
-export function record(root: string, component: 'ordinary' | 'premium', command: string[], deployment?: string): number {
+export function record(root: string, component: 'ordinary' | 'premium', command: string[], deployment?: string, timeout = 600): number {
   const directory = path.join(root, 'runtime', component);
   fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
   const lockFile = path.join(directory, 'observer.lock');
@@ -46,9 +47,11 @@ export function record(root: string, component: 'ordinary' | 'premium', command:
         { active: active ? { tag: active.tag, sha: active.sha, deployed_at: active.deployed_at } : null });
     }
     const started = stamp();
+    const startedMs = Date.now();
     const value: RunRecord = {
       run_id: started + '-' + crypto.randomBytes(8).toString('hex').slice(0, 8), component,
       started_at: started, finished_at: null, state: 'running', exit_code: null,
+      timeout_s: timeout, duration_ms: null, timed_out: false,
     };
     const file = path.join(directory, value.run_id.replace(/:/g, '-') + '.json');
     atomic(file, value);
@@ -60,6 +63,7 @@ export function record(root: string, component: 'ordinary' | 'premium', command:
       code = result.status === null ? 137 : result.status;
     } finally {
       value.finished_at = stamp(); value.state = 'completed'; value.exit_code = code;
+      value.duration_ms = Date.now() - startedMs; value.timed_out = value.duration_ms > timeout * 1000;
       atomic(file, value);
       atomic(path.join(directory, 'latest.json'), value);
     }
@@ -83,11 +87,13 @@ function main(): number {
   const root = take('--root');
   const component = take('--component');
   const deployment = take('--deployment');
+  const timeout = Number(take('--timeout') ?? 600);
   if (!root) throw new Error('root_required');
   if (component !== 'ordinary' && component !== 'premium') throw new Error('component_invalid');
+  if (!Number.isFinite(timeout) || timeout <= 0) throw new Error('timeout_invalid');
   if (argv[0] === '--') argv.shift();
   if (!argv.length) throw new Error('existing scheduler command required');
-  return record(root, component, argv, deployment);
+  return record(root, component, argv, deployment, timeout);
 }
 
 if (process.argv[1] && process.argv[1].endsWith('record-run.ts')) {

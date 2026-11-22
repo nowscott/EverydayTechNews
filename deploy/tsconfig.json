@@ -20,6 +20,8 @@
     "ordinary/manage.ts",
     "dashboard/record-run.ts",
     "dashboard/install.ts",
-    "nas/runtime.ts"
+    "nas/runtime.ts",
+    "nas/prune-images.ts",
+    "nas/health-check.ts"
   ]
 }
