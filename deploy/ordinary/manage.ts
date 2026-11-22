@@ -89,8 +89,22 @@ class Controller extends base.Controller {
       '--entrypoint', 'node', candidate.image, '/app/verify-state.ts'], { capture: false });
   }
 
+  // 清扫 2.7.10 之前的旧命名项目容器：迁移窗口内被 cron 看门狗按旧 active 重建的调度容器
+  // 会和新版本调度同时 tick，造成重复出刊，必须在激活后立即移除。
+  sweepLegacy(): string[] {
+    const removed: string[] = [];
+    const names = this.command(['docker', 'ps', '-a', '--filter', 'name=everyday-tech-news-ordinary', '--format', '{{.Names}}']);
+    for (const name of names.split('\n').map((line) => line.trim()).filter(Boolean)) {
+      try { this.command(['docker', 'rm', '-f', name], { capture: false }); removed.push(name); } catch { /* 单个容器清理失败不阻断部署 */ }
+    }
+    if (removed.length) fs.appendFileSync(path.join(this.logs, 'deployments.jsonl'), JSON.stringify({ at: base.shanghai(),
+      status: 'legacy_scheduler_removed', containers: removed }) + '\n');
+    return removed;
+  }
+
   override afterChange(state: base.State): void {
     if (!this.resident()) return;
+    this.sweepLegacy();
     const current = state.active;
     if (!current || !this.hasScheduler(current.source)) return;
     try { this.schedulerControl(current, 'up'); }
@@ -195,10 +209,15 @@ async function main(): Promise<number> {
   if (operation === 'status') result = { deployment: controller.state(), last_check: base.readJson(path.join(controller.root, 'status.json'), null), scheduler: controller.schedulerStatus() };
   else if (operation === 'rollback') result = controller.rollback(tag);
   else if (operation === 'scheduler-up' || operation === 'scheduler-down') {
+    // 迁移窗口内不重建调度：此时 active 还是旧版本，重建会和新版本调度同时出刊。
+    if (operation === 'scheduler-up' && controller.updateInProgress()) result = { status: 'update_in_progress' };
+    if (result) { /* 已跳过 */ }
+    else {
     const current = controller.state().active;
     if (!current) throw new Error('no_active_ordinary_release');
     controller.schedulerControl(current, operation === 'scheduler-up' ? 'up' : 'down');
     result = { status: operation === 'scheduler-up' ? 'scheduler_up' : 'scheduler_down', active: current.tag };
+    }
   } else if (operation === 'update') result = await controller.update();
   else if (operation === 'run') result = controller.run();
   else if (operation === 'sync') result = controller.sync();

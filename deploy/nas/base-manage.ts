@@ -375,10 +375,17 @@ export class Controller {
     for (const name of backups.slice(3)) fs.rmSync(path.join(this.root, 'backups', name), { recursive: true, force: true });
   }
 
+  // 迁移标记：update 全程存在，cron 的 scheduler-up 看到它就跳过，
+  // 避免「旧版本容器已被 down、新版本还没激活」的空窗被看门狗按旧 active 重建（会出现双份调度）。
+  updateInProgress(): boolean { return fs.existsSync(path.join(this.root, 'update.inprogress')); }
+
   async update(): Promise<Record<string, unknown>> {
+    const marker = path.join(this.root, 'update.inprogress');
     return withLock(path.join(this.root, 'update.lock'), false, (acquired) => {
       if (!acquired) return { status: 'update_already_running' };
-      return this.updateUnlocked();
+      atomicWrite(marker, { at: shanghai(), pid: process.pid });
+      try { return this.updateUnlocked(); }
+      finally { try { fs.rmSync(marker, { force: true }); } catch { /* 标记清理失败不影响部署结果 */ } }
     });
   }
 

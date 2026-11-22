@@ -1,5 +1,15 @@
 # 更新日志
 
+## ordinary-news-v2.7.11
+
+- 修复 2.7.10 迁移暴露的双调度风险：`update` 全程写 `update.inprogress` 标记，cron 的 `scheduler-up` 看门狗命中标记时返回 `update_in_progress` 不再重建调度。
+- 激活后新增 `sweepLegacy()`：清理旧命名项目（`everyday-tech-news-ordinary*`）遗留或看门狗复活的容器，避免新旧两份调度同时 tick 重复出刊。
+- 现场记录：2.7.10 切换时恰逢 16:10 的看门狗，旧容器被按旧 active 重建，与新调度并行 14 分钟；已手工停机并清理，本例即回归测试用例 `deploy/ordinary/tests/test_update_marker.py`。
+
+## nas-dashboard-v2.7.11
+
+- 与普通版同号发布，无功能变更（仅版本号对齐）。
+
 ## ordinary-news-v2.7.10
 
 - 容器命名统一：compose 项目 `everyday-tech-news-ordinary` → `etn-ordinary`，常驻调度固定 `container_name: etn-ordinary-scheduler`（原 `everyday-tech-news-ordinary-scheduler-1`）。
