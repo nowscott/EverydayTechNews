@@ -26,7 +26,8 @@ function copyFile(source: string, destination: string): void {
   fs.copyFileSync(source, temp); fs.chmodSync(temp, 0o600); fs.renameSync(temp, destination);
 }
 
-const CONTROLLER_FILES = ['manage.ts', 'verify-state.ts', 'compose.managed.yaml', 'compose.proxy.yaml'];
+// base-manage.ts 是 manage.ts 的实际实现，升级控制器必须一起换，否则新逻辑（如 schedulerService）不生效。
+const CONTROLLER_FILES = ['manage.ts', 'base-manage.ts', 'verify-state.ts', 'compose.managed.yaml', 'compose.proxy.yaml'];
 
 function upgrade(options: Options): Record<string, unknown> {
   const source = path.dirname(path.resolve(process.argv[1]));

@@ -143,7 +143,7 @@ export function schedulerLines(present: string, privateRoot: string, root: strin
   const mark = '# EverydayTechNews managed releases; local time Asia/Shanghai';
   // 采集/出刊已由常驻 scheduler 容器（etn-premium-scheduler）驱动，crontab 只保留自我更新。
   const lines = present.split('\n').filter((line) => !line.includes(path.join(privateRoot, 'run-scheduled.sh'))
-    && (!line.includes(manager) || line.includes('record-run.')) && line !== mark);
+    && !(line.includes(manager) && line.includes(' run ')) && line !== mark);
   lines.push(mark);
   lines.push('*/15 * * * * ' + runCommand + ' update >> ' + path.join(root, 'logs/updater.log') + ' 2>&1');
   return lines;

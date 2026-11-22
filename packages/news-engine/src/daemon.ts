@@ -35,7 +35,7 @@ function parseArgs(args: string[]): Options {
   return {
     data: resolve(index >= 0 && args[index + 1] ? args[index + 1] : '/data'),
     once: args.includes('--once'),
-    timeoutMs: (timeout >= 0 ? Number(args[timeout + 1]) : 240) * 1000,
+    timeoutMs: (timeout >= 0 ? Number(args[timeout + 1]) : 600) * 1000,
   };
 }
 
@@ -46,12 +46,14 @@ function runRound(options: Options): Promise<{ exit: number; seconds: number; ta
   return new Promise((done) => {
     const started = Date.now();
     const child = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', CLI, 'run', '--data', options.data, '--local-authority'], {
-      env: { ...process.env, TZ: 'Asia/Shanghai' }, stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, TZ: 'Asia/Shanghai' }, stdio: ['ignore', 'pipe', 'pipe'], detached: true,
     });
+    const pid = child.pid ?? 0;
     let tail = '';
     const collect = (chunk: Buffer) => { tail = (tail + chunk.toString()).slice(-4000); };
     child.stdout.on('data', collect); child.stderr.on('data', collect);
-    const killer = setTimeout(() => child.kill('SIGKILL'), options.timeoutMs);
+    // 超时必须杀整个进程组：flock 是独立进程，只杀子进程会留下仍持锁的 node 孤儿。
+    const killer = setTimeout(() => { try { process.kill(-pid, 'SIGKILL'); } catch { /* 已退出 */ } }, options.timeoutMs);
     child.on('close', (code) => { clearTimeout(killer); done({ exit: code ?? 1, seconds: (Date.now() - started) / 1000, tail }); });
   });
 }
