@@ -8,7 +8,7 @@ const blobHash=(s:Buffer)=>createHash('sha1').update(Buffer.concat([Buffer.from(
 export async function syncArchive(archive:string,state:string,control:Row,token:string,fetcher:typeof fetch=fetch):Promise<Row> {
   if(control.mode!=='production'||control.archive_sync_enabled!==true)return {status:'disabled_in_shadow'};
   const previous=read(state+'/status.json',{}),baseline=read(state+'/baseline.json');
-  const pending=(reason:string)=>{const r={status:reason,at:new Date().toISOString(),first_pending_at:previous.first_pending_at??new Date().toISOString()};atomic(state+'/status.json',r);return r;};
+  const pending=(reason:string,detail?:string)=>{const r:Row={status:reason,at:new Date().toISOString(),first_pending_at:previous.first_pending_at??new Date().toISOString(),...(detail?{error:detail}:{})};atomic(state+'/status.json',r);return r;};
   if(!token)return pending('archive_credential_missing');
   if(!baseline?.files)return pending('archive_baseline_required');
   async function api(path:string,body?:Row,auth=true):Promise<Row> {
@@ -43,7 +43,7 @@ export async function syncArchive(archive:string,state:string,control:Row,token:
     }
     atomic(state+'/published.json',{files:Object.fromEntries(remote)});
     const result={status:'synced',at:new Date().toISOString(),changed:changes.length};atomic(state+'/status.json',result);return result;
-  }catch{return pending('archive_sync_failed');}
+  }catch(e){return pending('archive_sync_failed',e instanceof Error?e.message:String(e));}
 }
 if(process.argv[1]?.endsWith('/sync.ts')) {
   const [archive,state,control]=process.argv.slice(2);if(!archive||!state||!control)throw new Error('archive_arguments_required');

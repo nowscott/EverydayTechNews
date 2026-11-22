@@ -4,7 +4,7 @@
 
 ## 发布与首次部署
 
-普通版组件标签为 `ordinary-news-vX.Y.Z`，独立于原项目v2.x和高级引擎news-engine版本。源码经PR、main上ordinary-news.yml及相关回归检查后，创建正式非预发布Release，保持`--latest=false`。NAS只部署通过main检查、固定提交与镜像摘要的版本。
+普通版组件标签为 `ordinary-news-vX.Y.Z`，独立于原项目v2.x和高级引擎news-engine版本。版本源、Docker 镜像 tag 与 GitHub Release 必须使用同一个编号，规则见[版本号口径](../../VERSIONING.md)。源码经PR、main上ordinary-news.yml及相关回归检查后，创建正式非预发布Release，保持`--latest=false`。NAS只部署通过main检查、固定提交与镜像摘要的版本。
 
 OpenWrt 代理、归档发布和控制器私有配置及升级顺序见 [OpenWrt 迁移](../nas/OPENWRT-MIGRATION.md)。
 
@@ -24,7 +24,7 @@ PREMIUM_PRODUCTION_ENABLED=false
 python3 deploy/ordinary/install-managed.py --root /vol3/1000/Docker/everydaytechnews-ordinary --tag ordinary-news-v1.0.4
 ```
 
-安装器保留现有crontab，并新增独立每分钟运行、每15分钟更新、每30分钟异步归档任务。原普通版三个Actions工作流继续运行；高级版控制器不替换。初始化、部署校验无网络/无密钥，不发送邮件。首次使用独立容器执行preflight.ts，仅验证Notion读取、SMTP登录和过期退订token签名，不发信、不修改订阅状态。
+安装器保留现有crontab，并新增：05–09 点每 2 分钟、其余时段 :07/:37 的出刊唤醒（保证 06:30 准点），每小时 :17 检查正式 Release，每天 06:40/08:40/12:40/20:40 异步归档。原普通版三个Actions工作流在切换前继续运行；高级版控制器不替换。初始化、部署校验无网络/无密钥，不发送邮件。首次使用独立容器执行preflight.ts，仅验证Notion读取、SMTP登录和过期退订token签名，不发信、不修改订阅状态。
 
 ## 运行与状态
 

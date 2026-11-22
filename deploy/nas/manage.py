@@ -175,10 +175,12 @@ class Controller:
         return sha, directory
 
     def build(self, tag, sha, directory):
+        # One version, one image tag: the git tag and the image tag are identical.
+        # The commit stays in OCI labels and deployment.json; no ":git-<sha>" alias.
         image = self.config.get('image_repository', 'everyday-tech-news-test') + ':' + tag
         self.command(['docker', 'build', '--build-arg', 'HTTP_PROXY', '--build-arg', 'HTTPS_PROXY', '--build-arg', 'NO_PROXY', '-f', self.config.get('dockerfile', 'deploy/nas/Dockerfile'), '--build-arg', 'NEWS_VERSION=' + tag,
                       '--build-arg', 'NEWS_REVISION=' + sha, '-t', image,
-                      '-t', self.config.get('image_repository', 'everyday-tech-news-test') + ':git-' + sha, '.'], cwd=directory, capture=False)
+                      '.'], cwd=directory, capture=False)
         info = json.loads(self.command(['docker', 'image', 'inspect', image]))[0]
         labels = info['Config'].get('Labels') or {}
         if labels.get('org.opencontainers.image.revision') != sha or labels.get('org.opencontainers.image.version') != tag:
@@ -256,7 +258,12 @@ class Controller:
         retained = {h['image'] for h in state['history']}
         for item in known:
             if item['image'] not in retained and not item.get('legacy'):
-                self.command(['docker', 'image', 'rm', item['image_tag'], self.config.get('image_repository', 'everyday-tech-news-test') + ':git-' + item['sha']])
+                # Tolerate both the unified tag and legacy ":git-<sha>" aliases.
+                for reference in (item['image_tag'], self.config.get('image_repository', 'everyday-tech-news-test') + ':git-' + item['sha']):
+                    try:
+                        self.command(['docker', 'image', 'rm', reference])
+                    except RuntimeError:
+                        pass
         atomic(self.root / 'image-history.json', state['history'])
         backups = sorted((self.root / 'backups').glob('*'), reverse=True)
         for path in backups[3:]: shutil.rmtree(path)

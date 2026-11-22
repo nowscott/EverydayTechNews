@@ -6,13 +6,12 @@
 
 [![Star History Chart](https://api.star-history.com/svg?repos=nowscott/EverydayTechNews&type=Date)](https://star-history.com/#nowscott/EverydayTechNews&Date)
 
-[![新闻抓取][action-image]][action-url]
 [![forks][forks-image]][forks-url]
 
-[action-url]: https://github.com/NowScott/EverydayTechNews/actions/workflows/run-selenium-script.yml "Action State"
-[action-image]:https://img.shields.io/github/actions/workflow/status/nowscott/EverydayTechNews/run-selenium-script.yml?label=新闻抓取
 [forks-url]:https://github.com/NowScott/EverydayTechNews/forks
 [forks-image]:https://img.shields.io/github/forks/NowScott/EverydayTechNews?label=Forks
+
+> 正式出刊由 NAS 自主调度，不依赖 GitHub Actions 的定时触发；工作流仅保留测试与构建校验。原因与迁移过程见[架构说明](#架构nas-自主调度已脱离-github-actions定时)。
 
 ## 创建初衷
 
@@ -28,20 +27,17 @@
 
 因为不想暴露我的个人邮箱，所以真正每天在运行的工具在另外一个私有库中，本项目的目的在于帮助同样有这个需求的朋友们搭建这样一个小工具。
 
-这个自动发送新闻到邮箱的小工具基于 Python 开发，邮件入口是 `src/main.py`，通知文案配置位于根目录的 `notifications.ini`。
+当前主线已经迁移到 TypeScript（Node 24）：普通版出刊、高级版引擎与 NAS 工作台均为 TS，Python 只作为离线对照、发布控制与历史实现保留。
 
 ### 代码结构
 
-- `src/script.py`：使用 Requests + BeautifulSoup 抓取新闻并写入归档
-- `src/news_sorter.py`：并发请求 IT之家评分接口并排序
-- `src/news_filter.py`：统一的广告、价格与主题关键词过滤规则
-- `src/newsletter.py`：选择新闻并生成邮件 HTML
-- `src/notion_client.py`：读取订阅者并更新订阅状态
-- `src/subscription_links.py`：生成每日邮件中的签名退订链接
-- `src/mailer.py`：SMTP 连接复用、断线重连、重试与失败分类
-- `src/main.py`：加载配置并编排每日邮件任务
-- `apps/subscription-web`：React + Tailwind CSS 订阅网页与 Vercel API
+- `packages/ordinary-news`：普通版完整链路（采集、IT之家评分排序、出刊、SMTP 投递、订阅同步、公开归档），被部署到 NAS 作为正式出刊端
+- `packages/news-engine`：高级版 TS 引擎（多来源采集、模型审稿、预算、组稿、90 天归档）
+- `packages/news-common`：两版共用的日期、归档、状态与同步工具
 - `apps/nas-dashboard`：NAS 局域网只读工作台，统一查看普通版/高级版的新闻、AI处理、评分、费用、邮件与调度；[部署说明](deploy/dashboard/README.md)
+- `apps/subscription-web`：React + Tailwind CSS 订阅网页与 Vercel API
+- `deploy/ordinary`、`deploy/nas`：版本控制器、发布/回退、三天观察与切换工具；[普通版说明](deploy/ordinary/README.md)
+- `src/*.py`：旧 Python 发送实现，保留作离线对照与 fork 兼容，不再是线上出刊路径（邮件入口 `src/main.py`、文案 `notifications.ini`）
 
 ## 工具部署
 
@@ -85,7 +81,7 @@ Notion 数据库需要包含 `Name`、`Email` 和 `状态` 三列，状态选项
 
 1. 将 Root Directory 设置为 `apps/subscription-web`
 2. 配置 `NOTION_API_KEY` 和 `NOTION_DATABASE_ID`
-3. 配置 `APP_BASE_URL` 和 `SUBSCRIPTION_CONFIRMATION_SECRET`，用于生成确认和退订链接；签名密钥必须与 GitHub Actions 中的同名 secret 一致
+3. 配置 `APP_BASE_URL` 和 `SUBSCRIPTION_CONFIRMATION_SECRET`，用于生成确认和退订链接；签名密钥必须与 NAS 出刊端的 `ordinary.env` 中同名变量一致
 4. 配置 `SENDING_ACCOUNT`、`SENDING_PASSWORD` 和 `SERVER`，用于向新订阅者发送确认邮件；如需在确认后接收站长通知，再配置 `NOTIFICATION_EMAIL`
 5. 将 `mailist.nowscott.top` 绑定到该 Vercel 项目
 
@@ -100,13 +96,13 @@ Notion 数据库需要包含 `Name`、`Email` 和 `状态` 三列，状态选项
 - **自动采集与归档**：定时抓取 IT之家新闻并保存每日、每月归档，让早报内容可追溯。
 - **筛选与排序**：统一过滤广告、价格、重复新闻及指定主题的中英文名称、系统、芯片、终端和汽车生态关联词，再根据读者评分为候选内容排序，每天只发送排名前 25 的新闻；发送前会再次过滤已排序归档，确保新规则立即生效。
 - **日期标识**：每日邮件主题与正文头部统一显示上海当天日期，便于在邮箱列表和正文中快速定位。
-- **轻量化处理**：抓取优先使用 Requests + BeautifulSoup 解析 IT之家列表页，异常时自动降级到同站 RSS；评分直接请求轻量接口，避免为每条新闻启动完整浏览器。
+- **轻量化处理**：采集优先解析 IT之家列表页，异常时自动降级到同站 RSS；评分直接请求轻量接口，不为每条新闻启动完整浏览器。
 - **订阅闭环**：订阅网页、邮箱确认、Notion 状态管理、每日发送和安全退订都在同一仓库中维护。
 - **可靠发送**：批量发送复用单个 SMTP 会话，断线时自动重连；区分永久退信与临时系统故障，只有连续永久拒收才会将订阅者标记为 `异常`。
-- **可靠调度**：邮件任务在上海时间 06:30、06:45 和 07:00 分批唤醒，最早成功的任务立即发送，并通过每日标记阻止后续任务重复群发。
+- **可靠调度**：NAS 定时器在上海时间 06:30 发起投递，未完成可恢复至 09:00，09:00 后不再发起；账本按收件人与日期去重，进程重启不会重复群发。
 - **移动端优先**：订阅页和邮件针对窄屏阅读、触控区域与操作入口进行适配。
 
-抓取发送端与订阅网页共享数据约定，但保持独立部署：Python 任务由 GitHub Actions 运行，React 网页与 API 由 Vercel 运行，两端通过 Notion 协作。这样既能统一产品流程，也不会让网页部署与定时邮件任务相互影响。
+抓取发送端与订阅网页共享数据约定，但保持独立部署：出刊端运行在自有 NAS 上（自 2026-10-29 起不再由 GitHub Actions 定时触发），React 网页与 API 由 Vercel 运行，两端通过 Notion 协作。这样既保证 06:30 准点出刊，也不会让网页部署与定时邮件任务相互影响。
 
 各版本的具体变化与技术背景见 [`CHANGELOG.md`](CHANGELOG.md)。
 
@@ -132,6 +128,23 @@ Notion 数据库需要包含 `Name`、`Email` 和 `状态` 三列，状态选项
 
 高级订阅的TypeScript完整引擎位于 [packages/news-engine](packages/news-engine/README.md)，包含采集、编辑、模型预算、持久化、组稿、投递和90天归档，以及Python对照和故障测试。私有内测通过Notion的高级订阅及高级内测标记选择收件人，普通订阅不变；部署状态见[迁移记录](packages/news-engine/MIGRATION.md)。[第一批评分测速](packages/news-engine/PERFORMANCE.md)不代表完整链路提速。
 
-## 普通版 NAS / TypeScript 迁移
+## 架构：NAS 自主调度（已脱离 GitHub Actions 定时）
 
-独立普通版组件及三天观察/切换流程见[部署说明](deploy/ordinary/README.md)。旧Python发送在观察期继续运行；只有通过门槛后才切换，普通版与高级版状态分离。
+普通版从 2026-10-28 起由 NAS 自己的定时器出刊，2026-10-29 完成切换，GitHub Actions 里的三个旧工作流（`technews.yml`、`news-sorter.yml`、`run-selenium-script.yml`）已停用，只保留测试与构建校验类工作流。
+
+**为什么改**：GitHub Actions 的 cron 是"尽力而为"的排队调度，高峰期经常延迟十几分钟到半小时，06:30 的早报无法保证准点；而且失败重试只能靠再次排队。换成 NAS 常驻调度后，时间点由本机时钟决定，晚到可恢复到 09:00 的窗口，进程重启不会重复群发。
+
+**当前调度**（crontab，上海时区）：
+
+| 任务 | 频率 | 作用 |
+|---|---|---|
+| `manage.py run` | 05:00–09:59 每 2 分钟，其余时段 :07/:37 | 采集、冻结、投递，06:30 起发 |
+| `manage.py update` | 每小时 :17 | 检查正式 Release，固定提交与镜像摘要后自动部署 |
+| `manage.py sync` | 每天 06:40 / 08:40 / 12:40 / 20:40 | 把 `news_archive/YYYY-MM/DD.md` 增量推到本仓库 |
+
+GitHub 在切换后只承担两件事：源码与 Release 的版本记录、公开新闻归档的存放。**出刊链路不依赖 GitHub 可用性**——归档推送失败不影响出刊（`archive_sync` 会在报告中标记失败原因并保留积压）。
+
+版本号口径见 [`VERSIONING.md`](VERSIONING.md)：一个组件版本同时是 git tag、GitHub Release、Docker 镜像 tag 与部署记录，不再产生第二套编号。历史 Python 版本（`v1.0.0`、`v2.x`）已冻结，仅作归档。
+
+三天观察与正式切换的完整流程见[普通版部署说明](deploy/ordinary/README.md)。
+

@@ -47,3 +47,4 @@ services:
     cpus: 0.5
     restart: "no"
     labels: {com.centurylinklabs.watchtower.enable: "false"}
+    logging: {driver: json-file, options: {max-size: 5m, max-file: "2"}}

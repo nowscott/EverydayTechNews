@@ -2,9 +2,9 @@ name: Ordinary TS migration and NAS checks
 on:
   push:
     branches: [main]
-    paths: ['packages/ordinary-news/**', 'packages/news-common/**', 'deploy/ordinary/**', 'deploy/nas/manage.py', '.dockerignore', 'config/news-filter.json', '.github/workflows/ordinary-news.yml']
+    paths: ['packages/ordinary-news/**', 'packages/news-common/**', 'deploy/ordinary/**', 'deploy/nas/manage.py', '.dockerignore', 'config/news-filter.json', 'scripts/check-version.mjs', 'CHANGELOG.md', '.github/workflows/ordinary-news.yml']
   pull_request:
-    paths: ['packages/ordinary-news/**', 'packages/news-common/**', 'deploy/ordinary/**', 'deploy/nas/manage.py', '.dockerignore', 'config/news-filter.json', '.github/workflows/ordinary-news.yml']
+    paths: ['packages/ordinary-news/**', 'packages/news-common/**', 'deploy/ordinary/**', 'deploy/nas/manage.py', '.dockerignore', 'config/news-filter.json', 'scripts/check-version.mjs', 'CHANGELOG.md', '.github/workflows/ordinary-news.yml']
 permissions: {contents: read}
 jobs:
   ordinary:
@@ -17,6 +17,8 @@ jobs:
         with: {node-version: '24', cache: npm, cache-dependency-path: packages/ordinary-news/package-lock.json}
       - uses: actions/setup-python@v6
         with: {python-version: '3.14'}
+      - name: Version single source check
+        run: node scripts/check-version.mjs
       - run: python -m pip install -r requirements.txt
       - run: npm ci --prefix packages/ordinary-news --ignore-scripts --no-audit --no-fund
       - run: npm run typecheck --prefix packages/ordinary-news
