@@ -45,11 +45,13 @@ docker compose --env-file deploy/nas/.env -f deploy/nas/compose.yaml -f deploy/n
 
 NAS 使用 `NEWS_COLLECTION_PROFILE=nas_balanced`：日间约每 30 分钟采集，04:00–06:15 约每 15 分钟采集，06:15–09:00 暂停采集并维持原冻结/发送窗口。以时间桶判断到期，避免任务启动秒数抖动导致漏过一次采集。来源返回 429 后单独冷却 1 小时，跳过期间不顺延冷却终点。
 
-用户 crontab 日间在 07/37 分唤起，04–08 点在 07/22/37/52 分唤起；晨间长任务仍由宿主锁避免重叠。运行入口：
+自 `news-engine-v0.7.10` 起，采集/出刊不再由用户 crontab 唤起，而是由常驻容器 `etn-premium-scheduler`（镜像内 `packages/news-engine/src/daemon.ts`）按同一套节奏驱动：04:00–06:14 每 15 分钟，其余每 30 分钟，容器启动后立即先跑一轮。crontab 只保留 `*/15 ... update` 用于自我更新。
 
-```sh
-/bin/sh /vol3/1000/Docker/everydaytechnews-test-20261019/deploy/nas/run-scheduled.sh
-```
+- `daemon.ts` 用独立进程组执行 `flock … main.ts run`，超时（默认 600 秒）整组回收；只杀外层 `flock` 会留下持锁孤儿，导致下一轮排队等 `/data/pool.lock`。
+- 调度状态写 `data/scheduler/{status.json,runs,logs}`，可直接查看 ticks/failures/last_tick/next_tick。
+- 控制器每次激活新版本后自动 `compose up -d --no-deps scheduler`；若拉起失败只记 `scheduler_service_failed` 事件，不影响已完成的发布。
+- 安装/升级控制器用 `deploy/nas/install-managed.ts`（`--legacy … --root … --upgrade-controller`），不再使用 `.py`。
+- 手动补跑仍用上面的 `compose run --rm premium maintenance`；先 `docker stop etn-premium-scheduler`，跑完再 `docker start`，避免两路同时写状态。
 
 晨间 run 内部有等待循环，不能设置过短的计划任务超时；建议允许至少 6 小时。数据目录内 Linux flock 会串行保护账本。宿主调度也应禁止同一个任务重叠运行，防止长任务积压；不能仅依赖数据库锁。NAS 的时钟需正常同步。
 
