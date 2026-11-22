@@ -50,5 +50,13 @@ test('控制器文件与 release 不一致时自动同步并可重复执行', ()
 
     const second = controller.syncController(source, 'news-engine-v9.9.9', 'abc123');
     assert.equal(second, null, '一致时不应重复同步');
+
+    // 普通版专用：manage.ts 的跨目录 import 必须改写成同目录后再落盘。
+    writeFileSync(join(source, 'deploy/nas/manage.ts'), 'import base from ../nas/base-manage.ts');
+    writeFileSync(join(root, 'manage.ts'), 'import base from ../nas/base-manage.ts');
+    controller.controllerRewrite = (name, text) => name === 'manage.ts' ? text.replace('../nas/base-manage.ts', './base-manage.ts') : text;
+    const third = controller.syncController(source, 'news-engine-v9.9.9', 'abc123');
+    assert.ok(third, '改写后的内容与源不同，应再次同步');
+    assert.equal(readFileSync(join(root, 'manage.ts'), 'utf8'), 'import base from ./base-manage.ts');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

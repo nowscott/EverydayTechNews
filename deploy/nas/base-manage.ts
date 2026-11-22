@@ -182,6 +182,8 @@ export interface CommandOptions { cwd?: string; capture?: boolean; env?: Record<
 export class Controller {
   /** 目标文件名 → release 内相对路径；普通版 manage/verify 在 deploy/ordinary，base 共用 deploy/nas。 */
   controllerSources: Record<string, string> = Object.fromEntries(CONTROLLER_FILES.map((name) => [name, 'deploy/nas/' + name]));
+  /** 复制前的文本改写钩子；普通版要把 manage.ts 的跨目录 import 改成同目录。 */
+  controllerRewrite: ((name: string, text: string) => string) | null = null;
   root: string;
   data: string;
   statePath: string;
@@ -266,10 +268,15 @@ export class Controller {
   syncController(source: string, tag: string, sha: string): Record<string, unknown> | null {
     const hash = (file: string) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
     const changed: string[] = [];
+    const desired = new Map<string, string>();
     for (const [name, relative] of Object.entries(this.controllerSources)) {
       const from = path.join(source, relative), to = path.join(this.root, name);
       if (!fs.existsSync(from)) continue;
-      if (!fs.existsSync(to) || hash(from) !== hash(to)) changed.push(name);
+      const text = fs.readFileSync(from, 'utf8');
+      const wanted = this.controllerRewrite ? this.controllerRewrite(name, text) : text;
+      const current = fs.existsSync(to) ? fs.readFileSync(to, 'utf8') : null;
+      if (current !== wanted) changed.push(name);
+      desired.set(name, wanted);
     }
     if (!changed.length) return null;
     const backup = path.join(this.root, 'controller-backups', tag);
@@ -277,7 +284,7 @@ export class Controller {
     for (const name of changed) {
       const from = path.join(source, this.controllerSources[name]), to = path.join(this.root, name);
       if (fs.existsSync(to)) fs.copyFileSync(to, path.join(backup, name));
-      fs.copyFileSync(from, to);
+      fs.writeFileSync(to, desired.get(name)!, { mode: 0o600 });
     }
     const manage = path.join(this.root, 'manage.ts'), base = path.join(this.root, 'base-manage.ts');
     atomicWrite(path.join(this.root, 'controller.json'), { version: tag, sha,

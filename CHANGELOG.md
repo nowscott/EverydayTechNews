@@ -1,5 +1,17 @@
 # 更新日志
 
+## ordinary-news-v2.7.18
+
+- 修正控制器自同步的两处问题：比较时按“改写后的内容”判断差异（避免 raw 相同就跳过改写）；普通版 `manage.ts` 落盘前把 `../nas/base-manage.ts` 改写为 `./base-manage.ts`，否则同步会把线上控制器改成无法启动的版本。
+- 新增单测覆盖改写钩子与重复同步。
+
+## news-engine-v2.7.18
+
+- 与普通版共用同一版 `base-manage.ts`（同步比较逻辑修正），高级版控制器文件路径不变。
+
+## nas-dashboard-v2.7.18
+
+- 与三端同号发布；看板功能无变化，沿用 2.7.17 的 upgrade.ts 发布链。
 ## ordinary-news-v2.7.17
 
 - `update` 自动同步控制器：发现 `managed/` 里的 `manage.ts`、`base-manage.ts`、`verify-state.ts` 与 release 不一致时，先备份到 `controller-backups/<tag>` 再覆盖，并更新 `controller.json` 哈希；不再需要每次手工 `--upgrade-controller`（2.7.17 本身仍需 bootstrap 一次）。

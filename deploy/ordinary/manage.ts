@@ -39,6 +39,8 @@ class Controller extends base.Controller {
     'base-manage.ts': 'deploy/nas/base-manage.ts',
     'verify-state.ts': 'deploy/ordinary/verify-state.ts',
   };
+  override controllerRewrite = (name: string, text: string) =>
+    name === 'manage.ts' ? text.replace(/'..\/nas\/base-manage.ts'/, "'./base-manage.ts'") : text;
   override schema(): number { return 1; }
 
   override ledger(): string {
