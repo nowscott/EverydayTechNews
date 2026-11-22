@@ -24,7 +24,7 @@ PREMIUM_PRODUCTION_ENABLED=false
 python3 deploy/ordinary/install-managed.py --root /vol3/1000/Docker/everydaytechnews-ordinary --tag ordinary-news-v1.0.4
 ```
 
-安装器保留现有crontab，并新增：每小时 :17 检查正式 Release、每天 06:40/08:40/12:40/20:40 异步归档、每 10 分钟一次 `scheduler-up` 看门狗。出刊时间表（05–09 点每 2 分钟、其余时段 :07/:37）由镜像内常驻调度 `scheduler.ts` 执行，不再进 crontab。原普通版三个Actions工作流在切换前继续运行；高级版控制器不替换。初始化、部署校验无网络/无密钥，不发送邮件。首次使用独立容器执行preflight.ts，仅验证Notion读取、SMTP登录和过期退订token签名，不发信、不修改订阅状态。
+安装器保留现有crontab，并新增：每小时 :17 检查正式 Release、每天 06:40/08:40/12:40/20:40 异步归档、每 10 分钟一次 `scheduler-up` 看门狗。出刊时间表（05–09 点每 2 分钟、其余时段 :07/:37）由镜像内常驻调度 `scheduler.ts` 执行（compose 服务 `scheduler`，容器 `everyday-tech-news-ordinary-scheduler-1`），不再进 crontab。原普通版三个Actions工作流在切换前继续运行；高级版控制器不替换。初始化、部署校验无网络/无密钥，不发送邮件。首次使用独立容器执行preflight.ts，仅验证Notion读取、SMTP登录和过期退订token签名，不发信、不修改订阅状态。
 
 ## 运行与状态
 

@@ -138,7 +138,7 @@ Notion 数据库需要包含 `Name`、`Email` 和 `状态` 三列，状态选项
 
 | 任务 | 频率 | 作用 |
 |---|---|---|
-| 常驻调度容器 `etn-ordinary-scheduler`（镜像内 `scheduler.ts`） | 05:00–09:59 每 2 分钟，其余时段 :07/:37 | 进程内直接执行 tick，采集、冻结、投递，06:30 起发 |
+| 常驻调度服务 `scheduler`（容器 `everyday-tech-news-ordinary-scheduler-1`，镜像内 `scheduler.ts`） | 05:00–09:59 每 2 分钟，其余时段 :07/:37 | 进程内直接执行 tick，采集、冻结、投递，06:30 起发 |
 | `manage.py update` | 每小时 :17 | 检查正式 Release，固定提交与镜像摘要后自动部署 |
 | `manage.py sync` | 每天 06:40 / 08:40 / 12:40 / 20:40 | 把 `news_archive/YYYY-MM/DD.md` 增量推到本仓库 |
 | `manage.py scheduler-up`（看门狗） | 每 10 分钟 | 只保证调度容器在跑；已在运行时不重启 |
