@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-const REPO = 'nowscott/EverydayTechNews';
+export const REPO = 'nowscott/EverydayTechNews';
 const SHANGHAI_OFFSET_MS = 8 * 3600 * 1000;
 let PREFIX = 'news-engine-v';
 
@@ -141,14 +141,10 @@ export function compatible(manifest: Record<string, unknown>, schema: unknown, c
 export function schedulerLines(present: string, privateRoot: string, root: string, runCommand: string): string[] {
   const manager = runCommand.split(' ').slice(1, -3).join(' ');
   const mark = '# EverydayTechNews managed releases; local time Asia/Shanghai';
+  // 采集/出刊已由常驻 scheduler 容器（etn-premium-scheduler）驱动，crontab 只保留自我更新。
   const lines = present.split('\n').filter((line) => !line.includes(path.join(privateRoot, 'run-scheduled.sh'))
-    && (!line.includes(manager) || line.includes('record-run.py')) && line !== mark);
+    && (!line.includes(manager) || line.includes('record-run.')) && line !== mark);
   lines.push(mark);
-  for (const schedule of ['7,37 0-3,9-23 * * *', '7,22,37,52 4-8 * * *']) {
-    if (!lines.some((line) => line.startsWith(schedule + ' ') && line.includes(manager))) {
-      lines.push(schedule + ' ' + runCommand + ' run >> ' + path.join(root, 'logs/scheduler.log') + ' 2>&1');
-    }
-  }
   lines.push('*/15 * * * * ' + runCommand + ' update >> ' + path.join(root, 'logs/updater.log') + ' 2>&1');
   return lines;
 }
@@ -353,7 +349,29 @@ export class Controller {
     });
   }
 
-  afterChange(_state: State): void { /* 高级版由 cron 驱动，无需额外钩子 */ }
+  schedulerService(action: 'up' | 'down' = 'up'): string {
+    const active = this.state().active;
+    if (!active?.source || !active?.image) throw new Error('no_active_release');
+    const env = { NAS_IMAGE: active.image, NAS_DATA_DIR: this.config.data, NAS_ENV_FILE: this.config.env_file,
+      NAS_UID: String(os.userInfo().uid), NAS_GID: String(os.userInfo().gid) };
+    return this.command(['docker', 'compose', '--env-file', this.config.env_file,
+      '-f', path.join(active.source, 'deploy/nas/compose.managed.yaml'), '-f', path.join(active.source, 'deploy/nas/compose.proxy.yaml'),
+      action === 'up' ? 'up' : 'stop', ...(action === 'up' ? ['-d', '--no-deps', 'scheduler'] : ['scheduler'])], { env });
+  }
+
+  schedulerStatus(): Record<string, unknown> {
+    try {
+      const running = this.command(['docker', 'ps', '--filter', 'name=etn-premium-scheduler', '--format', '{{.Status}}']);
+      const status = readJson<Record<string, unknown> | null>(path.join(this.data, 'scheduler', 'status.json'), null);
+      return { container: running || 'stopped', status };
+    } catch (error) { return { container: 'unknown', error: String((error as Error).message ?? error).slice(0, 120) }; }
+  }
+
+  // 激活成功后确保常驻调度在跑：失败只记事件，不影响已完成的发布。
+  afterChange(_state: State): void {
+    try { this.schedulerService('up'); this.event('scheduler_service_up'); }
+    catch (error) { this.event('scheduler_service_failed', { error: String((error as Error).message ?? error).slice(0, 200) }); }
+  }
 
   prune(state: State): void {
     const keep = new Set(state.history.map((item) => item.source));

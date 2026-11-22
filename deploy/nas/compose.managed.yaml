@@ -8,16 +8,46 @@ services:
     environment:
       TZ: Asia/Shanghai
       NEWS_COLLECTION_PROFILE: nas_balanced
+      # 采集 + 归档需要可写临时空间与更大堆；128m/默认堆会在 SQLITE_FULL 与 OOM 之间反复失败。
+      NODE_OPTIONS: --max-old-space-size=2560
     volumes:
       - ${NAS_DATA_DIR:?private state required}:/data
     read_only: true
     tmpfs:
-      - /tmp:size=128m,mode=1777
+      - /tmp:size=1g,mode=1777
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    mem_limit: 3g
+    mem_limit: 4g
     cpus: 2
     restart: "no"
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+
+  scheduler:
+    image: ${NAS_IMAGE:?versioned image required}
+    init: true
+    user: "${NAS_UID:-1000}:${NAS_GID:-1001}"
+    env_file: ${NAS_ENV_FILE:?private environment required}
+    environment:
+      TZ: Asia/Shanghai
+      NEWS_COLLECTION_PROFILE: nas_balanced
+      NODE_OPTIONS: --max-old-space-size=2560
+    volumes:
+      - ${NAS_DATA_DIR:?private state required}:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=1g,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 4g
+    cpus: 2
+    restart: unless-stopped
+    container_name: etn-premium-scheduler
+    entrypoint: ["node", "--disable-warning=ExperimentalWarning", "/app/packages/news-engine/src/daemon.ts"]
+    command: ["--data", "/data"]
     labels:
       com.centurylinklabs.watchtower.enable: "false"
     logging:

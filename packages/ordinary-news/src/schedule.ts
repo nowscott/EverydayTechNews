@@ -12,3 +12,8 @@ export function nextTick(from:Date):Date {
 export function describe():string {
   return '05-09:*/2,else:07,37';
 }
+
+// 部署/重启后是否立刻跑一轮：默认开（不用干等到下一个整点），--no-startup-tick 可关。
+export function startupTickEnabled(args:string[]):boolean {
+  return !args.includes('--no-startup-tick');
+}

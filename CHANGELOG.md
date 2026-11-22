@@ -1,5 +1,23 @@
 # 更新日志
 
+## ordinary-news-v2.7.13
+
+- 调度启动即跑一轮：`scheduler.ts` 默认在进程启动后立刻执行一轮 tick（不再干等到下一个 :07/:37），`--no-startup-tick` 可关闭；部署完就能看到采集/归档结果。
+- 高级版加固：`compose.managed.yaml` 的 `/tmp` tmpfs 由 128m 提到 1g、`NODE_OPTIONS=--max-old-space-size=2560`、`mem_limit` 3g→4g，`SQLITE_FULL` 与堆 OOM 同时消除。
+- 高级版常驻调度：新增 `packages/news-engine/src/daemon.ts`（04:00–06:14 每 15 分钟、其余每 30 分钟），并以 `etn-premium-scheduler` 服务写进 compose，`restart: unless-stopped`；控制器 `afterChange` 激活后自动拉起该服务，crontab 不再写 ` run ` 行。
+- 健康检查加代理探活：`health-check.ts` 从私有 env 读代理并 `curl --proxy` 探活，失败返回 `degraded_proxy_unreachable`，不再让死代理静默失败。
+- 安装器去 Python：新增 `deploy/nas/install-managed.ts`、`deploy/ordinary/install-managed.ts`，行为与 `.py` 对齐（首次接管/`--upgrade-controller`/备份/回滚），并直接调用 TS 控制器；`check-version` 与 `tsc -p deploy/tsconfig.json` 均通过。
+
+## nas-dashboard-v2.7.13
+
+- 与 ordinary 同号发布，本轮看板逻辑无改动（沿用 2.7.12 的耗时/出刊时间/归档告警）。
+
+## news-engine-v0.7.10
+
+- 常驻调度 `daemon.ts` 进镜像，替代 `*/15` crontab；状态写 `data/scheduler/{status.json,runs,logs}`。
+- 采集侧容器配置修正（tmpfs 1g、堆 2560、mem_limit 4g），修复 `database or disk is full` 与 OOM。
+- 现场验证：修复后一轮 `run` exit=0，27 个来源 26 个成功、wall 8.1s（此前 27 源全 `fetch_or_parse_failed`）。
+
 ## ordinary-news-v2.7.12
 
 - 运行记录器新增 `timeout_s` / `duration_ms` / `timed_out`，`--timeout` 可调（默认 600 秒）；看板任务表新增“耗时”列，超时标红。

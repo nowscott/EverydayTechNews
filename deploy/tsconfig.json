@@ -22,6 +22,8 @@
     "dashboard/install.ts",
     "nas/runtime.ts",
     "nas/prune-images.ts",
-    "nas/health-check.ts"
+    "nas/health-check.ts",
+    "nas/install-managed.ts",
+    "ordinary/install-managed.ts"
   ]
 }

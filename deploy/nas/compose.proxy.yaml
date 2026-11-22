@@ -4,3 +4,7 @@ services:
     network_mode: host
     environment:
       NODE_USE_ENV_PROXY: '1'
+  scheduler:
+    network_mode: host
+    environment:
+      NODE_USE_ENV_PROXY: '1'

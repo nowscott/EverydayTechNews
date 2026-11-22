@@ -22,6 +22,22 @@ function command(args: string[], cwd?: string, env?: Record<string, string>): st
   return String(result.stdout ?? '').trim();
 }
 
+// 代理失效是高级版历史上最常见的静默故障：先探活代理，再判服务。
+export function parseProxyEnv(text: string): { proxy: string | null } {
+  const match = text.match(/^\s*(?:export\s+)?(?:HTTP_PROXY|HTTPS_PROXY|http_proxy|https_proxy)\s*=\s*([^\s#]+)/m);
+  return { proxy: match ? match[1].replace(/^['"]|['"]$/g, '') : null };
+}
+
+function proxyProbe(envFile: string): Record<string, unknown> {
+  try {
+    const { proxy } = parseProxyEnv(fs.readFileSync(envFile, 'utf8'));
+    if (!proxy) return { status: 'no_proxy_configured' };
+    const result = spawnSync('curl', ['-sS', '-o', '/dev/null', '-w', '%{http_code}', '--max-time', '8', '--proxy', proxy, 'https://www.ithome.com/'], { encoding: 'utf8' });
+    const code = Number(result.stdout ?? 0);
+    return { status: code >= 200 && code < 400 ? 'ok' : 'proxy_unreachable', http_code: code || null, proxy };
+  } catch (error) { return { status: 'probe_error', error: String((error as Error).message ?? error).slice(0, 120) }; }
+}
+
 export function check(directory: string): Record<string, unknown> {
   const config = readJson<Config | null>(path.join(directory, 'config.json'), null)!;
   const state = readJson<State | null>(path.join(directory, 'deployment.json'), null)!;
@@ -34,11 +50,13 @@ export function check(directory: string): Record<string, unknown> {
       || command(['git', 'status', '--porcelain', '--untracked-files=all'], source)) throw new Error('health_release_source_modified');
     const env = { NAS_IMAGE: current.image, NAS_DATA_DIR: config.data, NAS_ENV_FILE: config.env_file,
       NAS_UID: String(os.userInfo().uid), NAS_GID: String(os.userInfo().gid) };
+    const proxy = proxyProbe(config.env_file);
     const output = command(['docker', 'compose', '--env-file', config.env_file,
       '-f', path.join(source, 'deploy/nas/compose.managed.yaml'), '-f', path.join(source, 'deploy/nas/compose.proxy.yaml'),
       'run', '--rm', '-e', 'NEWS_HEALTH_AUTHORITY=nas', '--entrypoint', 'node', 'premium',
       'packages/news-engine/src/health.ts', '/data'], undefined, env);
-    return JSON.parse(output) as Record<string, unknown>;
+    const health = JSON.parse(output) as Record<string, unknown>;
+    return { ...health, proxy, status: proxy.status === 'proxy_unreachable' ? 'degraded_proxy_unreachable' : health.status };
   }) as Record<string, unknown>;
 }
 
