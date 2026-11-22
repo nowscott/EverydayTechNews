@@ -1,5 +1,11 @@
 # 更新日志
 
+## ordinary-news-v2.7.7
+
+- 修复 TS 控制器在 NAS 上调用 GitHub API 失败：子进程改用当前 node 可执行文件（PATH 里没有 node），并为子进程显式传环境。
+- 控制器代理恢复：`managed/proxy.env` 指向可用出口，git 拉取与 API 调用走代理，避免直连 TLS 抖动。
+- 宿主机 Node 24 运行时固定在 `/vol3/1000/Docker/everydaytechnews-runtime`；普通版与高级版 cron 均已切到 TS 控制器。
+
 ## ordinary-news-v2.7.6
 
 - 控制器从 Python 迁到 TypeScript：`deploy/ordinary/manage.ts` + `deploy/nas/base-manage.ts`，宿主用固定 Node 运行时（`/vol3/1000/Docker/everydaytechnews-runtime/bin/node`），Python 版本保留为回退。
@@ -81,6 +87,10 @@
 - 收件人仅在连续三次 SMTP 收件人阶段永久拒收后标记异常；临时故障和不足三次的拒收不会更新订阅状态。
 - SMTP 连接在 DATA 前关闭且未提供命令时，保留安全重试，暂停当前轮次，避免误判为发送结果未知。
 - 即使后续发送恢复，私人账本仍保留该收件人的最近一次 SMTP 错误信息，便于排查。
+
+## nas-dashboard-v2.7.7
+
+- 版本随普通版同号发布；无界面变更。
 
 ## nas-dashboard-v2.7.6
 

@@ -277,7 +277,7 @@ export class Controller {
   }
 
   apiSync(endpoint: string): unknown {
-    const result = spawnSync('node', ['--input-type=module', '-e', GITHUB_API_SCRIPT, endpoint], { timeout: 40_000 });
+    const result = spawnSync(process.execPath, ['--input-type=module', '-e', GITHUB_API_SCRIPT, endpoint], { timeout: 40_000, env: process.env });
     if (result.status !== 0) throw new Error('github_api_unavailable');
     return JSON.parse((result.stdout || '').toString());
   }
