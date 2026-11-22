@@ -1,5 +1,14 @@
 # 更新日志
 
+## ordinary-news-v2.7.0
+
+- 版本线从 1.0.x 切换为产品版本 v2.7.0（承接旧 Python 版 v2.6.4），后续在 2.7.x 上迭代；一个版本号贯穿 `release.json`、包版本、CHANGELOG、git tag 与 Docker 镜像 tag。
+- 构建不再产生 `:git-<sha>` 镜像别名，提交号只写入 OCI label 与部署记录；清理时同时兼容旧的别名。
+- 归档发布失败在 `archive_sync` 状态中写明 `error` 原因（如 `archive_github_403`、`archive_credential_missing`），不再只有 `archive_sync_failed`。
+- 镜像不再安装未使用的 `util-linux`；调度容器去掉固定容器名，避免异常残留导致下一次启动失败。
+- 归档发布器补 json-file 日志轮转（5m × 2）。
+- NAS 调度频率调整：05–09 点每 2 分钟、其余时段 :07/:37 出刊唤醒；发布检查每小时；归档同步每天 06:40/08:40/12:40/20:40。
+
 ## news-engine-v0.7.9
 
 - 整期审核身份仅包含业务输入，避免正文恢复附带的存储元数据导致已通过审核失效。
