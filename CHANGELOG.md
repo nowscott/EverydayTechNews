@@ -1,5 +1,11 @@
 # 更新日志
 
+## ordinary-news-v2.7.9
+
+- 看板安装器迁到 TS：`deploy/dashboard/install.ts`，新增 `--check` 只校验模式。
+- 安装校验：镜像必须是 `sha256:` digest 且与 `docker image inspect` 一致；镜像内 `/app/package.json` 版本必须等于源码版本；业务数据与调度 cron 必须存在。
+- 安全保护：`compose.yaml` 项目名固定，检测到同名项目已被其它目录占用时直接拒绝，避免把生产容器挪走；crontab 写入补齐结尾换行（否则 `crontab -` 拒绝）。
+
 ## ordinary-news-v2.7.8
 
 - 运行记录器迁到 TS：`deploy/dashboard/record-run.ts` 取代 Python 版，输出字段、退出码传递与 127 启动失败记录完全一致（新增 Python/TS 对照测试）。
@@ -92,6 +98,10 @@
 - 收件人仅在连续三次 SMTP 收件人阶段永久拒收后标记异常；临时故障和不足三次的拒收不会更新订阅状态。
 - SMTP 连接在 DATA 前关闭且未提供命令时，保留安全重试，暂停当前轮次，避免误判为发送结果未知。
 - 即使后续发送恢复，私人账本仍保留该收件人的最近一次 SMTP 错误信息，便于排查。
+
+## nas-dashboard-v2.7.9
+
+- 安装器改为 TypeScript，带镜像 digest/版本校验与项目占用保护；版本随普通版同号。
 
 ## nas-dashboard-v2.7.8
 

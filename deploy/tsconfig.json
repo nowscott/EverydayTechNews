@@ -18,6 +18,7 @@
     "nas/base-manage.ts",
     "nas/manage.ts",
     "ordinary/manage.ts",
-    "dashboard/record-run.ts"
+    "dashboard/record-run.ts",
+    "dashboard/install.ts"
   ]
 }
