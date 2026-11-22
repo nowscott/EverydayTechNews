@@ -7,7 +7,7 @@
 | 组件 | 版本前缀 | 说明 | GitHub Latest |
 |---|---|---|---|
 | 普通版出刊 | `ordinary-news-v` | 线上正式产品，NAS 部署 | 是（唯一） |
-| 高级版引擎 | `news-engine-v` | 内部实验，非公开产品 | 否（`--latest=false`） |
+| 高级版引擎 | `news-engine-v` | 内部实验，非公开产品；**版本号与普通版统一到同一数字**（tag 前缀各自独立） | 否（`--latest=false`） |
 | NAS 工作台 | `nas-dashboard-v` | 局域网只读看板 | 否 |
 | 旧 Python 应用 | `v1.x` / `v2.x` | 已冻结，仅归档，不再发版 | 否 |
 
@@ -53,7 +53,7 @@ CI（`.github/workflows/ordinary-news.yml`）会在 PR 与 main 上运行 `check
 
 ## 现状（2026-11-22）
 
-- 当前版本：`ordinary-news-v2.7.13`（数字承接旧 Python 版的 `v2.6.4`，此后普通版在 `2.7.x` 上迭代）；看板 `nas-dashboard-v2.7.13` 与普通版同号发布；高级版引擎 `news-engine-v0.7.11` 独立编号
+- 当前版本：`2.7.14`。三处同号：普通版 `ordinary-news-v2.7.14`、看板 `nas-dashboard-v2.7.14`、高级版引擎 `news-engine-v2.7.14`（tag 前缀各自独立，数字必须一致）
 - 版本线切换：旧 `1.0.x` 系列就此终止；`v1.x` / `v2.0–2.6` 的旧 Python 实现仍为冻结归档，不再发版
 - Docker 侧 `:git-<sha>` 别名自本版起不再生成；旧别名随部署清理
 - GitHub 的 Latest 指向 `ordinary-news-v2.7.0`（发布时设置），不再停留在 `v2.6.4`
