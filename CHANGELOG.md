@@ -1,5 +1,11 @@
 # 更新日志
 
+## ordinary-news-v2.7.6
+
+- 控制器从 Python 迁到 TypeScript：`deploy/ordinary/manage.ts` + `deploy/nas/base-manage.ts`，宿主用固定 Node 运行时（`/vol3/1000/Docker/everydaytechnews-runtime/bin/node`），Python 版本保留为回退。
+- 行为对齐：`status` 输出与 Python 完全一致，普通版账本哈希（sqlite）逐字节一致；新增 `ledger` 调试子命令与 Python/TS 对照测试。
+- 安装器与 cron 入口改为 TS：`install-managed.py` 部署两个 .ts 文件（导入路径就地改写），`controller.json` 记录 node 路径；找不到 Node 时自动退回 Python。
+
 ## ordinary-news-v2.7.5
 
 - 常驻调度每轮 tick 追加精简日志 `data/scheduler/logs/<run_id>.json`：错误阶段与原因、当日数量、投递结果、归档状态；与运行记录同号关联，保留最近 500 份。
@@ -75,6 +81,10 @@
 - 收件人仅在连续三次 SMTP 收件人阶段永久拒收后标记异常；临时故障和不足三次的拒收不会更新订阅状态。
 - SMTP 连接在 DATA 前关闭且未提供命令时，保留安全重试，暂停当前轮次，避免误判为发送结果未知。
 - 即使后续发送恢复，私人账本仍保留该收件人的最近一次 SMTP 错误信息，便于排查。
+
+## nas-dashboard-v2.7.6
+
+- 版本随普通版同号发布；本版无界面变更，仅同步版本口径。
 
 ## nas-dashboard-v2.7.5
 

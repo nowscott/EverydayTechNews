@@ -10,6 +10,33 @@ import subprocess
 import sys
 
 
+NODE_CANDIDATES = ['/vol3/1000/Docker/everydaytechnews-runtime/bin/node']
+
+
+def find_node():
+    """宿主机 Node：优先固定运行时目录，其次 PATH；找不到就退回 Python 控制器。"""
+    override = os.environ.get('ETN_NODE')
+    if override and Path(override).is_file(): return override
+    for candidate in NODE_CANDIDATES:
+        if Path(candidate).is_file(): return candidate
+    return shutil.which('node')
+
+
+def controller_runner(managed):
+    node = find_node()
+    if not node: return '/usr/bin/python3 ' + str(managed / 'manage.py') + ' --root ' + str(managed)
+    return node + ' --disable-warning=ExperimentalWarning ' + str(managed / 'manage.ts') + ' --root ' + str(managed)
+
+
+def write_ts_controller(managed, source):
+    """部署 TS 控制器；managed 目录里导入同目录的 base-manage.ts。"""
+    if not (source / 'manage.ts').exists() or not (source.parent / 'nas/base-manage.ts').exists(): return
+    ordinary = (source / 'manage.ts').read_text().replace("from '../nas/base-manage.ts'", "from './base-manage.ts'")
+    for name, content in [('base-manage.ts', (source.parent / 'nas/base-manage.ts').read_text()), ('manage.ts', ordinary)]:
+        temp = managed / (name + '.install')
+        temp.write_text(content); os.chmod(temp, 0o700); os.replace(temp, managed / name)
+
+
 def upgrade_controller(root, tag):
     os.umask(0o077)
     root = Path(root).resolve(); managed = root / 'managed'; source = Path(__file__).resolve().parent
@@ -33,16 +60,21 @@ def upgrade_controller(root, tag):
                          ('verify-state.ts', verified / 'deploy/ordinary/verify-state.ts')]
                 for name, _ in files:
                     shutil.copyfile(managed / name, saved / name)
+                for name in ['manage.ts', 'base-manage.ts']:
+                    if (managed / name).exists(): shutil.copyfile(managed / name, saved / name)
                 if (managed / 'controller.json').exists(): shutil.copyfile(managed / 'controller.json', saved / 'controller.json')
                 try:
                     for name, candidate in files:
                         temp = managed / (name + '.install')
                         shutil.copyfile(candidate, temp); os.replace(temp, managed / name)
+                    write_ts_controller(managed, verified / 'deploy/ordinary')
                     m.base.atomic(managed / 'controller.json', {'source_sha': sha,
                         'manage_sha256': m.hashlib.sha256((managed / 'manage.py').read_bytes()).hexdigest(),
                         'base_sha256': m.hashlib.sha256((managed / 'base-manage.py').read_bytes()).hexdigest()})
                 except Exception:
                     for name, _ in files: shutil.copyfile(saved / name, managed / name)
+                    for name in ['manage.ts', 'base-manage.ts']:
+                        if (saved / name).exists(): shutil.copyfile(saved / name, managed / name)
                     raise
     return {'status': 'controller_upgraded', 'tag': tag, 'sha': sha}
 
@@ -62,11 +94,13 @@ def install(root, tag):
     shutil.copyfile(source / 'manage.py', managed / 'manage.py')
     shutil.copyfile(source.parent / 'nas/manage.py', managed / 'base-manage.py')
     shutil.copyfile(source / 'verify-state.ts', managed / 'verify-state.ts')
+    write_ts_controller(managed, source)
     spec = importlib.util.spec_from_file_location('ordinary_installer_controller', managed / 'manage.py')
     m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
     m.base.atomic(managed / 'config.json', {'component': 'ordinary-news', 'manifest': 'deploy/ordinary/release.json', 'dockerfile': 'deploy/ordinary/Dockerfile',
         'workflow': 'ordinary-news.yml', 'image_repository': 'everyday-tech-news-ordinary', 'data': str(data), 'env_file': str(root / 'ordinary.env'),
-        'scheduler_lock': str(root / 'scheduler.lock'), 'state_lock': 'runtime.lock', 'resident_scheduler': True})
+        'scheduler_lock': str(root / 'scheduler.lock'), 'state_lock': 'runtime.lock', 'resident_scheduler': True,
+        'node': find_node() or ''})
     c = m.Controller(managed); sha, directory = c.source(tag); candidate = c.build(tag, sha, directory)
     # Bootstrap without credentials or network. Existing state is never reinitialized.
     c.command(['docker', 'run', '--rm', '--network', 'none', '--user', str(os.getuid()) + ':' + str(os.getgid()),
@@ -84,9 +118,9 @@ def install(root, tag):
     m.base.atomic(data / 'archive-sync/baseline.json', {'files': {line.split('\t', 1)[1]: line.split()[2] for line in tree.splitlines()}})
     existing = subprocess.run(['crontab', '-l'], capture_output=True, text=True).stdout
     (root / 'crontab-before.txt').write_text(existing)
-    runner = '/usr/bin/python3 ' + str(managed / 'manage.py') + ' --root ' + str(managed)
+    runner = controller_runner(managed)
     # 出刊调度已迁到镜像内常驻进程；crontab 只保留看门狗与更新/归档。
-    kept = [line for line in existing.splitlines() if not (str(managed / 'manage.py') in line and ' run ' in line)]
+    kept = [line for line in existing.splitlines() if not ((str(managed / 'manage.py') in line or str(managed / 'manage.ts') in line) and ' run ' in line)]
     lines = '\n'.join(kept).rstrip('\n') + '\n# EverydayTechNews ordinary shadow; separate from premium\n'
     lines += '*/10 * * * * ' + runner + ' scheduler-up >/dev/null 2>&1\n'
     lines += '17 * * * * ' + runner + ' update >> ' + str(managed / 'updater.log') + ' 2>&1\n'
