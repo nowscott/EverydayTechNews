@@ -1,4 +1,4 @@
-name: everyday-tech-news-ordinary
+name: etn-ordinary
 services:
   ordinary:
     image: ${ORDINARY_IMAGE:?pinned image required}
@@ -25,6 +25,7 @@ services:
     logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
 
   scheduler:
+    container_name: etn-ordinary-scheduler
     image: ${ORDINARY_IMAGE:?pinned image required}
     entrypoint: ["node", "packages/ordinary-news/src/scheduler.ts"]
     command: ["--data", "/data"]

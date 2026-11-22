@@ -81,10 +81,18 @@ function install(args: Args): Record<string, unknown> {
 
   const root = path.resolve(args.root);
   if (fs.existsSync(root)) fail('dashboard_root_exists');
-  // compose.yaml 项目名固定：若已有实例占着，直接拒绝，避免把生产容器挪走。
-  const owners = run(['docker', 'ps', '-a', '--filter', 'label=com.docker.compose.project=everyday-tech-news-dashboard',
-    '--format', '{{.Label "com.docker.compose.project.working_dir"}}']).split('\n').filter(Boolean);
-  if (owners.some((dir) => path.resolve(dir) !== root)) fail('dashboard_project_in_use:' + owners[0]);
+  // compose.yaml 项目名与 container_name 均固定：若已有实例占着（含 2.7.9 及以前的旧项目名），
+  // 直接拒绝，避免把生产容器挪走或抢占端口。
+  for (const project of ['etn-dashboard', 'everyday-tech-news-dashboard']) {
+    const owners = run(['docker', 'ps', '-a', '--filter', 'label=com.docker.compose.project=' + project,
+      '--format', '{{.Label "com.docker.compose.project.working_dir"}}']).split('\n').filter(Boolean);
+    if (owners.some((dir) => path.resolve(dir) !== root)) fail('dashboard_project_in_use:' + project + ':' + owners[0]);
+  }
+  for (const name of ['etn-dashboard-web', 'etn-dashboard-collector']) {
+    const owners = run(['docker', 'ps', '-a', '--filter', 'name=^' + name + '$',
+      '--format', '{{.Label "com.docker.compose.project.working_dir"}}']).split('\n').filter(Boolean);
+    if (owners.some((dir) => path.resolve(dir) !== root)) fail('dashboard_container_in_use:' + name + ':' + owners[0]);
+  }
   const data = [args.ordinaryManaged, args.premiumManaged].map((managed) => {
     const config = readJson<{ data: string }>(path.join(managed, 'config.json'));
     const resolved = path.resolve(config.data);

@@ -1,5 +1,15 @@
 # 更新日志
 
+## ordinary-news-v2.7.10
+
+- 容器命名统一：compose 项目 `everyday-tech-news-ordinary` → `etn-ordinary`，常驻调度固定 `container_name: etn-ordinary-scheduler`（原 `everyday-tech-news-ordinary-scheduler-1`）。
+- 迁移方式是先停旧项目调度容器再激活新版本，避免新旧两个调度同时 tick 造成重复发信。
+
+## nas-dashboard-v2.7.10
+
+- 容器命名统一：项目 `everyday-tech-news-dashboard` → `etn-dashboard`，服务 `dashboard|body-collector` → `web|collector`，容器固定为 `etn-dashboard-web`、`etn-dashboard-collector`（原 `everyday-tech-news-dashboard-dashboard-1`、`...-body-collector-1`）。
+- 安装器占用保护升级：同时检查新旧项目名与固定 `container_name`，任一被其它目录占用即拒绝安装。
+
 ## ordinary-news-v2.7.9
 
 - 看板安装器迁到 TS：`deploy/dashboard/install.ts`，新增 `--check` 只校验模式。

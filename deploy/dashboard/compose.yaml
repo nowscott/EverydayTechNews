@@ -1,6 +1,7 @@
-name: everyday-tech-news-dashboard
+name: etn-dashboard
 services:
-  dashboard:
+  web:
+    container_name: etn-dashboard-web
     image: ${DASHBOARD_IMAGE:?pinned dashboard image required}
     init: true
     user: "${DASHBOARD_UID:-1000}:${DASHBOARD_GID:-1001}"
@@ -38,7 +39,8 @@ services:
     labels: {com.centurylinklabs.watchtower.enable: "false"}
     logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
 
-  body-collector:
+  collector:
+    container_name: etn-dashboard-collector
     image: ${DASHBOARD_IMAGE:?pinned dashboard image required}
     init: true
     user: "${DASHBOARD_UID:-1000}:${DASHBOARD_GID:-1001}"
