@@ -6,7 +6,7 @@ import { Store } from './store.ts';
 import { recoverArchive } from './archive.ts';
 import { tick } from './runtime.ts';
 import { atomic, safeError, VERSION } from './core.ts';
-import { nextTick, describe, startupTickEnabled } from './schedule.ts';
+import { nextTick, describe, startupTickEnabled, quietNow } from './schedule.ts';
 
 const args=process.argv.slice(2);const index=args.indexOf('--data');
 const root=resolve(index>=0?args[index+1]:'ordinary_data');const once=args.includes('--once');
@@ -71,5 +71,5 @@ publish();
 console.log(JSON.stringify({at:new Date().toISOString(),status:'scheduler_started',policy:describe(),version:VERSION}));
 if(once) { busy=true; const at=new Date(),runId=at.toISOString()+'-'+randomUUID().slice(0,8); const record:any={run_id:runId,component:'ordinary',started_at:at.toISOString(),finished_at:null,state:'running',exit_code:null}; writeRun(record); try{const result:any=await tick(store,at);ticks=1;last={status:result.status};Object.assign(record,{finished_at:new Date().toISOString(),state:'completed',exit_code:result.status==='completed'?0:1});writeTickLog(record,result.status,result.errors??[],{once:true,date:result.report?.date??null});publish();console.log(JSON.stringify({status:result.status,once:true}));}catch(error){Object.assign(record,{finished_at:new Date().toISOString(),state:'completed',exit_code:1});writeTickLog(record,'failed',[{stage:'tick',error:safeError(error)}],{once:true});throw error;}finally{writeRun(record);store.close();}process.exit(0); }
 beat=setInterval(()=>publish(),60000);
-if(startupTickEnabled(process.argv.slice(2))){void cycle();}
+if(startupTickEnabled(process.argv.slice(2))&&!quietNow()){void cycle();}
 else{next=nextTick(new Date());timer=setTimeout(cycle,Math.max(0,next.getTime()-Date.now()));publish();}

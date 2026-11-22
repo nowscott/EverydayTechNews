@@ -62,6 +62,7 @@ function parse(argv: string[]) {
     tag: take('--tag'),
     rollback: flag('--rollback'),
     dryRun: flag('--dry-run'),
+    force: flag('--force'),
     tokenFile: take('--token-file') ?? '/vol3/1000/Docker/everydaytechnews-ordinary/archive.env',
     healthTimeout: Number(take('--health-timeout') ?? '90'),
   };
@@ -184,8 +185,15 @@ function deploy(root: string, record: Deployment, installation: Installation, ba
   }
 }
 
+/** 夜间安静时段（23:00–08:00）默认不构建看板镜像，--force 可强制。 */
+function quietNow(): boolean {
+  const hour = new Date(Date.now() + OFFSET_MS).getUTCHours();
+  return hour >= 23 || hour < 8;
+}
+
 function upgrade(args: ReturnType<typeof parse>): Record<string, unknown> {
   process.umask(0o077);
+  if (!args.dryRun && !args.force && quietNow()) fail('deferred_night_window');
   const root = args.root;
   const installationFile = path.join(root, 'installation.json');
   const installation = readJson<Installation>(installationFile, {});

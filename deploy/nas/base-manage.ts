@@ -26,6 +26,12 @@ export function protectedWindow(now: Date = new Date()): boolean {
   return hour >= 4 && hour < 9;
 }
 
+/** 夜间安静时段（23:00–08:00）：默认不跑部署/校验这类重负载；ETN_FORCE=1 可强制。 */
+export function quietWindow(now: Date = new Date()): boolean {
+  const hour = new Date(now.getTime() + SHANGHAI_OFFSET_MS).getUTCHours();
+  return hour >= 23 || hour < 8;
+}
+
 export function choose(releases: Release[], floor: Triple): Release | null {
   let best: { release: Release; version: Triple } | null = null;
   for (const release of releases) {
@@ -490,6 +496,7 @@ export class Controller {
 
   updateUnlocked(): Record<string, unknown> {
     const state = this.state();
+    if (quietWindow() && process.env.ETN_FORCE !== '1') return this.event('deferred_night_window', { active: state.active });
     this.progress('release_check');
     let release: Release | null = null;
     try { release = choose(this.apiSync('releases?per_page=100') as Release[], state.high_water as Triple); }
