@@ -6,25 +6,31 @@ import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export function intervalMinutes(at: Date): number {
+/** 夜间（23:00–03:59）降到每 3 小时一轮，白天保持 30 分钟，早高峰 15 分钟。 */
+export function quietNow(at: Date = new Date()): boolean { const hour = at.getHours(); return hour >= 23 || hour < 4; }
+
+export function dueAtPremium(at: Date): boolean {
   const hour = at.getHours(), minute = at.getMinutes();
-  return hour >= 4 && (hour < 6 || (hour === 6 && minute < 15)) ? 15 : 30;
+  if (hour >= 4 && hour < 6) return minute % 15 === 0;
+  if (hour === 6) return minute < 15 ? minute % 15 === 0 : minute === 30;
+  if (hour >= 7 && hour < 23) return minute % 30 === 0;
+  // 23、0、1、2、3 点：只在整点跑，即 23:00、03:00（跨 0 点由整点自然覆盖）。
+  return minute === 0 && (hour === 23 || hour === 3);
 }
 
 export function nextRun(from: Date): Date {
   const next = new Date(from.getTime());
   next.setSeconds(0, 0);
   next.setMinutes(next.getMinutes() + 1, 0, 0);
-  // 逐分钟推进，直到落在「该时刻自己的节奏」的整分边界（跨 06:15 时自动换成 30 分钟档）。
-  for (let i = 0; i < 60; i++) {
-    if (next.getMinutes() % intervalMinutes(next) === 0) return next;
+  for (let i = 0; i < 24 * 60; i++) {
+    if (dueAtPremium(next)) return next;
     next.setMinutes(next.getMinutes() + 1, 0, 0);
   }
   throw new Error('premium_schedule_unreachable');
 }
 
 export function policy(): string {
-  return '04-06:14:15m,else:30m';
+  return '04-06:14:15m,07-23:30m,night:23:00/03:00';
 }
 
 interface Options { data: string; once: boolean; timeoutMs: number }
@@ -136,8 +142,9 @@ function main(): void {
   beat = setInterval(() => publish(), 60000);
   console.log(JSON.stringify({ at: new Date().toISOString(), status: 'scheduler_started', policy: policy(), version: VERSION }));
   if (options.once) { void cycle().then(() => { if (timer) clearTimeout(timer); }); return; }
-  // 部署完先跑一轮：不等下一个整点，立即执行一轮真实 run。
-  void cycle();
+  // 部署完先跑一轮：但夜间安静时段不跑，避免半夜复制/归档把 NAS 风扇拉满。
+  if (quietNow()) { next = nextRun(new Date()); publish(); timer = setTimeout(cycle, Math.max(1000, next.getTime() - Date.now())); }
+  else void cycle();
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
