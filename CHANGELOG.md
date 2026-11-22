@@ -4,6 +4,7 @@
 
 - 容器命名统一：compose 项目 `everyday-tech-news-ordinary` → `etn-ordinary`，常驻调度固定 `container_name: etn-ordinary-scheduler`（原 `everyday-tech-news-ordinary-scheduler-1`）。
 - 迁移方式是先停旧项目调度容器再激活新版本，避免新旧两个调度同时 tick 造成重复发信。
+- 新增宿主 Node 运行时升级工具 `deploy/nas/runtime.ts`：`status`/`install [--check]`/`rollback`，按 `SHASUMS256.txt` 校验 sha256、解压后核对版本号、原子切换并保留旧目录。
 
 ## nas-dashboard-v2.7.10
 
