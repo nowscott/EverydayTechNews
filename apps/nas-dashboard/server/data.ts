@@ -340,6 +340,11 @@ export class Dashboard {
       if (component === 'ordinary') {
         resident = new Reader(this.config.ordinary);
         collect(resident, 'scheduler/runs/', resident.list('scheduler/runs', true).filter(n=>/^\d.*\.json$/.test(n)));
+        for (const v of items) {
+          if (!String(v.run_id ?? '').includes('Z-')) continue;
+          const log = resident.file('scheduler/logs/' + String(v.run_id).replace(/:/g,'-') + '.json', 'json', {optional:true});
+          if (log) { v.errors = Array.isArray(log.errors) ? log.errors : []; v.detail = log.summary ?? null; }
+        }
       }
       const inRange = items.filter(v=>{const d=String(v.started_at ?? '').slice(0,10);return d>=from&&d<=to;});
       inRange.sort((a,b)=>Date.parse(b.started_at)-Date.parse(a.started_at));

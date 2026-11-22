@@ -58,6 +58,17 @@ test('resident scheduler records feed runs and overview heartbeat',()=>{
   const stale=f.dashboard.overview();assert(stale[0].data.alerts.some((s:string)=>s.includes('心跳')));
  }finally{f.close();}
 });
+test('scheduler tick logs attach errors and summary to run records',()=>{
+ const f=fixture();try{
+  const started='2026-11-22T03:37:00.042Z', runId=started+'-f0c9212c', base=runId.replace(/:/g,'-');
+  mkdirSync(f.ordinary+'/scheduler/runs',{recursive:true});mkdirSync(f.ordinary+'/scheduler/logs',{recursive:true});
+  f.json(f.ordinary+'/scheduler/runs/'+base+'.json',{run_id:runId,component:'ordinary',started_at:started,finished_at:'2026-11-22T03:37:00.180Z',state:'completed',exit_code:0});
+  f.json(f.ordinary+'/scheduler/logs/'+base+'.json',{run_id:runId,status:'completed_with_errors',errors:[{at:started,stage:'collect',error:'source_timeout'}],summary:{date:'2026-11-22',count:25,delivery:'smtp_accepted'}});
+  const runs=f.dashboard.runs('ordinary',new URLSearchParams({from:'2026-11-22',to:'2026-11-22'}));
+  const item=runs.data.items.find((v:any)=>v.run_id===runId);
+  assert.equal(item.errors.length,1);assert.equal(item.errors[0].stage,'collect');assert.equal(item.detail.count,25);
+ }finally{f.close();}
+});
 test('query_only and readOnly prevent SQLite writes, including WAL reads',()=>{const f=fixture();try{const r=new Reader(f.ordinary);assert.equal(r.query('SELECT * FROM issues').length,1);assert.throws(()=>r.db!.exec("INSERT INTO issues VALUES('x','x','x','x')"));r.close();}finally{f.close();}});
 test('missing/corrupt/locked evidence stays explicit',()=>{
  const f=fixture();try{writeFileSync(f.ordinary+'/status.json','bad JSON');const result=f.dashboard.overview();assert.equal(result[0].read_state,'partial');assert(result[0].evidence.some((e:any)=>e.source==='status.json'&&e.state==='unreadable'));f.p.exec("BEGIN EXCLUSIVE; INSERT INTO articles VALUES('uncommitted','f','{}')");const r=new Reader(f.premium);r.query('SELECT * FROM articles');assert(r.evidence.some(v=>v.state==='busy'));r.close();f.p.exec('ROLLBACK');}finally{f.close();}
