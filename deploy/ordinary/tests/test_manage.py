@@ -69,4 +69,59 @@ class OrdinaryControllerTests(unittest.TestCase):
   with patch.object(installer.importlib.util,'spec_from_file_location',return_value=mock_spec),patch.object(installer.importlib.util,'module_from_spec',return_value=m),patch.object(m.base,'protected',return_value=True):
    with self.assertRaisesRegex(RuntimeError,'deferred_morning_window'):installer.upgrade_controller(root,'ordinary-news-v1.0.8')
 
+ def _candidate(self,tag):
+  source=self.root/'release';(source/'deploy/ordinary').mkdir(parents=True,exist_ok=True)
+  (source/'deploy/ordinary/compose.yaml').write_text('services:\n  ordinary:\n    image: pinned\n  scheduler:\n    image: pinned\n')
+  candidate={'tag':tag,'image':'pinned','sha':'a'*40,'source':str(source)}
+  m.base.atomic(self.c.state_path,{'active':candidate,'history':[candidate]});return candidate
+
+ def test_resident_run_stops_scheduler_first_and_restarts_after(self):
+  candidate=self._candidate('ordinary-news-v2.7.2');seen=[]
+  def command(args,**kwargs):
+   if args[:2]==['git','rev-parse']:return candidate['sha']
+   if args[:2]==['git','status']:return ''
+   if 'ps' in args:seen.append('ps');return 'container-id'
+   if args[-2:]==['stop','scheduler']:seen.append('stop');return ''
+   if args[-3:]==['-d','--no-deps','scheduler']:seen.append('up');return ''
+   if args[-4:]==['ordinary','run','--data','/data']:seen.append('run');return ''
+   raise AssertionError(args)
+  with patch.object(self.c,'command',side_effect=command):self.c.run()
+  self.assertEqual(seen,['ps','stop','run','up'])
+
+ def test_resident_run_skips_untouched_scheduler_when_stopped(self):
+  candidate=self._candidate('ordinary-news-v2.7.2');seen=[]
+  def command(args,**kwargs):
+   if args[:2]==['git','rev-parse']:return candidate['sha']
+   if args[:2]==['git','status']:return ''
+   if 'ps' in args:return ''
+   if args[-4:]==['ordinary','run','--data','/data']:seen.append('run');return ''
+   raise AssertionError(args)
+  with patch.object(self.c,'command',side_effect=command):self.c.run()
+  self.assertEqual(seen,['run'])
+
+ def test_activation_starts_resident_scheduler(self):
+  candidate=self._candidate('ordinary-news-v2.7.2');seen=[]
+  def command(args,**kwargs):
+   seen.append(args[-3:]);return ''
+  with patch.object(self.c,'command',side_effect=command):self.c.after_change({'active':candidate})
+  self.assertEqual(seen,[['-d','--no-deps','scheduler']])
+
+ def test_activation_ignores_releases_without_scheduler_service(self):
+  source=self.root/'legacy';(source/'deploy/ordinary').mkdir(parents=True,exist_ok=True)
+  (source/'deploy/ordinary/compose.yaml').write_text('services:\n  ordinary:\n    image: pinned\n')
+  candidate={'tag':'ordinary-news-v2.7.1','image':'pinned','sha':'a'*40,'source':str(source)}
+  with patch.object(self.c,'command') as command:self.c.after_change({'active':candidate})
+  command.assert_not_called()
+
+ def test_scheduler_status_reports_last_tick(self):
+  candidate=self._candidate('ordinary-news-v2.7.2')
+  m.base.atomic(self.data/'scheduler/status.json',{'scheduler':{'version':'2.7.2','ticks':3,'last_tick':{'status':'completed'}}})
+  def command(args,**kwargs):return ''
+  with patch.object(self.c,'command',side_effect=command):status=self.c.scheduler_status()
+  self.assertEqual(status['status'],'stopped');self.assertEqual(status['last']['scheduler']['ticks'],3);self.assertEqual(status['active'],candidate['tag'])
+
+ def test_installer_has_no_per_minute_run_cron(self):
+  text=(Path(__file__).parents[1]/'install-managed.py').read_text()
+  self.assertNotIn("' run >> '",text);self.assertIn("scheduler-up",text);self.assertIn("'resident_scheduler': True",text)
+
 if __name__=='__main__':unittest.main()

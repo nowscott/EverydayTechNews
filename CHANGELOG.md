@@ -1,5 +1,13 @@
 # 更新日志
 
+## ordinary-news-v2.7.2
+
+- 出刊调度迁入镜像内常驻进程 `scheduler.ts`：05–09 点每 2 分钟、其余 :07/:37 在进程内直接调用 `tick`，不再每轮创建一次性容器；策略单独放在 `schedule.ts` 并有单测覆盖跨小时、跨天边界。
+- 控制器接入常驻调度：部署或回滚成功后自动拉起 `etn-ordinary-scheduler`；手动 `manage.py run` 会先停调度、跑完再拉起，避免两路并发写状态；新增 `scheduler-up` / `scheduler-down`，`status` 输出调度容器状态与最近一次 tick。
+- crontab 只剩 `scheduler-up` 看门狗（每 10 分钟）、每小时 `update`、每天 4 次 `sync` 与周轮转；安装器模板同步。
+- 调度状态落 `data/scheduler/status.json`（心跳、tick 计数、最近结果、下次触发），容器日志由 Docker 轮转。
+- 顺手项：dashboard 正文采集器移出 host 网络（默认 bridge），`proxy.env` 的失效代理改为 `192.168.31.10:7890`；容器内实测 `fetch 200`、健康检查通过。
+
 ## ordinary-news-v2.7.1
 
 - 出刊容器与归档发布器改用 Docker 默认 bridge 网络；实测 SMTP 465、Notion、GitHub 均可达，不再共享宿主网络栈。

@@ -23,3 +23,28 @@ services:
     restart: "no"
     labels: {com.centurylinklabs.watchtower.enable: "false"}
     logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+
+  scheduler:
+    image: ${ORDINARY_IMAGE:?pinned image required}
+    entrypoint: ["node", "packages/ordinary-news/src/scheduler.ts"]
+    command: ["--data", "/data"]
+    init: true
+    user: "${ORDINARY_UID:-1000}:${ORDINARY_GID:-1001}"
+    env_file:
+      - path: ${ORDINARY_ROOT:?root required}/ordinary.env
+        format: raw
+    environment:
+      TZ: Asia/Shanghai
+      ORDINARY_STATE_AUTHORITY: nas
+      NODE_USE_ENV_PROXY: "1"
+    volumes:
+      - ${ORDINARY_ROOT}/data:/data
+    read_only: true
+    tmpfs: ["/tmp:size=64m,mode=1777"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 512m
+    cpus: 1
+    restart: unless-stopped
+    labels: {com.centurylinklabs.watchtower.enable: "false"}
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}

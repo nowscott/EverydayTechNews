@@ -66,7 +66,7 @@ def install(root, tag):
     m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
     m.base.atomic(managed / 'config.json', {'component': 'ordinary-news', 'manifest': 'deploy/ordinary/release.json', 'dockerfile': 'deploy/ordinary/Dockerfile',
         'workflow': 'ordinary-news.yml', 'image_repository': 'everyday-tech-news-ordinary', 'data': str(data), 'env_file': str(root / 'ordinary.env'),
-        'scheduler_lock': str(root / 'scheduler.lock'), 'state_lock': 'runtime.lock'})
+        'scheduler_lock': str(root / 'scheduler.lock'), 'state_lock': 'runtime.lock', 'resident_scheduler': True})
     c = m.Controller(managed); sha, directory = c.source(tag); candidate = c.build(tag, sha, directory)
     # Bootstrap without credentials or network. Existing state is never reinitialized.
     c.command(['docker', 'run', '--rm', '--network', 'none', '--user', str(os.getuid()) + ':' + str(os.getgid()),
@@ -85,9 +85,10 @@ def install(root, tag):
     existing = subprocess.run(['crontab', '-l'], capture_output=True, text=True).stdout
     (root / 'crontab-before.txt').write_text(existing)
     runner = '/usr/bin/python3 ' + str(managed / 'manage.py') + ' --root ' + str(managed)
-    lines = existing.rstrip('\n') + '\n# EverydayTechNews ordinary shadow; separate from premium\n'
-    lines += '*/2 5-9 * * * ' + runner + ' run >> ' + str(managed / 'scheduler.log') + ' 2>&1\n'
-    lines += '7,37 0-4,10-23 * * * ' + runner + ' run >> ' + str(managed / 'scheduler.log') + ' 2>&1\n'
+    # 出刊调度已迁到镜像内常驻进程；crontab 只保留看门狗与更新/归档。
+    kept = [line for line in existing.splitlines() if not (str(managed / 'manage.py') in line and ' run ' in line)]
+    lines = '\n'.join(kept).rstrip('\n') + '\n# EverydayTechNews ordinary shadow; separate from premium\n'
+    lines += '*/10 * * * * ' + runner + ' scheduler-up >/dev/null 2>&1\n'
     lines += '17 * * * * ' + runner + ' update >> ' + str(managed / 'updater.log') + ' 2>&1\n'
     lines += '40 6,8,12,20 * * * ' + runner + ' sync 1>/dev/null 2>> ' + str(managed / 'logs' / 'sync.err') + '\n'
     lines += '30 4 * * 0 /home/nowscott/bin/etn-logrotate.sh ' + str(managed / 'logs') + ' >/dev/null 2>&1\n'

@@ -240,11 +240,16 @@ class Controller:
                 state.update(active=candidate, history=history[:3],
                              high_water=list(max(tuple(state['high_water']), version(candidate['tag']) or (0, 0, 0))))
                 atomic(self.state_path, state)  # Single source of truth for every new scheduler invocation.
+                self.after_change(state)
                 try:
                     self.prune(state)
                 except Exception:
                     self.event('cleanup_deferred', active=candidate)
                 return self.event('rolled_back' if rollback else 'deployed', active=candidate)
+
+    def after_change(self, state):
+        # Hook for components with resident processes; base component keeps cron-driven runs.
+        return None
 
     def prune(self, state):
         # Only controller-owned release worktrees/images/backups; never shared runtime data.

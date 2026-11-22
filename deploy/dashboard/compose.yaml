@@ -54,7 +54,6 @@ services:
       DASHBOARD_PREMIUM_DATA: /data/premium
       DASHBOARD_BODY_CACHE: /data/bodies
       NODE_USE_ENV_PROXY: "1"
-    network_mode: host
     volumes:
       - ${DASHBOARD_ORDINARY_DATA}:/data/ordinary:ro
       - ${DASHBOARD_PREMIUM_DATA}:/data/premium:ro
