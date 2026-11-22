@@ -44,7 +44,8 @@ python3 deploy/ordinary/install-managed.py --root /vol3/1000/Docker/everydaytech
 
 原工作流名：technews.yml、news-sorter.yml、run-selenium-script.yml。shadow期间不禁用；归档发布器正式运行时也核对它们已停用。切换失败不盲目重新启用旧Python发送，以免双端发信；修复后从切换记录继续。
 
-更新/回退复用Python部署器的验证、状态备份与固定版本规则，普通版通过SQLite backup API复制WAL状态。回退只换代码，保留最新账本；没有兼容版本时暂停并修复，不恢复旧数据库或直接重启旧Python群发。控制器自身固定复制，升级必须单独安装，不随普通Release静默替换。
+控制器自 2.7.6 起为 TypeScript：`deploy/ordinary/manage.ts` + `deploy/nas/base-manage.ts`，宿主机 Node 固定运行时为 `/vol3/1000/Docker/everydaytechnews-runtime/bin/node`（cron 以 `--disable-warning=ExperimentalWarning` 调用）；Python 版保留为回退，安装器找不到 Node 时自动退回。`status` 输出与 Python 完全一致，账本哈希逐字节一致（`deploy/ordinary/tests/test_ts_controller.py` 对照）。
+更新/回退复用同一套验证、状态备份与固定版本规则，普通版通过 SQLite `VACUUM INTO` 复制 WAL 状态。回退只换代码，保留最新账本；没有兼容版本时暂停并修复，不恢复旧数据库或直接重启旧Python群发。控制器自身固定复制（`.ts` 与 `.py` 同时保留），升级必须单独安装，不随普通 Release 静默替换。
 
 ## 验证
 
