@@ -49,7 +49,8 @@ test('resident scheduler records feed runs and overview heartbeat',()=>{
   f.json(f.ordinary+'/scheduler/runs/'+runId.replace(/:/g,'-')+'.json',{run_id:runId,component:'ordinary',started_at:started,finished_at:started,state:'completed',exit_code:0});
   const status={version:'2.7.3',heartbeat_at:new Date(nowMs-30000).toISOString(),last_tick:{at:started,status:'completed'},next_tick:new Date(nowMs+1800000).toISOString(),ticks:1,errors:0,stopping:false};
   f.json(f.ordinary+'/scheduler/status.json',{scheduler:status});
-  const runs=f.dashboard.runs('ordinary',new URLSearchParams({from:'2026-11-22',to:'2026-11-22'}));
+  const localDay=new Date(nowMs-90000+8*3600000).toISOString().slice(0,10);
+  const runs=f.dashboard.runs('ordinary',new URLSearchParams({from:localDay,to:localDay}));
   assert.ok(runs.data.items.some((v:any)=>v.run_id===runId));
   const summary=f.dashboard.overview();
   assert.equal(summary[0].data.scheduler.ticks,1);assert.equal(summary[0].data.operation.state,'waiting');
