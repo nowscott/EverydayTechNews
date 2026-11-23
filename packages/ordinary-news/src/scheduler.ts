@@ -2,6 +2,7 @@
 import { mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { Store } from './store.ts';
 import { recoverArchive } from './archive.ts';
 import { tick } from './runtime.ts';
@@ -10,6 +11,11 @@ import { nextTick, describe, startupTickEnabled, quietNow } from './schedule.ts'
 
 const args=process.argv.slice(2);const index=args.indexOf('--data');
 const root=resolve(index>=0?args[index+1]:'ordinary_data');const once=args.includes('--once');
+// 与 main.ts 一致：常驻进程也必须在 runtime.lock 下运行，deliver 才认这是 NAS 正式授权。
+if(!process.env.ORDINARY_FLOCKED && process.platform==='linux') {
+  const r=spawnSync('flock',['-x',root+'/runtime.lock',process.execPath,...process.argv.slice(1)],{stdio:'inherit',env:{...process.env,ORDINARY_FLOCKED:'1'}});
+  process.exit(r.status??1);
+}
 mkdirSync(root+'/scheduler',{recursive:true,mode:0o700});
 const statusPath=root+'/scheduler/status.json';
 const runsDir=root+'/scheduler/runs';
