@@ -13,6 +13,9 @@
 
 普通版版本号与 `v2.x`、`news-engine-v0.x` 相互独立，升级互不影响。
 
+发版最后一步必须对 NAS 跑 `deploy/verify/verify-deploy.ts`（三端版本、容器、心跳、最近一轮、看板健康全绿）才算完成。
+
+
 ## 一个版本号的五处落点
 
 以 `ordinary-news-v1.1.0` 为例：
