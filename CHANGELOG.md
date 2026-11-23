@@ -1350,5 +1350,3 @@
 - Exercise managed container startup in CI and support explicit, checked controller upgrades with backups.## 2.7.22（2026-03-02 续：调度锁自愈）
 
 - 高级版调度：`daemon.lock` 里的 pid 必须确认是调度进程（`/proc/<pid>/cmdline` 命中 daemon.ts/scheduler.ts）才认为已在运行；容器重启后旧 pid 被复用或跨容器持有时直接接管，不再无限 `already_running` 重启。
-
-
