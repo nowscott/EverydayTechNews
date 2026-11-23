@@ -520,9 +520,12 @@ export class Controller {
         'release_requires_manual_data_migration', 'image_provenance_mismatch'].includes((error as Error).message)
         ? (error as Error).message : ((error as Error).message || (error as Error).name);
       const current = this.state();
-      current.blocked[tag] = reason;
-      atomicWrite(this.statePath, current);
-      return this.event('deployment_failed', { pending: tag, reason, active: current.active });
+      // CI 尚未跑完、GitHub API 抖动属于可重试的瞬时状态，不能把版本永久拉黑。
+      if (!['release_main_checks_not_passed', 'github_api_unavailable'].includes(reason)) {
+        current.blocked[tag] = reason;
+        atomicWrite(this.statePath, current);
+      }
+      return this.event('deployment_failed', { pending: tag, reason, retryable: ['release_main_checks_not_passed', 'github_api_unavailable'].includes(reason), active: current.active });
     }
   }
 
