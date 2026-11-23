@@ -1,5 +1,17 @@
 # 更新日志
 
+## ordinary-news-v2.7.21
+
+- 部署控制器把 `release_main_checks_not_passed`、`github_api_unavailable` 视为可重试的瞬时状态，不再写入 `blocked`；下次 `update` 会重新检查，不用手工清状态。
+
+## news-engine-v2.7.21
+
+- 与普通版共用同一版 `base-manage.ts`，发布检查行为一致。
+
+## nas-dashboard-v2.7.21
+
+- 与三端同号；看板无变化。
+
 ## ordinary-news-v2.7.20
 
 - 修复常驻调度不持有 `runtime.lock` 导致 `deliver` 报 `ordinary_smtp_authority_required`：scheduler 启动时与 `main.ts` 一样用 `flock` 重入自身并设置 `ORDINARY_FLOCKED=1`，恢复 NAS 正式授权判定。
