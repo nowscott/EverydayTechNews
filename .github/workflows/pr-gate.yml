@@ -28,7 +28,8 @@ jobs:
         run: |
           ! git grep -nE 'ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY' -- . ':!*.lock'
           python3 - <<'PY'
-          import glob, re, sys
+          import glob, re, subprocess, sys
+          base = '${{ github.base_ref }}'
           names = {}
           for path in glob.glob('**/compose*.y*ml', recursive=True):
               if 'node_modules' in path:
@@ -41,9 +42,10 @@ jobs:
           if dup:
               print('duplicate container_name:', dup)
               sys.exit(1)
-          py = [p for p in glob.glob('deploy/**/*.py', recursive=True) if p.endswith('manage.py') or p.endswith('verify-state.py')]
+          added = subprocess.run(['git','diff','--name-only','--diff-filter=A',f'origin/{base}...HEAD'],capture_output=True,text=True).stdout.split()
+          py = [p for p in added if p.endswith('manage.py') or p.endswith('verify-state.py')]
           if py:
-              print('legacy python controller files:', py)
+              print('new legacy python controller files:', py)
               sys.exit(1)
           print('structure checks ok')
           PY

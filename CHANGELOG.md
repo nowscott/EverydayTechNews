@@ -1,5 +1,18 @@
 # 更新日志
 
+## ordinary-news-v2.7.20
+
+- 修复常驻调度不持有 `runtime.lock` 导致 `deliver` 报 `ordinary_smtp_authority_required`：scheduler 启动时与 `main.ts` 一样用 `flock` 重入自身并设置 `ORDINARY_FLOCKED=1`，恢复 NAS 正式授权判定。
+- 影响：2.7.18 部署后 2026-11-23 的早报投递被拒，`deliveries` 无记录、tick 摘要显示 `delivery: missed`。
+
+## news-engine-v2.7.20
+
+- 与三端同号；调度逻辑无变化。
+
+## nas-dashboard-v2.7.20
+
+- 与三端同号；看板无变化。
+
 ## ordinary-news-v2.7.19
 
 - 夜间降噪：23:00–04:59 只保留 23:07、02:07、04:07 三轮；其余时段维持早高峰每 2 分钟、白天 :07/:37。
