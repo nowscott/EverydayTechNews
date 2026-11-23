@@ -1,0 +1,49 @@
+name: PR gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with: {node-version: '24'}
+      - name: 版本三端同号 + CHANGELOG
+        run: node scripts/check-version.mjs
+      - name: 空白与冲突标记
+        run: |
+          git diff --check "origin/${{ github.base_ref }}"...HEAD
+          ! git grep -nE '^(<<<<<<<|>>>>>>>) ' -- . ':!*.lock'
+      - name: 泄露与结构检查
+        run: |
+          ! git grep -nE 'ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY' -- . ':!*.lock'
+          python3 - <<'PY'
+          import glob, re, sys
+          names = {}
+          for path in glob.glob('**/compose*.y*ml', recursive=True):
+              if 'node_modules' in path:
+                  continue
+              for line in open(path, encoding='utf-8'):
+                  m = re.match(r'\s*container_name:\s*([A-Za-z0-9_.-]+)', line)
+                  if m:
+                      names.setdefault(m.group(1), []).append(path)
+          dup = {k: v for k, v in names.items() if len(v) > 1}
+          if dup:
+              print('duplicate container_name:', dup)
+              sys.exit(1)
+          py = [p for p in glob.glob('deploy/**/*.py', recursive=True) if p.endswith('manage.py') or p.endswith('verify-state.py')]
+          if py:
+              print('legacy python controller files:', py)
+              sys.exit(1)
+          print('structure checks ok')
+          PY

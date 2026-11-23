@@ -26,3 +26,11 @@
 - 现象：12:07 tick 报 `all_collection_sources_failed`，看板「异常」列可见。
 - 根因：`ordinary.env` 的 `HTTP_PROXY/HTTPS_PROXY` 仍是 `127.0.0.1:7890`；去掉 `network_mode: host` 后容器内 127.0.0.1 指向自身，代理不可达。
 - 处理：改为 `http://<user>:<pass>@192.168.31.10:7890`（`NO_PROXY` 保留），`ordinary.env.bak.*` 已备份；重启调度容器后容器内 `fetch` 返回 200。
+
+## 2.7.5 → 2.7.19 汇总（2026-11-22/23）
+
+- **2.7.16**：正文采集并入 `etn-dashboard-web`，删除独立 `body-collector` 容器；高级版 compose 项目名固定 `etn-premium`；看板版本号改为读取 `package.json`。
+- **2.7.17**：`update` 自动同步控制器，新增阶段进度与锁按 PID 回收；新增 `deploy/dashboard/upgrade.ts` 一条命令完成拉源码、构建、切换、健康校验与失败回滚。
+- **2.7.18**：修正控制器自同步的比较与改写（普通版 `../nas/base-manage.ts` → `./base-manage.ts`），新增 3 项单测；看板升级到 2.7.18。
+- **2.7.19**：夜间降噪。普通版 23:00–04:59 只保留 23:07/02:07/04:07；高级版夜间 23:00/03:00 两轮；`update` 与看板 `upgrade` 在 23:00–08:00 默认返回 `deferred_night_window`（`ETN_FORCE=1` / `--force` 可强推）。
+- 部署说明：2.7.19 因夜间保护尚未部署到 NAS，白天需按“普通版 → 高级版 → 看板”顺序补推，并运行 `deploy/verify/verify-deploy.ts` 校验三端同号。
