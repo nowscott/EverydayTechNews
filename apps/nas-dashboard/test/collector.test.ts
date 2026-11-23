@@ -35,3 +35,9 @@ test('background cache is separate, deduplicated, integrity checked and failure 
  assert(readdirSync(root).every(n=>!n.endsWith('.tmp')));
  }finally{rmSync(root,{recursive:true,force:true});}
 });
+
+test('采集限流参数可外置，非法值回落默认', async () => {
+  const { collectLimits } = await import('../server/collector.ts');
+  assert.deepEqual(collectLimits({ DASHBOARD_COLLECT_MAX: '12', DASHBOARD_COLLECT_INTERVAL_MS: '120000', DASHBOARD_COLLECT_BUDGET_MS: '60000' }), { max: 12, intervalMs: 120000, budgetMs: 60000 });
+  assert.deepEqual(collectLimits({ DASHBOARD_COLLECT_MAX: '0', DASHBOARD_COLLECT_INTERVAL_MS: 'x' }), { max: 60, intervalMs: 300000, budgetMs: 150000 });
+});

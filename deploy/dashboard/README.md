@@ -43,6 +43,8 @@ record-run.py 用独立的非阻塞锁避免重叠，原业务锁仍保留。开
 
 2.7.16 起正文采集并入看板 web 进程：`etn-dashboard-web` 单容器同时提供页面与采集，不再有独立 `body-collector`。采集只读挂载两个业务目录，唯一可写目录是看板自己的 `bodies/`，且不持有 dashboard.env、SMTP 或模型凭据；出口走 NAS 本机代理，不开放监听端口。
 
+采集限流可用 `DASHBOARD_COLLECT_MAX`（默认 60）、`DASHBOARD_COLLECT_INTERVAL_MS`（默认 300000）、`DASHBOARD_COLLECT_BUDGET_MS`（默认 150000）在 `compose.env` 里调整，默认值与旧行为一致。
+
 历史 v1.1 的独立 collector 容器与“回滚先停 collector”流程已废弃；回滚只需恢复 `compose.env` 的 `DASHBOARD_IMAGE` 与 `compose.yaml` 并 `up -d`。新抓取正文只供本地阅读，不进入旧业务选题、评分、发信或归档流程。
 
 ## Token 与费用（v1.4.0）

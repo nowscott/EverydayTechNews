@@ -33,4 +33,8 @@
 - **2.7.17**：`update` 自动同步控制器，新增阶段进度与锁按 PID 回收；新增 `deploy/dashboard/upgrade.ts` 一条命令完成拉源码、构建、切换、健康校验与失败回滚。
 - **2.7.18**：修正控制器自同步的比较与改写（普通版 `../nas/base-manage.ts` → `./base-manage.ts`），新增 3 项单测；看板升级到 2.7.18。
 - **2.7.19**：夜间降噪。普通版 23:00–04:59 只保留 23:07/02:07/04:07；高级版夜间 23:00/03:00 两轮；`update` 与看板 `upgrade` 在 23:00–08:00 默认返回 `deferred_night_window`（`ETN_FORCE=1` / `--force` 可强推）。
+- **2.7.20**：普通版常驻调度补 `flock` 重入并设置 `ORDINARY_FLOCKED=1`，修复 `ordinary_smtp_authority_required` 导致的发送全失败。
+- **2.7.21**：控制器把 `release_main_checks_not_passed` / `github_api_unavailable` 视为可重试，不再永久拉黑版本。
+- **2.7.22**：高级版调度锁自愈，只有 `/proc/<pid>/cmdline` 确认是调度进程才判定 `already_running`。
+- **2.7.23**：新增 `deploy/verify/verify-deploy.ts`；归档 token 探活（6 小时缓存，失败 `degraded_archive_token`）；镜像清理保护 active+上一版+legacy；看板采集限流参数外置。
 - 部署说明：2.7.19 因夜间保护尚未部署到 NAS，白天需按“普通版 → 高级版 → 看板”顺序补推，并运行 `deploy/verify/verify-deploy.ts` 校验三端同号。

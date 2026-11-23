@@ -28,6 +28,7 @@ export function plan(images: Image[], keep: number, protectedIds: string[]): Ima
     }
     for (const image of sorted) {
       if (image.tag === '<none>' || image.tag === 'latest') continue; // 无 tag 交给 image prune 处理
+      if (image.tag.startsWith('legacy-') || image.repository.includes('legacy')) continue; // 迁移期 legacy 镜像冻结保留
       if (kept.has(image.id) || protectedSet.has(image.id)) continue;
       removals.push(image);
     }
@@ -58,9 +59,15 @@ function protectedImages(dockerRoot: string, ordinaryManaged: string, dashboardR
   const push = (value: string | null) => { if (value) ids.push(value.replace(/^sha256:/, '')); };
   for (const managed of [ordinaryManaged, premiumManaged]) {
     try {
-      const active = JSON.parse(fs.readFileSync(path.join(managed, 'deployment.json'), 'utf8')).active;
+      const state = JSON.parse(fs.readFileSync(path.join(managed, 'deployment.json'), 'utf8'));
+      const active = state.active;
       push(active?.image ?? null);
       if (active?.image_tag) push(idOf(active.image_tag));
+      // active + 上一版必须保留；history 可能比 --keep 窗口更长。
+      for (const item of (state.history ?? []).slice(0, 2)) {
+        push(item?.image ?? null);
+        if (item?.image_tag) push(idOf(item.image_tag));
+      }
     } catch { /* 没有部署记录时跳过 */ }
   }
   try {
