@@ -31,7 +31,7 @@
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "vite": "^8.3.8",
-    "vitest": "^4.1.8"
+    "vitest": "^5.1.1"
   },
   "overrides": {
     "body-parser": "2.4.0"
