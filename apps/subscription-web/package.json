@@ -12,10 +12,10 @@
   },
   "dependencies": {
     "dotenv": "^17.4.2",
-    "nodemailer": "^9.0.3",
+    "nodemailer": "^10.6.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "zod": "^4.4.3"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.1",
@@ -25,12 +25,15 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
-    "concurrently": "^10.0.4",
-    "express": "^5.2.1",
+    "concurrently": "^10.0.7",
+    "express": "^5.3.0",
     "tailwindcss": "^4.3.1",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
-    "vite": "^8.1.5",
-    "vitest": "^4.1.8"
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
+  },
+  "overrides": {
+    "body-parser": "2.4.0"
   }
 }

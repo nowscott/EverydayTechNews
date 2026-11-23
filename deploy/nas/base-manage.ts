@@ -353,7 +353,7 @@ export class Controller {
   }
 
   build(tag: string, sha: string, directory: string): Candidate {
-    const image = (this.config.image_repository || 'everyday-tech-news-test') + ':' + tag;
+    const image = (this.config.image_repository || 'etn-premium') + ':' + tag;
     this.command(['docker', 'build', '--build-arg', 'HTTP_PROXY', '--build-arg', 'HTTPS_PROXY', '--build-arg', 'NO_PROXY',
       '-f', this.config.dockerfile || 'deploy/nas/Dockerfile', '--build-arg', 'NEWS_VERSION=' + tag,
       '--build-arg', 'NEWS_REVISION=' + sha, '-t', image, '.'], { cwd: directory, capture: false });
@@ -468,7 +468,7 @@ export class Controller {
     const retained = new Set(state.history.map((item) => item.image));
     for (const item of known) {
       if (retained.has(item.image) || item.legacy) continue;
-      for (const reference of [item.image_tag, (this.config.image_repository || 'everyday-tech-news-test') + ':git-' + item.sha]) {
+      for (const reference of [item.image_tag, (this.config.image_repository || 'etn-premium') + ':git-' + item.sha]) {
         try { this.command(['docker', 'image', 'rm', reference]); } catch { /* 已不存在 */ }
       }
     }

@@ -44,3 +44,12 @@ test('legacy 镜像不参与删除', () => {
   ];
   assert.deepEqual(plan(list, 0, []), []);
 });
+
+test('高级版改名后的 etn-premium 仓库也纳入清理', () => {
+  const list = [
+    image('etn-premium', 'news-engine-v2.7.11', 'p1', '2026-11-22T16:30:00+08:00'),
+    image('etn-premium', 'news-engine-v2.7.10', 'p2', '2026-11-22T16:00:00+08:00'),
+    image('etn-premium', 'news-engine-v2.7.9', 'p3', '2026-11-22T15:00:00+08:00'),
+  ];
+  assert.deepEqual(plan(list, 2, []).map((v) => v.tag), ['news-engine-v2.7.9']);
+});
