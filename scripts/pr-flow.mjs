@@ -38,7 +38,7 @@ if (!pr) {
 if (flag('--no-merge')) { out({ status: 'done_no_merge', number: pr.number, url: pr.html_url }); process.exit(0); }
 
 const deadline = Date.now() + timeout;
-let head = pr.head.sha, checks = null;
+let head = (await gh(`/repos/${repo}/branches/${encodeURIComponent(branch)}`)).commit.sha, checks = null;
 while (Date.now() < deadline) {
   const runs = await gh(`/repos/${repo}/commits/${head}/check-runs?per_page=100`);
   checks = runs.check_runs || [];
