@@ -36,6 +36,7 @@ async function main(): Promise<number> {
   const dashboardRoot = arg('--dashboard-root');
   const expected = arg('--version', '');
   const maxHeartbeatMs = Number(arg('--heartbeat-max-ms', '360000'));
+  const tickGraceMs = Number(arg('--tick-grace-ms', '600000'));
   const rows: Row[] = [];
   const errors: string[] = [];
   const check = (name: string, ok: boolean, detail: string) => { rows.push({ name, detail, ok }); if (!ok) errors.push(name); };
@@ -69,8 +70,10 @@ async function main(): Promise<number> {
     check(`heartbeat_${label}`, age < maxHeartbeatMs, `version=${status.version || 'missing'} age_ms=${Number.isFinite(age) ? age : 'missing'}`);
     check(`version_${label}`, !version || status.version === version, `scheduler=${status.version || 'missing'} expected=${version || 'unknown'}`);
     const last = status.last_tick || {};
+    const started = Date.parse(status.started_at || '');
+    const fresh = Number.isFinite(started) && Date.now() - started < tickGraceMs;
     const okLast = last.status === 'completed' && (!last.exit_code || last.exit_code === 0);
-    check(`last_tick_${label}`, okLast, last.at ? `${last.status} at=${last.at} exit=${last.exit_code ?? '-'} seconds=${last.seconds ?? '-'}` : 'no_tick');
+    check(`last_tick_${label}`, okLast || (!last.at && fresh), last.at ? `${last.status} at=${last.at} exit=${last.exit_code ?? '-'} seconds=${last.seconds ?? '-'}` : `no_tick_yet started_age_ms=${Number.isFinite(started) ? Date.now() - started : 'missing'}`);
   }
 
   const url = String(dashboard.url || '').replace(/\/$/, '');
