@@ -1,6 +1,6 @@
 {
   "component": "ordinary-news",
-  "version": "2.7.22",
+  "version": "2.7.23",
   "state_schema": 1,
   "automatic_deployment": true,
   "controller_protocol": 1

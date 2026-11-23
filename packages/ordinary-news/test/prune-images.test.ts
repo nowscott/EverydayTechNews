@@ -36,3 +36,11 @@ test('同一 image id 的多个 tag 共用一个保留名额', () => {
 test('非本项目镜像不动', () => {
   assert.deepEqual(plan([image('mihomo', 'local', 'x', '2026-11-01T00:00:00+08:00')], 0, []), []);
 });
+
+test('legacy 镜像不参与删除', () => {
+  const list = [
+    image('everyday-tech-news-test', 'legacy-20261019', 'l', '2026-10-19T00:00:00+08:00'),
+    image('everyday-tech-news-test', 'legacy-v1', 'm', '2026-09-01T00:00:00+08:00'),
+  ];
+  assert.deepEqual(plan(list, 0, []), []);
+});

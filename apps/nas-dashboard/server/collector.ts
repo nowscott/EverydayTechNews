@@ -54,16 +54,25 @@ export function candidates(config: Config, now=new Date()): Row[] {
   }finally{ordinary.close();premium.close();}
   return rows.filter(r=>{if(!r.url||seen.has(r.url))return false;seen.add(r.url);try{articleUrl(r.url);return true;}catch{return false;}});
 }
+/** 采集限流参数外置，默认值与旧行为一致；异常值回落到默认。 */
+export function collectLimits(env: Record<string, string | undefined> = process.env): { max: number; intervalMs: number; budgetMs: number } {
+  const number = (value: string | undefined, fallback: number, min: number) => {
+    const n = Number(value);
+    return Number.isFinite(n) && n >= min ? Math.floor(n) : fallback;
+  };
+  return { max: number(env.DASHBOARD_COLLECT_MAX, 60, 1), intervalMs: number(env.DASHBOARD_COLLECT_INTERVAL_MS, 300000, 60000), budgetMs: number(env.DASHBOARD_COLLECT_BUDGET_MS, 150000, 10000) };
+}
+
 export async function collectBodies(config: Config, cacheRoot: string, deps:{now?:Date;fetcher?:typeof fetch;items?:Row[];pauseMs?:number}={}) {
-  const now=deps.now??new Date(),start=Date.now(),rows=deps.items??candidates(config,now),selected:Row[]=[],counts:Record<string,number>={},perEdition:Record<string,number>={};
+  const limits=collectLimits(),now=deps.now??new Date(),start=Date.now(),rows=deps.items??candidates(config,now),selected:Row[]=[],counts:Record<string,number>={},perEdition:Record<string,number>={};
   for(const row of rows){
     const old=cachedBody(cacheRoot,row.url);if(old?.state==='available'||old?.state==='blocked'||old?.state==='unsupported'||(old?.retry_at&&new Date(old.retry_at)>now)||(old?.attempts??0)>=3)continue;
     const host=articleUrl(row.url).hostname,edition=row.component??'ordinary';if((counts[host]??0)>=20||(perEdition[edition]??0)>=40)continue;
-    selected.push(row);counts[host]=(counts[host]??0)+1;perEdition[edition]=(perEdition[edition]??0)+1;if(selected.length>=60)break;
+    selected.push(row);counts[host]=(counts[host]??0)+1;perEdition[edition]=(perEdition[edition]??0)+1;if(selected.length>=limits.max)break;
   }
   let done=0,failed=0;
   for(const row of selected){
-    if(Date.now()-start>150000)break;
+    if(Date.now()-start>limits.budgetMs)break;
     const old=cachedBody(cacheRoot,row.url),attempts=(old?.attempts??0)+1;
     try{const value=await fetchBody(row.url,deps.fetcher);saveBody(cacheRoot,{...value,title:value.title||row.title,attempts});done++;}
     catch(e:any){const reason=['publisher_not_supported','publisher_access_restricted','publisher_rate_limited','publisher_http_error','article_body_not_found','article_not_html','article_too_large','article_redirect_limit','article_redirect_invalid'].includes(e.message)?e.message:'article_fetch_failed';saveBody(cacheRoot,{url:row.url,title:row.title,state:reason==='publisher_access_restricted'?'blocked':'unavailable',reason,attempts,fetched_at:now.toISOString(),retry_at:new Date(now.getTime()+6*3600000).toISOString()});failed++;}
@@ -79,7 +88,7 @@ export async function collectOnce(config: Config, root: string): Promise<void> {
   try { console.log(JSON.stringify(await collectBodies(config,root))); } catch { console.error('article_collection_unavailable'); }
 }
 /** 在进程内启动正文采集循环；网页进程与采集合并部署时使用。 */
-export async function startCollector(config: Config, root: string, intervalMs=300000): Promise<never> {
+export async function startCollector(config: Config, root: string, intervalMs=collectLimits().intervalMs): Promise<never> {
   await collectOnce(config,root);
   for(;;) { await delay(intervalMs); await collectOnce(config,root); }
 }

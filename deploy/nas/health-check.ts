@@ -28,6 +28,28 @@ export function parseProxyEnv(text: string): { proxy: string | null } {
   return { proxy: match ? match[1].replace(/^['"]|['"]$/g, '') : null };
 }
 
+export function parseArchiveToken(text: string): string | null {
+  const match = /^\s*ARCHIVE_GITHUB_TOKEN\s*=\s*([^\s#]+)/m.exec(text);
+  return match ? match[1].replace(/^['"]|['"]$/g, '') : null;
+}
+
+/** GitHub token 探活：失败不能再静默 401；结果缓存 6 小时，避免每小时打一次 API。 */
+export function tokenProbe(tokenFile: string, cacheFile: string, proxy: string | null = null, now: () => number = Date.now): Record<string, unknown> {
+  const cached = readJson<Record<string, any> | null>(cacheFile, null);
+  if (cached && Number.isFinite(Date.parse(String(cached.at || ''))) && now() - Date.parse(String(cached.at)) < 6 * 3600 * 1000) return { ...cached, cached: true };
+  let token: string | null = null;
+  try { token = parseArchiveToken(fs.readFileSync(tokenFile, 'utf8')); } catch { /* missing file */ }
+  if (!token) return { status: 'missing', at: new Date(now()).toISOString() };
+  const args = ['-sS', '-o', '/dev/null', '-w', '%{http_code}', '--max-time', '10', '-H', 'Authorization: Bearer ' + token, '-H', 'Accept: application/vnd.github+json', 'https://api.github.com/user'];
+  if (proxy) args.splice(1, 0, '--proxy', proxy); else args.splice(1, 0, '--noproxy', '*');
+  const result = spawnSync('curl', args, { encoding: 'utf8' });
+  const code = Number(result.stdout ?? 0);
+  const status = code === 200 ? 'ok' : 'invalid';
+  const record = { status, http_code: code || null, at: new Date(now()).toISOString() };
+  atomicWrite(cacheFile, record);
+  return record;
+}
+
 function proxyProbe(envFile: string): Record<string, unknown> {
   try {
     const { proxy } = parseProxyEnv(fs.readFileSync(envFile, 'utf8'));
@@ -56,7 +78,11 @@ export function check(directory: string): Record<string, unknown> {
       'run', '--rm', '-e', 'NEWS_HEALTH_AUTHORITY=nas', '--entrypoint', 'node', 'premium',
       'packages/news-engine/src/health.ts', '/data'], undefined, env);
     const health = JSON.parse(output) as Record<string, unknown>;
-    return { ...health, proxy, status: proxy.status === 'proxy_unreachable' ? 'degraded_proxy_unreachable' : health.status };
+    const tokenFile = process.argv.includes('--token-file') ? process.argv[process.argv.indexOf('--token-file') + 1] : '/vol3/1000/Docker/everydaytechnews-ordinary/archive.env';
+    const archiveToken = tokenProbe(tokenFile, path.join(directory, 'health-token.json'), typeof proxy.proxy === 'string' ? proxy.proxy : null);
+    const status = proxy.status === 'proxy_unreachable' ? 'degraded_proxy_unreachable'
+      : archiveToken.status === 'invalid' || archiveToken.status === 'missing' ? 'degraded_archive_token' : health.status;
+    return { ...health, proxy, archive_token: archiveToken, status };
   }) as Record<string, unknown>;
 }
 
@@ -71,7 +97,7 @@ function install(directory: string): Record<string, unknown> {
   fs.writeFileSync(backup, existing);
   const lines = existing.split('\n').filter((line) => !line.includes(target) && !line.includes('health-check.py'));
   lines.push('10 9-23 * * * /vol3/1000/Docker/everydaytechnews-runtime/bin/node --disable-warning=ExperimentalWarning '
-    + target + ' --root ' + directory + ' check >> ' + path.join(directory, 'health.log') + ' 2>&1');
+    + target + ' --root ' + directory + ' --token-file /vol3/1000/Docker/everydaytechnews-ordinary/archive.env check >> ' + path.join(directory, 'health.log') + ' 2>&1');
   const written = spawnSync('crontab', ['-'], { input: lines.join('\n') + '\n', encoding: 'utf8' });
   if (written.status !== 0) throw new Error('crontab_write_failed:' + String(written.stderr ?? '').slice(-120));
   atomicWrite(path.join(directory, 'health-controller.json'), {
