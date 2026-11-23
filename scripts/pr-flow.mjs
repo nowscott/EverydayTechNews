@@ -42,7 +42,11 @@ let head = (await gh(`/repos/${repo}/branches/${encodeURIComponent(branch)}`)).c
 while (Date.now() < deadline) {
   const runs = await gh(`/repos/${repo}/commits/${head}/check-runs?per_page=100`);
   checks = runs.check_runs || [];
-  if (!checks.length) { out({ status: 'no_checks', head }); break; }
+  if (!checks.length) {
+    out({ status: 'waiting_for_checks', head });
+    if (deadline - Date.now() > 60000) { await new Promise(r => setTimeout(r, 20000)); continue; }
+    out({ status: 'no_checks', head }); break;
+  }
   const bad = checks.filter(c => c.status === 'completed' && c.conclusion !== 'success' && c.conclusion !== 'neutral' && c.conclusion !== 'skipped');
   const pending = checks.filter(c => c.status !== 'completed');
   out({ status: 'checks', head, total: checks.length, pending: pending.length, failed: bad.length, names: checks.map(c => `${c.name}:${c.status}/${c.conclusion}`) });
@@ -52,5 +56,15 @@ while (Date.now() < deadline) {
 }
 if (Date.now() >= deadline) fail('checks_timeout', { head });
 
-const merged = await gh(`/repos/${repo}/pulls/${pr.number}/merge`, { method: 'PUT', body: JSON.stringify({ merge_method: 'squash', sha: head }) });
+let merged;
+for (let attempt = 0; attempt < 4; attempt++) {
+  try {
+    merged = await gh(`/repos/${repo}/pulls/${pr.number}/merge`, { method: 'PUT', body: JSON.stringify({ merge_method: 'squash', sha: head }) });
+    break;
+  } catch (error) {
+    if (attempt === 3) throw error;
+    out({ status: 'merge_retry', attempt: attempt + 1 });
+    await new Promise(r => setTimeout(r, 15000));
+  }
+}
 out({ status: 'merged', number: pr.number, sha: merged.sha, message: merged.message });
