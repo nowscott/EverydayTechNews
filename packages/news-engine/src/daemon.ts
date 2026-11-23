@@ -18,6 +18,13 @@ export function dueAtPremium(at: Date): boolean {
   return minute === 0 && (hour === 23 || hour === 3);
 }
 
+/** 锁里的 pid 必须真的是调度进程；容器重启后旧 pid 常被别的进程复用。 */
+export function pidIsScheduler(pid: number, read: (path: string) => string = (path) => readFileSync(path, 'utf8')): boolean {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try { return /daemon\.ts|scheduler\.ts/.test(read(`/proc/${pid}/cmdline`)); }
+  catch { try { process.kill(pid, 0); return true; } catch { return false; } }
+}
+
 export function nextRun(from: Date): Date {
   const next = new Date(from.getTime());
   next.setSeconds(0, 0);
@@ -132,7 +139,8 @@ function main(): void {
   const lock = scheduler + '/daemon.lock';
   if (existsSync(lock)) {
     const pid = Number(readFileSync(lock, 'utf8').trim());
-    try { process.kill(pid, 0); console.log(JSON.stringify({ status: 'already_running', pid })); process.exit(0); } catch { /* 旧进程已退出，接管 */ }
+    if (pidIsScheduler(pid)) { console.log(JSON.stringify({ status: 'already_running', pid })); process.exit(0); }
+    // pid 在容器里可能被别的进程复用，或来自上一个容器；确认不是调度进程就接管。
   }
   writeFileSync(lock, String(process.pid));
   process.on('exit', () => { try { rmSync(lock, { force: true }); } catch { /* ignore */ } });
