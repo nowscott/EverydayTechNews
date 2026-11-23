@@ -1,6 +1,6 @@
 {
   "name": "@everyday-tech-news/news-engine",
-  "version": "2.7.21",
+  "version": "2.7.22",
   "private": true,
   "type": "module",
   "exports": "./src/ranking.ts",
