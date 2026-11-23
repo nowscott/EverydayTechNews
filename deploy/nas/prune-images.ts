@@ -6,13 +6,14 @@ import { execFileSync } from 'node:child_process';
 
 export interface Image { repository: string; tag: string; id: string; created: string; size?: string }
 
-export const PREFIX = 'everyday-tech-news-';
+export const PREFIXES = ['everyday-tech-news-', 'etn-premium'];
+export const PREFIX = PREFIXES[0];
 
 export function plan(images: Image[], keep: number, protectedIds: string[]): Image[] {
   const protectedSet = new Set(protectedIds.map((id) => id.replace(/^sha256:/, '')));
   const byRepo = new Map<string, Image[]>();
   for (const image of images) {
-    if (!image.repository.startsWith(PREFIX)) continue;
+    if (!PREFIXES.some((prefix) => image.repository.startsWith(prefix))) continue;
     const list = byRepo.get(image.repository) ?? [];
     list.push(image);
     byRepo.set(image.repository, list);
