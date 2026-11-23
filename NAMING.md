@@ -24,6 +24,7 @@
 ## 镜像
 
 - 仓库名保留 `everyday-tech-news-ordinary` / `everyday-tech-news-dashboard`（控制器 `config.json` 与回滚历史依赖它，缩写收益小于改动风险，暂不改）。
+- 高级版镜像仓库名仍是 legacy `everyday-tech-news-test`（`managed/config.json` 的 `image_repository`），属冻结项；改名只在下一次发版生效，回滚历史仍指向旧名。
 - tag 必须与 GitHub tag 同名（`ordinary-news-v2.7.10`、`nas-dashboard-v2.7.10`），这是「三处版本号统一」的落点，不允许为了好看缩短。
 - 线上只保留当前 + 上一版镜像用于回滚，其余按发布节奏清理（避免 `docker images` 里堆 9 个历史 tag）。
 

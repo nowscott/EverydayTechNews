@@ -39,12 +39,11 @@ record-run.py 用独立的非阻塞锁避免重叠，原业务锁仍保留。开
 测试：`npm test --prefix apps/nas-dashboard`、`npm run build --prefix apps/nas-dashboard`、`python3 -m unittest discover -s deploy/dashboard -p 'test_*.py'`。
 
 
-## 从v1.0升级到v1.1
+## 采集架构（2.7.16 起）
 
-备份当前compose.yaml、compose.env、installation.json。新建看板目录下bodies（0700、与业务相同UID），构建v1.1镜像后替换DASHBOARD_IMAGE并使用新compose.yaml执行up -d --wait。新增body-collector只读挂载两个业务目录，唯一可写挂载为看板自己的bodies；它无dashboard.env、SMTP或模型凭据。collector使用既有NAS本机7890代理访问固定允许的新闻发布方，host网络不开放监听端口。网页进程仍只读挂载全部业务与正文缓存。
+2.7.16 起正文采集并入看板 web 进程：`etn-dashboard-web` 单容器同时提供页面与采集，不再有独立 `body-collector`。采集只读挂载两个业务目录，唯一可写目录是看板自己的 `bodies/`，且不持有 dashboard.env、SMTP 或模型凭据；出口走 NAS 本机代理，不开放监听端口。
 
-回滚到v1.0时先停止body-collector，再恢复备份的compose.yaml与镜像配置；保留bodies目录和既有业务状态。新抓取的正文只供本地阅读，不进入旧业务的选题、评分、发信或归档发布流程。
-
+历史 v1.1 的独立 collector 容器与“回滚先停 collector”流程已废弃；回滚只需恢复 `compose.env` 的 `DASHBOARD_IMAGE` 与 `compose.yaml` 并 `up -d`。新抓取正文只供本地阅读，不进入旧业务选题、评分、发信或归档流程。
 
 ## Token 与费用（v1.4.0）
 
