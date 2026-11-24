@@ -299,7 +299,17 @@ export class Controller {
   }
 
   schema(): unknown {
-    return readJson<Record<string, unknown>>(path.join(this.data, 'durable/state.json'), {}).schema_version;
+    // 状态快照可能几百 MB，只读文件头，避免部署前校验被整份 JSON.parse 拖垮。
+    const file = path.join(this.data, 'durable/state.json');
+    let fd = -1;
+    try {
+      fd = fs.openSync(file, 'r');
+      const head = Buffer.alloc(4096);
+      const length = fs.readSync(fd, head, 0, head.length, 0);
+      const match = /"schema_version"\s*:\s*(\d+)/.exec(head.toString('utf8', 0, length));
+      return match ? Number(match[1]) : undefined;
+    } catch { return undefined; }
+    finally { if (fd >= 0) try { fs.closeSync(fd); } catch { /* ignore */ } }
   }
 
   ledger(): string {
