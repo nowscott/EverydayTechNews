@@ -667,7 +667,20 @@
 
 - Fix the managed Compose tmpfs list so Docker can start the runtime container.
 - Let morning news jobs retain the scheduler lock for their full engine-managed lifetime instead of the controller's 30-minute utility timeout.
-- Exercise managed container startup in CI and support explicit, checked controller upgrades with backups.## ordinary-news-v2.7.25
+- Exercise managed container startup in CI and support explicit, checked controller upgrades with backups.## ordinary-news-v2.7.26
+
+- 与三端同号；普通版运行无变化。
+
+## news-engine-v2.7.26
+
+- 发布控制器 `schema()` 只读 `durable/state.json` 文件头取 `schema_version`，不再整份解析 500MB+ 状态；修复大状态下 `release_requires_manual_data_migration` 误拦截。
+- 不再把该误判写入 `blocked`。
+
+## nas-dashboard-v2.7.26
+
+- 与三端同号；看板无变化。
+
+## ordinary-news-v2.7.25
 
 - 与三端同号；普通版运行无变化。
 
