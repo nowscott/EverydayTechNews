@@ -1,8 +1,33 @@
 // NAS-local operational checks. No model calls, editorial scoring or subscriber lookup.
-import {existsSync,mkdirSync,readdirSync} from 'node:fs';
+import {existsSync,mkdirSync,readdirSync,openSync,readSync,closeSync} from 'node:fs';
 import {join} from 'node:path';
 import nodemailer from 'nodemailer';
 import {active,atomic,day,localParts,read,RECIPIENT,stamp,trial,type Row} from './core.ts';
+export function readCalls(file:string):Row[] {
+  const fd=openSync(file,'r');const chunk=Buffer.alloc(1024*1024);let position=0,carry='',found=false,depth=0,inString=false,escaped=false,out='';
+  try {
+    while(true){
+      const n=readSync(fd,chunk,0,chunk.length,position);if(!n)break;position+=n;
+      let text=carry+chunk.toString('utf8',0,n);
+      if(!found){
+        const match=/"calls"\s*:\s*\[/.exec(text);if(!match){carry=text.slice(-32);continue;}
+        text=text.slice(match.index+match[0].length);found=true;depth=1;out='[';
+      }
+      let used=text.length;
+      for(let i=0;i<text.length;i++){
+        const ch=text[i];out+=ch;
+        if(inString){if(escaped)escaped=false;else if(ch==='\\')escaped=true;else if(ch==='"')inString=false;continue;}
+        if(ch==='"'){inString=true;continue;}
+        if(ch==='['||ch==='{')depth++;
+        else if(ch===']'||ch==='}'){depth--;if(depth===0){used=i+1;break;}}
+      }
+      carry=used===text.length?'' : '';
+      if(depth===0){return JSON.parse(out) as Row[];}
+    }
+  } finally { closeSync(fd); }
+  throw Error('state_calls_unreadable');
+}
+
 export function inspectHealth(root:string,now=new Date()):Row {
   const date=day(now),t=trial(root),issues:string[]=[];
   if(!active(t,now))return {date,status:'disabled',issues};
@@ -13,7 +38,7 @@ export function inspectHealth(root:string,now=new Date()):Row {
   if(receipts.some(r=>['sending','unknown_do_not_retry'].includes(r.status)))issues.push('delivery_result_unknown_do_not_resend');
   const selected=accepted?.issue??id,p=root+'/issues/'+selected+'/edition.json',edition=existsSync(p)?read(p):null;
   if(!edition)issues.push('frozen_edition_missing');
-  const state=read(root+'/durable/state.json'),calls=(state.tables.calls as Row[]).filter(c=>c.day===date);
+  const calls=readCalls(root+'/durable/state.json').filter(c=>c.day===date);
   if(calls.some(c=>c.cost==null))issues.push('model_cost_unknown_held');
   const reserved=calls.reduce((n,c)=>n+Number(c.cost??c.reserved??0),0);if(reserved>Math.min(2,t.daily_budget_cny)+1e-8)issues.push('daily_budget_exceeded');
   const health=existsSync(root+'/source-health.json')?read(root+'/source-health.json'):null;

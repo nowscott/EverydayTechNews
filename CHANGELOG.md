@@ -667,7 +667,20 @@
 
 - Fix the managed Compose tmpfs list so Docker can start the runtime container.
 - Let morning news jobs retain the scheduler lock for their full engine-managed lifetime instead of the controller's 30-minute utility timeout.
-- Exercise managed container startup in CI and support explicit, checked controller upgrades with backups.## ordinary-news-v2.7.24
+- Exercise managed container startup in CI and support explicit, checked controller upgrades with backups.## ordinary-news-v2.7.25
+
+- 与三端同号；普通版运行无变化。
+
+## news-engine-v2.7.25
+
+- 修复高级版常驻调度只跑维护模式：`daemon.ts` 调用 `main.ts run` 时显式传 `--maintenance-only false`，恢复早报采集、出刊与投递分支；此前每天 09:00 直接判定 `scheduler_missed_delivery_deadline`、`generated:0`。
+- 健康检查改用流式抽取 `durable/state.json` 的 `calls` 数组，不再整份解析 500MB+ 状态，修复 `health_state_unreadable`。
+
+## nas-dashboard-v2.7.25
+
+- 与三端同号；看板无变化。
+
+## ordinary-news-v2.7.24
 
 - 依赖安全：`nodemailer` 10.1.3 → 10.6.1、`fast-xml-parser` 5.11.2 → 5.12.1，`npm audit` 运行时漏洞清零。
 - 高级版镜像仓库默认名从 legacy `everyday-tech-news-test` 改为 `etn-premium`；历史/回滚 tag 仍按原仓库名匹配。
