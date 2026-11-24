@@ -58,7 +58,7 @@ const CLI = new URL('./main.ts', import.meta.url).pathname;
 function runRound(options: Options): Promise<{ exit: number; seconds: number; tail: string }> {
   return new Promise((done) => {
     const started = Date.now();
-    const child = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', CLI, 'run', '--data', options.data, '--local-authority'], {
+    const child = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', CLI, 'run', '--data', options.data, '--local-authority', '--maintenance-only', 'false'], {
       env: { ...process.env, TZ: 'Asia/Shanghai' }, stdio: ['ignore', 'pipe', 'pipe'], detached: true,
     });
     const pid = child.pid ?? 0;
