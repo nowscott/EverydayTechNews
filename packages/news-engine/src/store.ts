@@ -63,7 +63,12 @@ export class Store {
     if (digest(payload) !== this.objects[ref].sha256) throw new Error('evidence_hash_conflict');
     const path = contained(this.root + '/transient', ref);
     if (existsSync(path) && digest(readFileSync(path)) !== this.objects[ref].sha256) throw new Error('evidence_integrity_failed');
-    mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, payload, { mode: 0o600 });
+    mkdirSync(dirname(path), { recursive: true });
+    // 证据文件必须原子落盘：SIGKILL 落在 writeFileSync 中间会把文件截成 0 字节，下一轮恢复直接 evidence_integrity_failed。
+    const temp = path + '.tmp-' + process.pid; const fd = openSync(temp, 'w', 0o600);
+    try { writeFileSync(fd, payload); fsyncSync(fd); } finally { closeSync(fd); }
+    renameSync(temp, path);
+    const dir = openSync(dirname(path), 'r'); try { fsyncSync(dir); } finally { closeSync(dir); }
   }
   shrink(value: any): any {
     if (Array.isArray(value)) return value.map(v => this.shrink(v));
