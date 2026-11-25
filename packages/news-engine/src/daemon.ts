@@ -55,6 +55,11 @@ function parseArgs(args: string[]): Options {
 const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version as string;
 const CLI = new URL('./main.ts', import.meta.url).pathname;
 
+function inMorningWindow(): boolean {
+  const hour = Number(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai', hour: '2-digit', hour12: false }));
+  return hour >= 4 && hour < 9;
+}
+
 function runRound(options: Options): Promise<{ exit: number; seconds: number; tail: string }> {
   return new Promise((done) => {
     const started = Date.now();
@@ -101,7 +106,8 @@ function main(): void {
     writeFileSync(recordPath, JSON.stringify(record));
     writeFileSync(scheduler + '/runs/latest.json', JSON.stringify(record));
     try {
-      const result = await runRound(options);
+      // 早报窗口内 runMorning 最长 340 分钟；600 秒超时会每轮杀死回放中的进程并留下截断证据。
+      const result = await runRound({ ...options, timeoutMs: inMorningWindow() ? 6 * 3600 * 1000 : 30 * 60 * 1000 });
       if (result.exit === 0) ticks++; else failures++;
       last = { at, status: result.exit === 0 ? 'completed' : 'failed', exit_code: result.exit, seconds: result.seconds };
       Object.assign(record, { finished_at: new Date().toISOString(), state: 'completed', exit_code: result.exit });
