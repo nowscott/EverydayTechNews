@@ -11,8 +11,8 @@ export function quietNow(at: Date = new Date()): boolean { const hour = at.getHo
 
 export function dueAtPremium(at: Date): boolean {
   const hour = at.getHours(), minute = at.getMinutes();
-  if (hour >= 4 && hour < 6) return minute % 15 === 0;
-  if (hour === 6) return minute < 15 ? minute % 15 === 0 : minute === 30;
+  if (hour >= 4 && hour < 6) return minute % 5 === 0;
+  if (hour === 6) return minute <= 15 ? minute % 5 === 0 : minute === 30;
   if (hour >= 7 && hour < 23) return minute % 30 === 0;
   // 23、0、1、2、3 点：只在整点跑，即 23:00、03:00（跨 0 点由整点自然覆盖）。
   return minute === 0 && (hour === 23 || hour === 3);
@@ -37,7 +37,7 @@ export function nextRun(from: Date): Date {
 }
 
 export function policy(): string {
-  return '04-06:14:15m,07-23:30m,night:23:00/03:00';
+  return '04-06:05m,06:30,07-23:30m,night:23:00/03:00';
 }
 
 interface Options { data: string; once: boolean; timeoutMs: number }
@@ -107,7 +107,7 @@ function main(): void {
     writeFileSync(scheduler + '/runs/latest.json', JSON.stringify(record));
     try {
       // 早报窗口内 runMorning 最长 340 分钟；600 秒超时会每轮杀死回放中的进程并留下截断证据。
-      const result = await runRound({ ...options, timeoutMs: inMorningWindow() ? 6 * 3600 * 1000 : 30 * 60 * 1000 });
+      const result = await runRound({ ...options, timeoutMs: inMorningWindow() ? 2 * 3600 * 1000 : 60 * 60 * 1000 });
       if (result.exit === 0) ticks++; else failures++;
       last = { at, status: result.exit === 0 ? 'completed' : 'failed', exit_code: result.exit, seconds: result.seconds };
       Object.assign(record, { finished_at: new Date().toISOString(), state: 'completed', exit_code: result.exit });

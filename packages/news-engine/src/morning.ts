@@ -1,4 +1,4 @@
-import { appendFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, writeFileSync, existsSync } from 'node:fs';
 import { Store, acknowledgeArtifact } from './store.ts';
 import { command, atomic, read, digest, pyjson, stamp, day, at, active, trial, type Row } from './core.ts';
 import { resolveTestSubscribers } from './subscribers.ts';
@@ -11,6 +11,57 @@ export function phase(store: Store, name: string, now = new Date()) {
   atomic(store.root + '/durable/mornings/' + day(now) + '.json', { ...(() => { try { return read(store.root + '/durable/mornings/' + day(now) + '.json'); } catch { return {}; } })(), [name]: stamp(now) });
   store.checkpoint();
 }
+
+/** 单步可续跑：每次进程只做一步，进度写在 durable/mornings/<day>.json，下一轮从下一步继续。 */
+export async function morningStep(store: Store, now = new Date(), deps = { collect, assess, enrich, compose, deliver }): Promise<Row> {
+  const t = trial(store.root);
+  if (!active(t, now)) return { status: 'trial_disabled_or_expired', terminal: true };
+  if (now >= at(day(now), '09:00:00')) return { status: 'deadline_missed', terminal: true };
+  const today = day(now); const progressPath = store.root + '/durable/mornings/' + today + '.json';
+  let progress: Row = {}; try { progress = read(progressPath); } catch {}
+  const issueId = 'test-' + today; const issuePath = store.root + '/issues/' + issueId + '/edition.json';
+  const stepPath = store.root + '/durable/mornings/' + today + '-stage.json';
+  const mark = (stage: string, extra: Row = {}) => atomic(stepPath, { day: today, stage, at: stamp(now), ...extra });
+
+  if (existsSync(issuePath)) {
+    if (now < at(day(now), '06:30:00')) { mark('deliver_waiting'); return { status: 'waiting_for_delivery', issue: issueId }; }
+    mark('deliver');
+    const receipt = await deps.deliver(store, false, now);
+    phase(store, 'smtp_' + receipt.status, now);
+    mark('done', { delivery: receipt.status });
+    return { status: receipt.status, issue: issueId, terminal: ['smtp_accepted', 'unknown_do_not_retry', 'sending', 'recipient_refused'].includes(receipt.status) };
+  }
+
+  if (now < at(day(now), '06:15:00')) {
+    if (!progress.candidates_ready) {
+      mark('collect');
+      await deps.collect(store);
+      phase(store, 'candidates_ready', now);
+      return { status: 'collected' };
+    }
+    if (!progress.assessment_completed) {
+      mark('assess');
+      deps.assess(store, now);
+      atomic(progressPath, { ...progress, assessment_completed: stamp(now) });
+      return { status: 'assessed' };
+    }
+    if (!progress.pool_ready) {
+      mark('enrich');
+      const result = await deps.enrich(store);
+      phase(store, 'writing_progress', now);
+      if (result.status === 'ready_pool_sufficient') { atomic(progressPath, { ...progress, assessment_completed: progress.assessment_completed ?? stamp(now), writing_progress: stamp(now), pool_ready: stamp(now) }); mark('compose_waiting'); }
+      return { status: result.status ?? 'enriched' };
+    }
+    mark('compose_waiting');
+    return { status: 'pool_ready_waiting_compose' };
+  }
+
+  mark('compose');
+  const issue = deps.compose(store, now);
+  phase(store, 'edition_frozen', now);
+  return { status: 'edition_frozen', issue: issue.id };
+}
+
 export function archiveStage(store: Store) {
   if (process.env.GITHUB_ACTIONS !== 'true') return;
   const path = store.archive(day());

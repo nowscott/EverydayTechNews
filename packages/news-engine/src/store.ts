@@ -19,7 +19,9 @@ export class Store {
   localAuthority: boolean;
   get authoritative(): boolean { return this.syncGit || this.localAuthority; }
   root: string; syncGit: boolean; db: DatabaseSync; objects: Row; missing: string[] = [];
-  constructor(root: string, syncGit = false, localAuthority = false) {
+  mode: { sqlitePrimary: boolean; lightCheckpoint: boolean };
+  constructor(root: string, syncGit = false, localAuthority = false, mode: { sqlitePrimary?: boolean; lightCheckpoint?: boolean } = {}) {
+    this.mode = { sqlitePrimary: !!mode.sqlitePrimary, lightCheckpoint: !!mode.lightCheckpoint };
     this.root = resolve(root); this.syncGit = syncGit; mkdirSync(this.root, { recursive: true });
     this.localAuthority = localAuthority;
     if (localAuthority) {
@@ -50,7 +52,11 @@ export class Store {
       if (!columns.has(name)) this.db.exec(`ALTER TABLE calls ADD COLUMN ${name} ${definition}`);
     }
     this.objects = existsSync(this.root + '/archive-manifests/objects.json') ? read(this.root + '/archive-manifests/objects.json') : {};
-    try { if (existsSync(this.root + '/durable/state.json')) this.restore(); } catch (error) { this.db.close(); throw error; }
+    try {
+      const state = this.root + '/durable/state.json';
+      const fast = this.mode.sqlitePrimary && existsSync(state) && existsSync(this.root + '/state.sqlite3') && existsSync(this.root + '/durable/sqlite-primary.json');
+      if (!fast && existsSync(state)) { this.restore(); this.markPrimary(); }
+    } catch (error) { this.db.close(); throw error; }
   }
   all(sql: string, ...args: any[]): Row[] { return this.db.prepare(sql).all(...args) as Row[]; }
   one(sql: string, ...args: any[]): Row | undefined { return this.db.prepare(sql).get(...args) as Row | undefined; }
@@ -134,7 +140,16 @@ export class Store {
     // This migration never grants approval or changes the saved draft/evidence.
     if (this.run("UPDATE jobs SET status=CASE WHEN result IS NULL THEN 'queued' ELSE 'pending_ai_review' END WHERE status='pending_human_review'").changes) this.checkpoint();
   }
-  checkpoint() {
+  markPrimary() {
+    atomic(this.root + '/durable/sqlite-primary.json', { schema_version: 1, kind: 'sqlite_primary', at: stamp(), state_bytes: existsSync(this.root + '/durable/state.json') ? lstatSync(this.root + '/durable/state.json').size : 0 });
+  }
+  checkpoint(force = false) {
+    if (this.mode.lightCheckpoint && !force) {
+      // SQLite 已是主状态：responses 留在库里，等夜间完整 checkpoint 再落证据，避免每 5 分钟重写全部响应。
+      for (const path of files(this.root + '/feeds')) { this.putBulk('raw/feeds/' + relative(this.root + '/feeds', path), readFileSync(path)); unlinkSync(path); }
+      atomic(this.root + '/archive-manifests/objects.json', this.objects);
+      return;
+    }
     for (const row of this.all('SELECT * FROM responses')) this.putBulk('responses/' + row.call_id + '.json', Buffer.from(pyjson(row)));
     for (const path of files(this.root + '/feeds')) { this.putBulk('raw/feeds/' + relative(this.root + '/feeds', path), readFileSync(path)); unlinkSync(path); }
     const path = this.root + '/durable/state.json'; mkdirSync(dirname(path), { recursive: true });
@@ -154,6 +169,7 @@ export class Store {
     } finally { closeSync(fd); }
     atomic(this.root + '/archive-manifests/objects.json', this.objects); renameSync(temp, path);
     const dir = openSync(dirname(path), 'r'); try { fsyncSync(dir); } finally { closeSync(dir); }
+    this.markPrimary();
     if (this.syncGit) this.push();
   }
   push() {

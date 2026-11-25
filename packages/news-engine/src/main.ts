@@ -1,6 +1,6 @@
 import { resolveTestSubscribers } from './subscribers.ts';
 import { verifyQuality } from './quality-acceptance.ts';
-import { morningTime, runMorning, publishMorningReport, archiveStage } from './morning.ts';
+import { morningTime, morningStep, runMorning, publishMorningReport, archiveStage } from './morning.ts';
 import { appendFileSync, mkdirSync, existsSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -23,6 +23,7 @@ if (flags.syncGit && flags.localAuthority) throw new Error('choose_one_state_aut
 if (flags.localAuthority && process.platform !== 'linux') throw new Error('nas_authority_requires_linux_flock');
 const allowed = ['init', 'run', 'collect', 'assess', 'enrich', 'verify-api', 'launch-sample', 'fresh-sample', 'send-sample', 'compose', 'deliver', 'reconcile', 'status', 'report', 'archive', 'restore-artifact', 'ack-artifact', 'sync-subscribers'];
 if (!operation || !allowed.includes(operation)) throw new Error('unknown_command');
+const stagedMorning = operation === 'run' && !!flags.localAuthority && flags['maintenance-only'] === 'false' && !flags.launch && !flags['verify-quality'] && !flags['verify-api'] && morningTime(new Date());
 let localLock: string | undefined;
 if (!process.env.NEWS_ENGINE_FLOCKED) {
   if (process.platform === 'linux') {
@@ -38,7 +39,7 @@ try {
   if (operation === 'restore-artifact') { restoreArtifacts(root); console.log(JSON.stringify({ status: 'restored' })); }
   else {
     if (operation === 'run') restoreArtifacts(root);
-    store = new Store(root, !!flags.syncGit, !!flags.localAuthority);
+    store = new Store(root, !!flags.syncGit, !!flags.localAuthority, { sqlitePrimary: stagedMorning, lightCheckpoint: stagedMorning });
     if (operation === 'init') {
       if (!existsSync(root + '/trial.json')) {
         atomic(root + '/trial.json', { schema_version: 1, mode: 'internal_test', enabled: false, start: '2026-10-19', days: 7, expires_at: EXPIRY, allowed_recipient: RECIPIENT,
@@ -58,7 +59,8 @@ try {
         if (launch && verify) throw new Error('choose_one_acceptance_mode');
         console.log(JSON.stringify({ stage: 'due', maintenance, plan, engine: 'typescript' }));
         if (!maintenance && !launch && !verify && morningTime(new Date())) {
-          await runMorning(store);
+          if (stagedMorning) console.log(JSON.stringify({ stage: 'morning_step', result: await morningStep(store) }));
+          else await runMorning(store);
         } else {
         const composing = !maintenance && !launch && !verify && plan.compose && new Date().getTime() < Date.parse(day() + 'T09:00:00+08:00');
         if (composing) await collect(store, Number(flags['collect-workers'] ?? 4));
@@ -92,7 +94,7 @@ try {
           if (process.env.GITHUB_ACTIONS === 'true') console.log('::warning::Premium daily delivery deadline missed; this workflow success is not proof of email delivery. No automatic send after 09:00.');
         }
         if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Premium daily delivery\n\n${report.days.map(d => `- ${d.day}: ${d.status}; SMTP=${d.delivery.join(',') || 'not_attempted'}${d.reason ? '; ' + d.reason : ''}`).join('\n')}\n`);
-        store.archive(day());
+        if (!stagedMorning) store.archive(day());
         if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `archive_ready=true\nartifact_name=pool-evidence-${day()}-${process.env.GITHUB_RUN_ID}\n`);
         console.log(JSON.stringify({ stage: 'final', result: status(store) }));
       }

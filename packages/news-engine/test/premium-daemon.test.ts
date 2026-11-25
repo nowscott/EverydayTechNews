@@ -5,11 +5,11 @@ import { dueAtPremium, nextRun, policy, quietNow, pidIsScheduler } from '../src/
 const at = (h: number, m: number, s = 0) => new Date(2026, 10, 22, h, m, s);
 const hm = (d: Date) => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
 
-test('清晨 04:00-06:14 用 15 分钟节奏', () => {
+test('清晨 04:00-06:15 用 5 分钟续跑节奏', () => {
   assert.equal(dueAtPremium(at(4, 0)), true);
   assert.equal(dueAtPremium(at(5, 45)), true);
   assert.equal(dueAtPremium(at(6, 14)), false);
-  assert.equal(dueAtPremium(at(6, 15)), false);
+  assert.equal(dueAtPremium(at(6, 15)), true);
 });
 
 test('白天 07-22 点每 30 分钟', () => {
@@ -35,8 +35,8 @@ test('quietNow 覆盖 23:00-03:59', () => {
 
 test('nextRun 对齐到下一个节奏边界', () => {
   assert.equal(hm(nextRun(at(16, 48))), '17:00');
-  assert.equal(hm(nextRun(at(4, 1))), '04:15');
-  assert.equal(hm(nextRun(at(6, 14, 30))), '06:30');
+  assert.equal(hm(nextRun(at(4, 1))), '04:05');
+  assert.equal(hm(nextRun(at(6, 14, 30))), '06:15');
   assert.equal(hm(nextRun(at(22, 31))), '23:00');
   assert.equal(hm(nextRun(at(23, 1))), '03:00');
   assert.equal(hm(nextRun(at(2, 59))), '03:00');
@@ -53,7 +53,7 @@ test('nextRun 永远晚于当前时刻且清零秒', () => {
 });
 
 test('policy 文案与节奏一致', () => {
-  assert.equal(policy(), '04-06:14:15m,07-23:30m,night:23:00/03:00');
+  assert.equal(policy(), '04-06:05m,06:30,07-23:30m,night:23:00/03:00');
 });
 
 test('锁里的 pid 必须确认是调度进程', () => {
