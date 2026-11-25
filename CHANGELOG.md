@@ -1,5 +1,21 @@
 # 更新日志
 
+## ordinary-news-v2.7.28
+
+- 与三端同号；普通版逻辑未变。
+
+## news-engine-v2.7.28
+
+- 高级版早报改为短步骤、可续跑：每轮只推进 collect → assess → enrich → compose → deliver 中的一步，进度写入 `durable/mornings/<day>.json`，进程被超时杀掉或重启后从下一步继续，不再把整条早报压在一次 5 小时事务里。
+- SQLite 设为运行期主状态：夜间完整 checkpoint 后写 `durable/sqlite-primary.json`，早报窗口内快速启动跳过 545MB `state.json` 回放。
+- 早报窗口 checkpoint 改为轻量模式：只落 feeds 与对象清单，不每轮重写 545MB state.json，也不重写全部 responses。
+- 调度节奏改为 04:00–06:15 每 5 分钟一步，06:15 组刊、06:30 投递；窗口内外超时分别 2 小时 / 60 分钟。
+- 修复 `morningStep` 缺少 `existsSync` 导入导致首轮直接失败。
+
+## nas-dashboard-v2.7.28
+
+- 与三端同号；看板无变化。
+
 ## ordinary-news-v2.7.21
 
 - 部署控制器把 `release_main_checks_not_passed`、`github_api_unavailable` 视为可重试的瞬时状态，不再写入 `blocked`；下次 `update` 会重新检查，不用手工清状态。
