@@ -180,18 +180,27 @@ export class Store {
     command(['git', 'push', 'origin', 'HEAD:main'], this.root);
   }
   // 正文/响应缓存按「保留天数 + 未登记为证据」回收：证据受 objects.json 90 天保护，其余只留 30 天。
-  pruneTransient(keepDays = 30): { files: number; bytes: number; keep_days: number } {
+  pruneTransient(keepDays = 30): { files: number; bytes: number; keep_days: number; expired_feeds: number } {
     const cutoff = Date.now() - keepDays * 86400000;
     const referenced = new Set(Object.keys(this.objects));
-    let files = 0, bytes = 0;
+    let files = 0, bytes = 0, expiredFeeds = 0;
     for (const path of listFiles(this.root + '/transient/raw')) {
       const ref = relative(this.root + '/transient', path);
-      if (referenced.has(ref)) continue;
       const stat = lstatSync(path);
+      // 原始 RSS/网页抓取只是解析缓存，不是最终刊正文；即使被清单登记，也按同一保留期回收并标记过期。
+      if (ref.startsWith('raw/feeds/')) {
+        if (stat.mtimeMs > cutoff) continue;
+        bytes += stat.size; files += 1; unlinkSync(path);
+        const entry = this.objects[ref];
+        if (entry && entry.status !== 'expired') { entry.status = 'expired'; expiredFeeds += 1; }
+        continue;
+      }
+      if (referenced.has(ref)) continue;
       if (stat.mtimeMs > cutoff) continue;
       bytes += stat.size; files += 1; unlinkSync(path);
     }
-    return { files, bytes, keep_days: keepDays };
+    if (expiredFeeds) atomic(this.root + '/archive-manifests/objects.json', this.objects);
+    return { files, bytes, keep_days: keepDays, expired_feeds: expiredFeeds };
   }
   expire() {
     for (const [ref, entry] of Object.entries(this.objects) as [string, Row][]) if (Date.now() >= Date.parse(entry.expires_at)) {
