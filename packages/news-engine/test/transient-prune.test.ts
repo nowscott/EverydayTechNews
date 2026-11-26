@@ -38,3 +38,19 @@ test('保留天数可调，0 天也不动仍在保留期内的文件', () => {
   assert.equal(store.pruneTransient(60).files, 0);
   assert.equal(existsSync(root + '/transient/raw/x/old.json'), true);
 });
+
+test('原始 feed 抓取即使被清单登记也会按保留期回收并标记过期', () => {
+  const { root, store } = seed({});
+  mkdirSync(root + '/transient/raw/feeds', { recursive: true });
+  const old = root + '/transient/raw/feeds/old.xml'; const fresh = root + '/transient/raw/feeds/fresh.xml';
+  writeFileSync(old, 'old'); writeFileSync(fresh, 'fresh');
+  const at = (Date.now() - 40 * 86400000) / 1000; utimesSync(old, at, at);
+  store.objects['raw/feeds/old.xml'] = { sha256: '0', bytes: 3, captured_at: '2026-01-01T00:00:00+08:00', expires_at: '2030-01-01T00:00:00+08:00' };
+  store.objects['raw/feeds/fresh.xml'] = { sha256: '0', bytes: 5, captured_at: '2026-11-20T00:00:00+08:00', expires_at: '2030-01-01T00:00:00+08:00' };
+  const result = store.pruneTransient(7);
+  assert.equal(existsSync(old), false);
+  assert.equal(existsSync(fresh), true);
+  assert.equal(result.expired_feeds, 1);
+  assert.equal(store.objects['raw/feeds/old.xml'].status, 'expired');
+  store.db.close();
+});
