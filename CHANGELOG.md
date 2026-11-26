@@ -1,5 +1,22 @@
 # 更新日志
 
+## ordinary-news-v2.7.35
+
+- 与四端同号；出刊逻辑无变化。
+
+## news-engine-v2.7.35
+
+- 依赖安全：用 `overrides` 把 `archiver` 链上的 `glob` 提到 `14.0.6`、`minimatch` 提到 `11.0.9`，清掉 Dependabot 的两条 moderate（`glob` 的 AbortSignal 取消绕过、`minimatch` 的 globparts 放大）。
+- 归档上传实际走 `archiver` 的 `zip.file()` 逐个追加，不经过 `glob` 匹配；已用真实 zip 流程验证产出正常，`npm ci` 可复现。
+
+## nas-dashboard-v2.7.35
+
+- 与四端同号；看板无变化。
+
+## subscription-web-v2.7.35
+
+- 与四端同号；订阅网页无变化。
+
 ## subscription-web-v2.7.34
 
 - 版本号与三端对齐为 2.7.34，纳入 `scripts/check-version.mjs` 的一致性检查；订阅网页本身无功能变化。

@@ -1,7 +1,7 @@
 {
   "name": "@everyday-tech-news/subscription-web",
   "private": true,
-  "version": "2.7.34",
+  "version": "2.7.35",
   "type": "module",
   "scripts": {
     "dev": "concurrently -k \"vite\" \"tsx server/dev.ts\"",

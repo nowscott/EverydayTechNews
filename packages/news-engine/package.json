@@ -1,6 +1,6 @@
 {
   "name": "@everyday-tech-news/news-engine",
-  "version": "2.7.34",
+  "version": "2.7.35",
   "private": true,
   "type": "module",
   "exports": "./src/ranking.ts",
@@ -24,5 +24,9 @@
     "fast-xml-parser": "5.12.1",
     "nodemailer": "10.6.1",
     "tar": "7.5.22"
+  },
+  "overrides": {
+    "glob": "^14.0.2",
+    "minimatch": "^11.0.1"
   }
 }
