@@ -8,15 +8,16 @@ import { titleExclusion, analyzeDomain, limitDomains } from '../src/editorial-po
 import { extractHnPublisher, hnPublisher } from '../src/hn-publishers.ts';
 import { fetchSource } from '../src/sources.ts';
 import { select } from '../src/editor.ts';
+import { snapshot } from './oracle.ts';
+const snapshotFile = fileURLToPath(new URL('./fixtures/parity-oracle.json', import.meta.url));
 const repo = fileURLToPath(new URL('../../../', import.meta.url));
-const python = process.env.PYTHON ?? (existsSync(repo + '.venv/bin/python') ? repo + '.venv/bin/python' : 'python3');
 const rules = JSON.parse(readFileSync(repo + 'config/news-filter.json', 'utf8'));
 
 test('ordinary and premium filters share every keyword and currency rule', () => {
   const titles = [...rules.keywords.flatMap((s: string) => [s + '发布新闻', s.toUpperCase() + '新品']),
     ...['3999 元', '3 万元', '9 千元', '12 亿美元', '30 日元', '€ 500', '$ 299', 'RM 99', '₽ 20', '2 万越南盾', '16GB 内存', '2000 亿元投资', '两家公司研发新芯片', 'Open source compiler release', 'WATCHGT update', 'aſcend update'].map(s => '新进展 ' + s)];
-  const reference = spawnSync(python, ['-c', 'import sys,json;sys.path.insert(0,sys.argv[1]+"/src");from news_filter import should_filter_news;print(json.dumps([should_filter_news(s) for s in json.load(sys.stdin)]))', repo], { input: JSON.stringify(titles), encoding: 'utf8' });
-  assert.equal(reference.status, 0, reference.stderr); assert.deepEqual(titles.map(s => !!titleExclusion(s)), JSON.parse(reference.stdout));
+  const expected = snapshot(snapshotFile, titles);
+  assert.deepEqual(titles.map(s => !!titleExclusion(s)), expected);
   assert.equal(titleExclusion('华为 nova 12 手机推 HarmonyOS 7 更新')?.reason, 'shared_filter_keyword');
 });
 test('one domain per article, bounded whole edition and top-five leads; cached translations are filtered too', () => {

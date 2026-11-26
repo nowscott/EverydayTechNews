@@ -48,25 +48,20 @@ function upgradeController(rootInput: string, tag: string): Record<string, unkno
       if (base.protectedWindow()) throw new Error('controller_upgrade_deferred_morning_window');
       const saved = path.join(managed, 'controller-backups', tag);
       fs.mkdirSync(saved, { recursive: false, mode: 0o700 });
-      const legacy = [['manage.py', path.join(directory, 'deploy/ordinary/manage.py')], ['base-manage.py', path.join(directory, 'deploy/nas/manage.py')]];
-      // NAS 侧可能已按计划删除 Python 控制器（2.7.12 起），备份只保留仍存在的文件。
-      for (const [name] of legacy) if (fs.existsSync(path.join(managed, name))) fs.copyFileSync(path.join(managed, name), path.join(saved, name));
+      // 旧 Python 控制器已从发布产物移除：升级前只备份 NAS 上残留的旧文件，不再从源码安装。
+      for (const name of ['manage.py', 'base-manage.py']) if (fs.existsSync(path.join(managed, name))) fs.copyFileSync(path.join(managed, name), path.join(saved, name));
       for (const name of ['manage.ts', 'base-manage.ts', 'controller.json', 'verify-state.ts']) {
         if (fs.existsSync(path.join(managed, name))) fs.copyFileSync(path.join(managed, name), path.join(saved, name));
       }
       try {
-        for (const [name, candidate] of legacy) {
-          const temp = path.join(managed, name + '.install');
-          fs.copyFileSync(candidate, temp); fs.renameSync(temp, path.join(managed, name));
-        }
         fs.copyFileSync(path.join(directory, 'deploy/ordinary/verify-state.ts'), path.join(managed, 'verify-state.ts.install'));
         fs.renameSync(path.join(managed, 'verify-state.ts.install'), path.join(managed, 'verify-state.ts'));
         writeTsController(managed, path.join(directory, 'deploy/ordinary'));
         const sha256 = (file: string) => fs.existsSync(file) ? crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex') : null;
         base.atomicWrite(path.join(managed, 'controller.json'), { source_sha: sha,
-          manage_sha256: sha256(path.join(managed, 'manage.py')), base_sha256: sha256(path.join(managed, 'base-manage.py')) });
+          manage_sha256: sha256(path.join(managed, 'manage.ts')), base_sha256: sha256(path.join(managed, 'base-manage.ts')) });
       } catch (error) {
-        for (const [name] of legacy) if (fs.existsSync(path.join(saved, name))) fs.copyFileSync(path.join(saved, name), path.join(managed, name));
+        for (const name of ['manage.py', 'base-manage.py']) if (fs.existsSync(path.join(saved, name))) fs.copyFileSync(path.join(saved, name), path.join(managed, name));
         for (const name of ['manage.ts', 'base-manage.ts', 'controller.json']) if (fs.existsSync(path.join(saved, name))) fs.copyFileSync(path.join(saved, name), path.join(managed, name));
         throw error;
       }
@@ -91,8 +86,6 @@ function install(rootInput: string, tag: string): Record<string, unknown> {
   fs.mkdirSync(data, { recursive: true, mode: 0o700 });
   for (const name of ['news_archive', 'archive-sync']) fs.mkdirSync(path.join(data, name), { recursive: true, mode: 0o700 });
   fs.mkdirSync(managed, { recursive: true, mode: 0o700 });
-  fs.copyFileSync(path.join(source, 'manage.py'), path.join(managed, 'manage.py'));
-  fs.copyFileSync(path.join(source, '../nas/manage.py'), path.join(managed, 'base-manage.py'));
   fs.copyFileSync(path.join(source, 'verify-state.ts'), path.join(managed, 'verify-state.ts'));
   writeTsController(managed, source);
   base.atomicWrite(path.join(managed, 'config.json'), { component: 'ordinary-news', manifest: 'deploy/ordinary/release.json',
@@ -134,8 +127,8 @@ function install(rootInput: string, tag: string): Record<string, unknown> {
   const written = spawnSync('crontab', ['-'], { input: lines, encoding: 'utf8' });
   if (written.status !== 0) throw new Error('crontab_write_failed:' + String(written.stderr ?? '').slice(-120));
   base.atomicWrite(path.join(managed, 'controller.json'), { source_sha: sha,
-    manage_sha256: crypto.createHash('sha256').update(fs.readFileSync(path.join(managed, 'manage.py'))).digest('hex'),
-    base_sha256: crypto.createHash('sha256').update(fs.readFileSync(path.join(managed, 'base-manage.py'))).digest('hex') });
+    manage_sha256: crypto.createHash('sha256').update(fs.readFileSync(path.join(managed, 'manage.ts'))).digest('hex'),
+    base_sha256: crypto.createHash('sha256').update(fs.readFileSync(path.join(managed, 'base-manage.ts'))).digest('hex') });
   return { status: 'installed_shadow', tag, sha, ordinary_legacy_actions_unchanged: true };
 }
 

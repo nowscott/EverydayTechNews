@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -7,21 +6,7 @@ import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
 import { ledger } from '../src/controller/ledger.ts';
 
-const PYTHON_LEDGER = `
-import hashlib, json, sqlite3, sys
-path = sys.argv[1]
-if not __import__('os').path.exists(path):
-    print(hashlib.sha256(b'empty').hexdigest()); raise SystemExit
-digest = hashlib.sha256()
-with sqlite3.connect('file:' + path + '?mode=ro', uri=True) as db:
-    for table in ['issues', 'deliveries']:
-        digest.update((table + chr(0)).encode())
-        for row in db.execute('SELECT * FROM ' + table + ' ORDER BY id'):
-            digest.update((json.dumps(row, separators=(',', ':')) + chr(10)).encode())
-print(digest.hexdigest())
-`;
-
-test('ledger hash matches the Python controller byte for byte', () => {
+test('ledger hash stays byte-identical to the frozen controller contract', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'etn-ledger-'));
   const file = path.join(dir, 'state.sqlite3');
   const db = new DatabaseSync(file);
@@ -34,8 +19,7 @@ test('ledger hash matches the Python controller byte for byte', () => {
   insertDelivery.run(1, 1, 'a@example.com', null);
   db.close();
 
-  const ts = ledger(file);
-  const py = execFileSync('python3', ['-c', PYTHON_LEDGER, file], { encoding: 'utf8' }).trim();
-  assert.equal(ts, py);
+  // 冻结自旧控制器（Python 版）的逐字节输出：账本口径一变就会失配，用于拦截兼容性回归。
+  assert.equal(ledger(file), 'c877daf12713a285d558367a2d681819e20dbf7341054e465a83f1d47bb4632b');
   assert.equal(ledger(path.join(dir, 'missing.sqlite3')), '2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d');
 });

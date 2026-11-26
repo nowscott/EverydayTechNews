@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-/** NAS 高级版发布控制器（TS 版），与 deploy/nas/manage.py 行为对齐。 */
+/** NAS 高级版发布控制器（TS 版）；旧 Python 版 `manage.py` 已撤除，行为口径以本文件为准。 */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { DatabaseSync } from 'node:sqlite';
 
 export const REPO = 'nowscott/EverydayTechNews';
 const SHANGHAI_OFFSET_MS = 8 * 3600 * 1000;
@@ -156,6 +157,29 @@ export function copyTree(source: string, destination: string, ignore: (name: str
     else if (entry.isSymbolicLink()) fs.symlinkSync(fs.readlinkSync(from), to);
     else { fs.copyFileSync(from, to); fs.chmodSync(to, fs.statSync(from).mode & 0o777); }
   }
+}
+
+/**
+ * 用 SQLite 自己的 VACUUM INTO 做一致性副本：直接复制文件可能拿到写了一半的库（WAL/回滚日志期间尤甚）。
+ * 目标文件必须不存在。
+ */
+export function vacuumInto(source: string, destination: string): void {
+  const db = new DatabaseSync(source, { readOnly: true });
+  try { db.exec("VACUUM INTO '" + destination.replace(/'/g, "''") + "'"); } finally { db.close(); }
+}
+
+/** 账本主库的原始行指纹（calls/issues），用来比较「在线库」与「备份里的副本」是不是同一份。 */
+export function primaryLedgerDigest(file: string): string | null {
+  if (!fs.existsSync(file)) return null;
+  const db = new DatabaseSync(file, { readOnly: true });
+  const digest = crypto.createHash('sha256');
+  try {
+    for (const table of ['calls', 'issues']) {
+      digest.update(table + '\0');
+      for (const row of db.prepare('SELECT * FROM ' + table + ' ORDER BY id').iterate()) digest.update(JSON.stringify(row) + '\n');
+    }
+    return digest.digest('hex');
+  } finally { db.close(); }
 }
 
 export function compatible(manifest: Record<string, unknown>, schema: unknown, component = 'news-engine'): boolean {
@@ -329,8 +353,11 @@ export class Controller {
     return crypto.createHash('sha256').update(pythonJson(payload, true)).digest('hex');
   }
 
+  /** 备份与校验用的状态快照。SQLite 是主库，必须一起带走：只靠 state.json 会漏掉上次完整 checkpoint 之后的费用与冻结刊物。 */
   snapshot(destination: string): void {
     copyTree(this.data, destination, (name) => name === 'pool.lock' || name.startsWith('state.sqlite3'));
+    const source = path.join(this.data, 'state.sqlite3');
+    if (fs.existsSync(source)) vacuumInto(source, path.join(destination, 'state.sqlite3'));
   }
 
   source(tag: string): { sha: string; directory: string } {
@@ -404,6 +431,8 @@ export class Controller {
       return withLock(path.join(this.data, this.config.state_lock || 'pool.lock'), true, () => {
         const state = this.state();
         const before = this.ledger();
+        // 在线主库指纹要在快照之前取：快照里的副本必须与它一致，否则备份丢的正是上次 03:00 之后的账本。
+        const livePrimary = primaryLedgerDigest(path.join(this.data, 'state.sqlite3'));
         const identifier = shanghai().replace(/[-:]/g, '').replace('T', 'T').replace('+08:00', '');
         const backup = path.join(this.root, 'backups', identifier);
         fs.mkdirSync(backup, { recursive: true, mode: 0o700 });
@@ -412,6 +441,9 @@ export class Controller {
           this.progress('backup', { pending: candidate.tag });
           const snapshot = path.join(temp, 'data');
           this.snapshot(snapshot);
+          const copiedPrimary = primaryLedgerDigest(path.join(snapshot, 'state.sqlite3'));
+          if (livePrimary && !copiedPrimary) throw new Error('backup_missing_primary_store');
+          if (livePrimary !== copiedPrimary) throw new Error('backup_primary_store_stale');
           fs.chmodSync(snapshot, 0o700);
           this.command(['tar', '-czf', path.join(backup, 'state.tar.gz'), '-C', temp, 'data'], { capture: false });
           this.progress('validate_candidate', { pending: candidate.tag });
@@ -530,12 +562,12 @@ export class Controller {
         'release_requires_manual_data_migration', 'image_provenance_mismatch'].includes((error as Error).message)
         ? (error as Error).message : ((error as Error).message || (error as Error).name);
       const current = this.state();
-      // CI 尚未跑完、GitHub API 抖动属于可重试的瞬时状态，不能把版本永久拉黑。
-      if (!['release_main_checks_not_passed', 'github_api_unavailable'].includes(reason)) {
+      // CI 尚未跑完、GitHub API 抖动、校验期间恰好有写操作，都属于可重试的瞬时状态，不能把版本永久拉黑。
+      if (!['release_main_checks_not_passed', 'github_api_unavailable', 'backup_primary_store_stale'].includes(reason)) {
         current.blocked[tag] = reason;
         atomicWrite(this.statePath, current);
       }
-      return this.event('deployment_failed', { pending: tag, reason, retryable: ['release_main_checks_not_passed', 'github_api_unavailable'].includes(reason), active: current.active });
+      return this.event('deployment_failed', { pending: tag, reason, retryable: ['release_main_checks_not_passed', 'github_api_unavailable', 'backup_primary_store_stale'].includes(reason), active: current.active });
     }
   }
 

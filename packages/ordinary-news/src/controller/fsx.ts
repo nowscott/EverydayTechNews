@@ -1,4 +1,4 @@
-/** 文件原语：读取 JSON、原子写、进程互斥。与 deploy/nas/manage.py 的 read/atomic/lock 对齐。 */
+/** 文件原语：读取 JSON、原子写、进程互斥。 */
 import fs from 'node:fs';
 import path from 'node:path';
 

@@ -1,4 +1,4 @@
-/** 版本与时间窗口：与 deploy/nas/manage.py 的 version/choose/protected 保持一致。 */
+/** 版本与时间窗口：版本号选择、晨间保护窗口。 */
 export type Triple = [number, number, number];
 
 export function version(tag: string | undefined, prefix: string): Triple | null {

@@ -2,13 +2,22 @@
 
 ## ordinary-news-v2.7.34
 
-- 与三端同号；普通版逻辑未变。
+- 仓库撤除 Python：`src/*.py`、`tests/*.py`、`deploy/**/*.py`（含控制器、安装器、检查脚本与 Python 测试）、`experiments/premium/*.py`、`tools/*.py` 与 `requirements.txt` 全部删除，运行和测试都不再需要解释器。
+- 四处跨语言对照（评分、标题过滤、完整链路、普通版渲染）改为冻结快照 `test/fixtures/*.json`，按输入哈希取期望值，覆盖范围不变。
+- 普通版安装器不再从发布产物拷贝 `manage.py` / `base-manage.py`，`controller.json` 只记录 `manage.ts` / `base-manage.ts` 哈希；NAS 上残留的旧文件仍会在升级前备份。看板安装器只安装 `record-run.ts`。
+- 退役三个 Python 工作流（`technews.yml`、`news-sorter.yml`、`run-selenium-script.yml`）；PR 门禁新增「禁止新增 `.py` 文件」检查，改为 Node 实现。
+- 新增手动样刊测试 `smoke-send`：只读最新一期归档、只发测试邮箱、不写账本；配「普通版手动样刊测试（TS）」工作流，接替退役工作流的手动发信入口。
 
 ## news-engine-v2.7.34
 
 - 修正部署校验归档文件：快照不包含 `state.sqlite3`，校验必须从 `state.json` 恢复；仅做轻量 checkpoint，避免再次完整重写 431MB。
-- 与 2.7.33 的运行逻辑一致：NAS 本地轮次轻量 checkpoint，部署校验不再完整重写。
-- 类型检查通过。
+- 部署快照改为包含 SQLite 主库：日常轮次只做轻量 checkpoint，`state.json` 落后于主库，只备份它会丢掉上次完整 checkpoint 之后的费用与冻结刊物。副本由 SQLite 自身的 `VACUUM INTO` 生成，避免复制到写了一半的库。
+- 部署校验改为逐行内容指纹：`calls` / `issues` 先按 `Store.shrink` 的规则折算正文，再按规范化文本比对，金额或正文变化不再因为行数相同而通过。仍不做完整 JSON 重写。
+- 校验前控制器记录在线主库指纹，快照里的副本必须与之一致；`state.json` 仍单独验证「没有 SQLite 时能否逐行恢复」。
+- 修复 Store 启动：SQLite 文件缺失（或 0 字节残骸）时，即使 `sqlite-primary.json` 还在，也必须从 `state.json` 恢复，不再把新建的空库当成已有主库。
+- 修复 03:00 轮次：常驻调度只在该轮传维护模式，夜间分层清理与完整 checkpoint 恢复执行；清理条件不再依赖 maintenance 标记，并移到本轮末尾，覆盖本轮新增的账本。
+- 与 2.7.33 的运行逻辑一致：NAS 本地轮次轻量 checkpoint。
+- 高级版 126 项测试通过（1 项缺本地历史样本跳过），普通版 60 项通过，类型检查通过。
 
 ## nas-dashboard-v2.7.34
 

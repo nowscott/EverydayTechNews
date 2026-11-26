@@ -7,9 +7,16 @@ import { compose, deliver, recover } from './delivery.ts';
 import { report, tick, shadowGate, exportArchive } from './runtime.ts';
 import { resolveSubscribers } from './subscribers.ts';
 import { safeError } from './core.ts';
+import { smokeSend } from './smoke.ts';
 const [operation,...args]=process.argv.slice(2);const index=args.indexOf('--data');const root=resolve(index>=0?args[index+1]:'ordinary_data');
-if(!['init','collect','rank','compose','deliver','report','run','gate','export','sync-subscribers'].includes(operation))throw new Error('ordinary_operation_invalid');
+if(!['init','collect','rank','compose','deliver','report','run','gate','export','sync-subscribers','smoke-send'].includes(operation))throw new Error('ordinary_operation_invalid');
 if(args.length&&!(args.length===2&&index===0&&args[1]))throw new Error('ordinary_arguments_invalid');
+// 手动样刊测试不碰账本、不需要私有目录权限，因此在打开 Store 之前直接返回。
+if(operation==='smoke-send') {
+  try { console.log(JSON.stringify(await smokeSend(root,process.env,process.env.ORDINARY_SMOKE_DRY!=='1'))); }
+  catch(error) { console.error(JSON.stringify({error:safeError(error)})); process.exitCode=1; }
+  process.exit(process.exitCode??0);
+}
 mkdirSync(root,{recursive:true,mode:0o700});let localLock:string|undefined;
 if(!process.env.ORDINARY_FLOCKED) {
   if(process.platform==='linux') {const r=spawnSync('flock',['-x',root+'/runtime.lock',process.execPath,...process.argv.slice(1)],{stdio:'inherit',env:{...process.env,ORDINARY_FLOCKED:'1'}});process.exit(r.status??1);}

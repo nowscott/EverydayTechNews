@@ -1,4 +1,4 @@
-/** 普通版账本哈希：与 deploy/ordinary/manage.py 的 ledger() 逐字节一致。 */
+/** 普通版账本哈希：按 id 逐行规范化 JSON 摘要；口径由冻结快照守住。 */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';

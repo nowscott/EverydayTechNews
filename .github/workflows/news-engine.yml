@@ -7,7 +7,6 @@ on:
       - '.dockerignore'
       - 'packages/news-engine/**'
       - 'packages/news-common/**'
-      - 'experiments/premium/ranking.py'
       - 'experiments/premium/editorial.json'
       - 'experiments/premium/**'
       - 'config/news-filter.json'
@@ -18,7 +17,6 @@ on:
       - '.dockerignore'
       - 'packages/news-engine/**'
       - 'packages/news-common/**'
-      - 'experiments/premium/ranking.py'
       - 'experiments/premium/editorial.json'
       - 'experiments/premium/**'
       - 'config/news-filter.json'
@@ -41,18 +39,10 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: packages/news-engine/package-lock.json
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.14'
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: python -m pip install -r ../../requirements.txt
-      - run: python -m unittest discover -s ../../tests -v
       - run: npm run typecheck
       - run: npm test
-        env:
-          PYTHON: python
 
-      - run: python -m unittest discover -s ../../deploy/nas/tests -v
       - run: docker build -f ../../deploy/nas/Dockerfile ../.. -t news-engine-ci
       - name: Verify runtime does not require Python
         run: docker run --rm --network none --entrypoint sh news-engine-ci -c '! command -v python && ! command -v python3'

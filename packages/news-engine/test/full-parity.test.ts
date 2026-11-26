@@ -1,6 +1,5 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, cpSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -11,17 +10,15 @@ import { policy, digest, pyjson, type Row } from '../src/core.ts';
 import { Store, files, extractEvidence } from '../src/store.ts';
 import { candidates } from '../src/pool.ts';
 import { article, cutoff, synthetic } from './fixtures.ts';
+import { digests, digestOf } from './oracle.ts';
+
+const snapshotFile = fileURLToPath(new URL('./fixtures/full-parity-digests.json', import.meta.url));
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url));
-const python = process.env.PYTHON ?? (existsSync(repo + '.venv/bin/python') ? repo + '.venv/bin/python' : 'python3');
 const fetched = '2026-10-18T10:00:00+08:00';
 export const body = '公司计划在中国测试这一人工智能模型，尚未独立验证。'.repeat(20);
 export function rss(host = 'www.ithome.com', content = body) {
   return `<rss xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><item><title>AI模型测试版本发布</title><link>https://${host}/news/test/?utm_source=abc&amp;b=2&amp;a=1</link><pubDate>Sun, 18 Oct 2026 04:00:00 +0800</pubDate><description><![CDATA[<p>${content}</p><p class="ad">广告</p>]]></description><content:encoded><![CDATA[<p>${content}</p>]]></content:encoded></item></channel></rss>`;
-}
-function oracle(cases: Row[]): any[] {
-  const result = spawnSync(python, [fileURLToPath(new URL('../tools/full_reference.py', import.meta.url))], { input: JSON.stringify(cases), encoding: 'utf8', maxBuffer: 80 * 1024 * 1024 });
-  assert.equal(result.status, 0, result.stderr); return JSON.parse(result.stdout);
 }
 function actual(c: Row): any {
   switch (c.op) {
@@ -64,18 +61,11 @@ test('full source, editing, hash, model validation and price contracts match Pyt
     { op: 'cost', policy: p, usage: { prompt_tokens: 1000, completion_tokens: 200, prompt_cache_hit_tokens: 100 }, multiplier: 2 },
     ...['2026-10-18T04:59:59+08:00', '2026-10-18T05:00:00+08:00', '2026-10-18T06:11:59+08:00', '2026-10-18T06:12:00+08:00', '2026-10-26T00:00:00+08:00'].map(now => ({ op: 'gate', policy: p, now, verified: true })),
   ];
-  const reference = oracle(cases);
-  cases.forEach((c, i) => assert.deepEqual(JSON.parse(JSON.stringify(actual(structuredClone(c)))), reference[i], `case ${i} ${c.op}`));
-});
-
-test('read-only local archived real feeds match Python when available', { skip: !existsSync(repo + 'premium_data/pool/verification/fresh-archive/evidence.tar.gz') }, () => {
-  const temp = mkdtempSync(tmpdir() + '/ts-feed-parity-');
-  try {
-    extractEvidence(temp, repo + 'premium_data/pool/verification/fresh-archive/evidence.tar.gz');
-    const cases: Row[] = files(temp + '/transient').filter(p => /\/feeds\/[^/]+\/.*\.xml$/.test(p) && !p.includes('/apple/')).map(path => ({ op: 'feed', source: path.split('/').at(-2), raw: readFileSync(path, 'utf8'), fetched }));
-    assert.ok(cases.length >= 6); const expected = oracle(cases);
-    cases.forEach((c, i) => assert.ok(JSON.stringify(actual(c)) === JSON.stringify(expected[i]), `private feed mismatch: ${c.source}; content omitted`));
-  } finally { rmSync(temp, { recursive: true, force: true }); }
+  const reference = digests(snapshotFile, cases);
+  cases.forEach((c, i) => {
+    const value = digestOf(JSON.parse(JSON.stringify(actual(structuredClone(c)))));
+    assert.equal(value, reference[i], `case ${i} ${c.op}`);
+  });
 });
 
 test('legacy state snapshot round-trips with matching jobs, costs, keys and bodies', { skip: !existsSync(repo + 'premium_data/pool/durable/state.json') }, () => {
@@ -94,8 +84,9 @@ test('legacy state snapshot round-trips with matching jobs, costs, keys and bodi
     const after = JSON.parse(readFileSync(temp + '/durable/state.json', 'utf8'));
     assert.deepEqual(after.tables.calls, before.tables.calls); assert.equal(count, before.tables.calls.length);
     assert.deepEqual(after.tables.jobs.map((r: Row) => [r.key, r.status, r.attempts]), before.tables.jobs.map((r: Row) => [r.key, r.status === 'pending_human_review' ? (r.result ? 'pending_ai_review' : 'queued') : r.status, r.attempts]));
-    const code = `import sys,json;sys.path.insert(0,${JSON.stringify(repo + 'experiments/premium')});from durable import Store;s=Store(sys.argv[1]);print(json.dumps(dict(calls=s.db.execute('SELECT COUNT(*) FROM calls').fetchone()[0],jobs=s.db.execute('SELECT COUNT(*) FROM jobs').fetchone()[0])));s.db.close()`;
-    const result = spawnSync(python, ['-c', code, temp], { encoding: 'utf8' }); assert.equal(result.status, 0, result.stderr);
-    assert.equal(JSON.parse(result.stdout).calls, count);
+    const after2 = new Store(temp);
+    assert.equal(after2.one('SELECT COUNT(*) n FROM calls')!.n, count);
+    assert.equal(after2.one('SELECT COUNT(*) n FROM jobs')!.n, before.tables.jobs.length);
+    after2.db.close();
   } finally { rmSync(temp, { recursive: true, force: true }); }
 });

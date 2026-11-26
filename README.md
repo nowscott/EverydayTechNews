@@ -27,7 +27,7 @@
 
 因为不想暴露我的个人邮箱，所以真正每天在运行的工具在另外一个私有库中，本项目的目的在于帮助同样有这个需求的朋友们搭建这样一个小工具。
 
-当前主线已经迁移到 TypeScript（Node 24）：普通版出刊、高级版引擎与 NAS 工作台均为 TS，Python 只作为离线对照、发布控制与历史实现保留。
+整条链路都是 TypeScript（Node 24）：普通版出刊、高级版引擎与 NAS 工作台均为 TS。旧 Python 实现、Python 测试与发布脚本已于 2026-11-26 移除，仓库不再包含任何 `.py` 文件，运行和测试都不需要 Python。
 
 ### 代码结构
 
@@ -37,7 +37,6 @@
 - `apps/nas-dashboard`：NAS 局域网只读工作台，统一查看普通版/高级版的新闻、AI处理、评分、费用、邮件与调度；[部署说明](deploy/dashboard/README.md)
 - `apps/subscription-web`：React + Tailwind CSS 订阅网页与 Vercel API
 - `deploy/ordinary`、`deploy/nas`：版本控制器、发布/回退、三天观察与切换工具；[普通版说明](deploy/ordinary/README.md)
-- `src/*.py`：旧 Python 发送实现，保留作离线对照与 fork 兼容，不再是线上出刊路径（邮件入口 `src/main.py`、文案 `notifications.ini`）
 
 ## 工具部署
 
@@ -126,7 +125,7 @@ Notion 数据库需要包含 `Name`、`Email` 和 `状态` 三列，状态选项
 
 独立实验入口、运行和审阅说明见 [experiments/premium/README.md](experiments/premium/README.md)。新增持久化新闻池、独立采集/评分/精编/组稿/测试投递阶段，目标5条重点＋10～15条短讯；五项兴趣同级加权，正文和原始响应单独保存90天。普通版行为不变，测试收件人由Notion高级内测标记管理；已有20篇旧版真实模型样本，新版双长度API、人工事实审阅和七天试刊分别验证，未部署生产。
 
-高级订阅的TypeScript完整引擎位于 [packages/news-engine](packages/news-engine/README.md)，包含采集、编辑、模型预算、持久化、组稿、投递和90天归档，以及Python对照和故障测试。私有内测通过Notion的高级订阅及高级内测标记选择收件人，普通订阅不变；部署状态见[迁移记录](packages/news-engine/MIGRATION.md)。[第一批评分测速](packages/news-engine/PERFORMANCE.md)不代表完整链路提速。
+高级订阅的TypeScript完整引擎位于 [packages/news-engine](packages/news-engine/README.md)，包含采集、编辑、模型预算、持久化、组稿、投递和90天归档，以及跨版本对照快照和故障测试。私有内测通过Notion的高级订阅及高级内测标记选择收件人，普通订阅不变；部署状态见[迁移记录](packages/news-engine/MIGRATION.md)。[第一批评分测速](packages/news-engine/PERFORMANCE.md)不代表完整链路提速。
 
 ## 架构：NAS 自主调度（已脱离 GitHub Actions 定时）
 
@@ -139,11 +138,11 @@ Notion 数据库需要包含 `Name`、`Email` 和 `状态` 三列，状态选项
 | 任务 | 频率 | 作用 |
 |---|---|---|
 | 常驻调度服务 `scheduler`（容器 `etn-ordinary-scheduler`，镜像内 `scheduler.ts`） | 05:00–09:59 每 2 分钟，其余时段 :07/:37 | 进程内直接执行 tick，采集、冻结、投递，06:30 起发 |
-| `manage.py update` | 每小时 :17 | 检查正式 Release，固定提交与镜像摘要后自动部署 |
-| `manage.py sync` | 每天 06:40 / 08:40 / 12:40 / 20:40 | 把 `news_archive/YYYY-MM/DD.md` 增量推到本仓库 |
-| `manage.py scheduler-up`（看门狗） | 每 10 分钟 | 只保证调度容器在跑；已在运行时不重启 |
+| `manage.ts update` | 每小时 :17 | 检查正式 Release，固定提交与镜像摘要后自动部署 |
+| `manage.ts sync` | 每天 06:40 / 08:40 / 12:40 / 20:40 | 把 `news_archive/YYYY-MM/DD.md` 增量推到本仓库 |
+| `manage.ts scheduler-up`（看门狗） | 每 10 分钟 | 只保证调度容器在跑；已在运行时不重启 |
 
-从 2.7.2 起出刊不再"到点起一个一次性容器"，而是由常驻进程按同一套时间表在进程内调用；省掉每轮约 0.3 秒的容器创建，也不会再有分钟级排队抖动。手动 `manage.py run` 会先停常驻调度、跑完再拉起，避免两路同时写状态。
+从 2.7.2 起出刊不再"到点起一个一次性容器"，而是由常驻进程按同一套时间表在进程内调用；省掉每轮约 0.3 秒的容器创建，也不会再有分钟级排队抖动。手动 `manage.ts run` 会先停常驻调度、跑完再拉起，避免两路同时写状态。
 
 GitHub 在切换后只承担两件事：源码与 Release 的版本记录、公开新闻归档的存放。**出刊链路不依赖 GitHub 可用性**——归档推送失败不影响出刊（`archive_sync` 会在报告中标记失败原因并保留积压）。
 

@@ -3,7 +3,7 @@
 ## 首次安装
 
 1. 在 NAS 上准备本版本源码，构建固定镜像：`docker build -f deploy/dashboard/Dockerfile -t everyday-tech-news-dashboard:1.0.0 .`。如使用已验证的本地 Node 24 镜像，传 `--build-arg NODE_IMAGE=<已核对镜像ID的本地标签>`；构建前后确认该标签的镜像ID不变，记录基础镜像ID和最终镜像ID。镜像不含业务状态、SMTP/模型密钥或管理密码。
-2. 用镜像ID安装：`python3 deploy/dashboard/install.py --root /vol3/1000/Docker/everydaytechnews-dashboard --image sha256:... --bind 192.168.31.10 --source-commit <源码版本与构建归档SHA256>`。默认3080端口，冲突时安装在修改前退出，可指定 `--port`。安装目录必须不存在。
+2. 用镜像ID安装：`node deploy/dashboard/install.ts --root /vol3/1000/Docker/everydaytechnews-dashboard --image sha256:... --bind 192.168.31.10 --source-commit <源码版本与构建归档SHA256>`。默认3080端口，冲突时安装在修改前退出，可指定 `--port`。安装目录必须不存在。
 3. 安装器读取两个控制器配置来确定数据位置，但不把这些配置复制给网页。Compose只读挂载业务目录、看板运行记录和仅含版本信息的部署投影。网页密码哈希独立生成，不读取业务环境文件。
 4. 先启动并等待看板健康，再给现有三条 run 调度命令加观察包装。其余 update、sync、health 调度保持原样；不立即执行任何业务任务。原 crontab 完整保存在看板目录 crontab-before.txt；观察记录在下一次自然调度出现。
 5. 初始密码在看板目录 initial-password.txt，权限0600；dashboard.env仅含哈希。用户用局域网地址登录。安装器仅打印密码文件位置，不打印密码。
@@ -16,7 +16,7 @@
 
 ## 调度观察
 
-record-run.py 用独立的非阻塞锁避免重叠，原业务锁仍保留。开始/结束/退出码原子写入看板自己的runtime目录。杀死观察器造成的旧running记录在45分钟后显示未知；不接管、恢复或重试业务。观察器文件、配置和运行记录不得放入受发布控制器完整性检查的业务源码目录。
+record-run.ts 用独立的非阻塞锁避免重叠，原业务锁仍保留。开始/结束/退出码原子写入看板自己的runtime目录。杀死观察器造成的旧running记录在45分钟后显示未知；不接管、恢复或重试业务。观察器文件、配置和运行记录不得放入受发布控制器完整性检查的业务源码目录。
 
 运行记录不含命令参数、密钥或业务stdout。每个任务一个文件，长期保留，不自动删除；接口只按所选日期读取、分页返回。控制器版本变动会在下一轮自然任务时刷新脱敏部署投影；版本投影失败清空身份，不沿用旧版本冒充当前版本。
 
@@ -34,9 +34,9 @@ record-run.py 用独立的非阻塞锁避免重叠，原业务锁仍保留。开
 
 安装器自 2.7.9 起为 `install.ts`：`--image` 必须是 `sha256:` digest，安装前校验镜像 digest、镜像内版本与源码版本一致、业务数据存在、调度 cron 存在；同名 compose 项目已被占用时拒绝安装。`--check` 可只校验不创建。
 
-运行记录器自 2.7.8 起为 `record-run.ts`（宿主 Node 执行，`--disable-warning=ExperimentalWarning`），用法与 `record-run.py` 相同；Python 版保留为回退，两者输出字段与退出码一致（`test_record_run_ts.py` 对照）。
+运行记录器自 2.7.8 起为 `record-run.ts`（宿主 Node 执行，`--disable-warning=ExperimentalWarning`）；Python 版 `record-run.py` 已随 2.7.34 撤除，只有 `.ts` 一份。
 
-测试：`npm test --prefix apps/nas-dashboard`、`npm run build --prefix apps/nas-dashboard`、`python3 -m unittest discover -s deploy/dashboard -p 'test_*.py'`。
+测试：`npm test --prefix apps/nas-dashboard`、`npm run build --prefix apps/nas-dashboard`。部署脚本的 Python 测试已随撤除删除。
 
 
 ## 采集架构（2.7.16 起）

@@ -115,7 +115,7 @@ function install(args: Args): Record<string, unknown> {
   for (const name of ['auth', 'runtime/ordinary', 'runtime/premium', 'deployment/ordinary', 'deployment/premium', 'bodies', 'snapshots']) {
     fs.mkdirSync(path.join(root, name), { recursive: true, mode: 0o700 });
   }
-  for (const name of ['compose.yaml', 'record-run.ts', 'record-run.py']) {
+  for (const name of ['compose.yaml', 'record-run.ts']) {
     const from = path.join(source, name);
     if (fs.existsSync(from)) fs.copyFileSync(from, path.join(root, name));
   }
@@ -140,9 +140,10 @@ function install(args: Args): Record<string, unknown> {
   run([...compose, 'config', '--quiet']);
   run([...compose, 'up', '-d', '--wait', '--wait-timeout', '90']);
 
-  const useTs = fs.existsSync(path.join(root, 'record-run.ts')) && fs.existsSync(NODE_BIN);
-  const binary = useTs ? NODE_BIN + ' --disable-warning=ExperimentalWarning' : '/usr/bin/python3';
-  const tool = useTs ? 'record-run.ts' : 'record-run.py';
+  // 运行记录器只保留 TS 版；镜像里没有 python 解释器。
+  if (!fs.existsSync(path.join(root, 'record-run.ts')) || !fs.existsSync(NODE_BIN)) fail('record_runner_missing');
+  const binary = NODE_BIN + ' --disable-warning=ExperimentalWarning';
+  const tool = 'record-run.ts';
   let patched = cron.split('\n').map((line) => {
     for (const [component, managed] of [['ordinary', args.ordinaryManaged], ['premium', args.premiumManaged]] as const) {
       if (!(line.includes(managed + '/manage.py') || line.includes(managed + '/manage.ts')) || !line.includes(' run ') || line.includes('record-run.')) continue;
