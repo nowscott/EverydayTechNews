@@ -4,13 +4,17 @@ import { Store, files } from './store.ts';
 import { atomic, read, pyjson, digest, policy, trial, active, stamp, day, localParts, at, trialDeadline, RECIPIENT, type Row } from './core.ts';
 import { preferences, VERSION } from './ranking.ts';
 import { duplicate, select } from './editor.ts';
-import { pricingDeadline, cacheKey, paidRequest, validate, inspectRules, gate } from './model.ts';
+import { pricingDeadline, cacheKey, paidRequest, validate, inspectRules, gate, type PaidDependencies } from './model.ts';
 import { fetchSource, mapLimit, SOURCES } from './sources.ts';
+import { contentAdmission } from './content-admission.ts';
 import { limitDomains, analyzeDomain, titleExclusion, articleExclusion, publisherCapacityReached } from './editorial-policy.ts';
 import { ACTIVE_SOURCES } from './constants.ts';
 import { reviewDraft, reviewSampleDraft, prepareRevision } from './review.ts';
 import { isApproved, reviewKey } from './quality.ts';
 import { freezeIssue, sendOnce, type DeliveryDeps } from './mail.ts';
+
+/** 这些状态是全局阻断：预算、凭据、价格规则、许可到期。单篇问题（正文不足、待审核、退避）不属于此类。 */
+export const GLOBAL_BLOCKS = ['budget_exhausted', 'billing_period_changed', 'missing_api_key', 'official_rules_unconfirmed', 'rules_expired_or_future', 'test_permit_expired', 'trial_expired'];
 
 export function rows(store: Store, cutoff = stamp()): Row[] {
   const last = new Map(store.all('SELECT id,fingerprint,MAX(observed_at) observed FROM observations WHERE observed_at<=? GROUP BY id,fingerprint', cutoff).map(r => [r.id + '\0' + r.fingerprint, r.observed]));
@@ -155,7 +159,9 @@ export async function enrich(store: Store) {
   for (const job of jobs) {
     if (invoked >= batchSize) break;
     if (!attempted.has(job.key) && attempted.size >= Number(preferences().new_versions_per_day)) continue;
-    const candidate = eligible.find(a => cacheKey(a, p) === job.key)!; const a: Row = { ...candidate, revision_feedback: JSON.parse(job.article).revision_feedback }; if (!a.text || a.evidence_expired_or_missing) continue;
+    const candidate = eligible.find(a => cacheKey(a, p) === job.key)!; const a: Row = { ...candidate, revision_feedback: JSON.parse(job.article).revision_feedback };
+    const admission = contentAdmission(a);
+    if (admission) { statuses.push({ job: job.key, status: admission }); continue; }
     const completed = recordsReady(store, eligible, deadline, [], false);
     if (publisherCapacityReached(a, completed, 3)) continue;
     if (publisherDraftCapacityReached(store, a, eligible, deadline)) continue;
@@ -241,7 +247,7 @@ export function samplePath(root: string, revision: SampleRevision = 'initial') {
   if (revision === 'makeup') return root + '/durable/ts-launch-makeup-' + day() + '.json';
   return root + (revision === 'initial' ? '/durable/ts-launch.json' : '/durable/ts-launch-' + revision + '.json');
 }
-export async function launchSample(store: Store, revision: SampleRevision = 'initial') {
+export async function launchSample(store: Store, revision: SampleRevision = 'initial', deps: PaidDependencies = {}) {
   if (!store.authoritative) throw new Error('launch_requires_authoritative_private_git');
   const t = trial(store.root); if (!t.enabled || !t.model_enabled || Date.now() >= trialDeadline(t)) return { status: 'trial_or_model_disabled_or_expired' };
   const path = samplePath(store.root, revision); const p = policy();
@@ -255,51 +261,80 @@ export async function launchSample(store: Store, revision: SampleRevision = 'ini
   }
   const spec = store.expand(read(path)); const out = store.root + '/issues/' + spec.id + '/edition.json'; if (existsSync(out)) return read(out);
   const permit = { mode: 'internal_test_anytime', issue_id: spec.id, expires_at: spec.generation_cutoff }; const attempted = attemptedVersions(store);
+  const callsBefore = store.one('SELECT COUNT(*) n FROM calls')!.n;
+  const report: Row = { sample: spec.id, revision, started_at: stamp(), scanned: 0, admitted: 0, skipped: {}, drafts: 0, reviewed: 0,
+    approved: 0, edition_review: 'edition_pool_insufficient', stop: null, terminal: null };
+  const skip = (reason: string) => { report.skipped[reason] = (report.skipped[reason] ?? 0) + 1; };
   const initialPool = recordsReady(store, spec.articles, spec.generation_cutoff, [], false);
-  if (shouldAuditPool(initialPool.length, spec.generation_cutoff))
-    await reviewEdition(store, initialPool, p, spec.generation_cutoff, permit);
-  processing: for (const a of spec.articles) {
-    // Reuse all valid accumulated drafts before paying for any missing ones.
-    if (recordsReady(store, spec.articles, spec.generation_cutoff, [], false).length >= Number(preferences().candidate_target)
-      && recordsReady(store, spec.articles, spec.generation_cutoff, []).length >= Number(preferences().edition_maximum)) break;
+  if (shouldAuditPool(initialPool.length, spec.generation_cutoff)) {
+    const audit = await reviewEdition(store, initialPool, p, spec.generation_cutoff, permit, deps); report.edition_review = audit.status;
+  }
+  for (const a of spec.articles) {
+    report.scanned++;
+    // 全局阻断（预算、凭据、规则、许可）之后不再发起任何新请求，但候选循环继续记录跳过原因。
+    if (report.stop) { skip('stopped_by_' + report.stop.stage); continue; }
     const completed = recordsReady(store, spec.articles, spec.generation_cutoff, [], false);
-    if (publisherCapacityReached(a, completed, 3)) continue;
-    if (!store.one('SELECT result FROM jobs WHERE key=?', a.job_key)?.result && publisherDraftCapacityReached(store, a, spec.articles, spec.generation_cutoff)) continue;
-    if (completed.filter(r => r.article.domain === analyzeDomain(a).primary).length >= Number((preferences().domain_policy as Row).maximum_per_domain) * 3) continue;
+    const ready = recordsReady(store, spec.articles, spec.generation_cutoff, []).length;
+    if (completed.length >= Number(preferences().candidate_target) && ready >= Number(preferences().edition_maximum)) { report.terminal = 'targets_reached'; break; }
+    // 正文准入与单篇失败都在这里分类：单篇问题只跳过本条，只有全局阻断才停整轮。
+    const admission = contentAdmission(a);
+    if (admission) { skip(admission); spec.rejected.push({ id: a.id, content_fingerprint: a.content_fingerprint, reason: admission }); continue; }
+    report.admitted++;
+    if (publisherCapacityReached(a, completed, 3)) { skip('publisher_capacity'); continue; }
+    if (!store.one('SELECT result FROM jobs WHERE key=?', a.job_key)?.result && publisherDraftCapacityReached(store, a, spec.articles, spec.generation_cutoff)) { skip('publisher_draft_capacity'); continue; }
+    if (completed.filter(r => r.article.domain === analyzeDomain(a).primary).length >= Number((preferences().domain_policy as Row).maximum_per_domain) * 3) { skip('domain_capacity'); continue; }
+    if (!attempted.has(a.job_key) && attempted.size >= Number(preferences().new_versions_per_day)) { skip('daily_new_version_limit'); continue; }
     let job = store.one('SELECT * FROM jobs WHERE key=?', a.job_key)!;
     while (!job.result && job.attempts < p.max_attempts) {
-      if (!attempted.has(job.key) && attempted.size >= Number(preferences().new_versions_per_day)) { spec.rejected.push({ id: a.id, content_fingerprint:a.content_fingerprint, reason: 'daily_new_version_limit' }); break processing; }
       const before = store.one('SELECT COUNT(*) n FROM calls')!.n;
-      const blocked = await paidRequest(store, job.key, a, p, permit); job = store.one('SELECT * FROM jobs WHERE key=?', a.job_key)!;
+      const blocked = await paidRequest(store, job.key, a, p, permit, deps); job = store.one('SELECT * FROM jobs WHERE key=?', a.job_key)!;
       const after = store.one('SELECT COUNT(*) n FROM calls')!.n; if (after > before) attempted.add(job.key);
       if (blocked) {
-        spec.rejected.push({ id: a.id, content_fingerprint:a.content_fingerprint, reason: blocked });
-        if (['budget_exhausted', 'billing_period_changed', 'missing_api_key', 'official_rules_unconfirmed', 'rules_expired_or_future', 'test_permit_expired', 'trial_expired'].includes(blocked)) break processing;
+        spec.rejected.push({ id: a.id, content_fingerprint: a.content_fingerprint, reason: blocked });
+        if (GLOBAL_BLOCKS.includes(blocked)) report.stop = { stage: 'writing', reason: blocked }; else skip('writing_' + blocked);
         break;
       }
       if (after === before || job.status !== 'failed_validation_review') break;
     }
-    job = store.one('SELECT * FROM jobs WHERE key=?', a.job_key)!;
     if (job.result) {
-      const reviewed = await reviewSampleDraft(store, job, a, p, permit);
-      if (reviewed === 'ai_rejected' && prepareRevision(store, store.one('SELECT * FROM jobs WHERE key=?', job.key)!, p)) {
+      report.drafts++;
+      const reviewed = await reviewSampleDraft(store, job, a, p, permit, deps);
+      report.reviewed++; if (reviewed === 'ai_approved') report.approved++;
+      if (GLOBAL_BLOCKS.includes(reviewed)) report.stop = { stage: 'review', reason: reviewed };
+      else if (reviewed === 'ai_rejected' && !report.stop && prepareRevision(store, store.one('SELECT * FROM jobs WHERE key=?', job.key)!, p)) {
         const revised = store.one('SELECT * FROM jobs WHERE key=?', job.key)!;
-        await paidRequest(store, job.key, JSON.parse(revised.article), p, permit);
+        const blocked = await paidRequest(store, job.key, JSON.parse(revised.article), p, permit, deps);
+        if (blocked) { if (GLOBAL_BLOCKS.includes(blocked)) report.stop = { stage: 'revision', reason: blocked }; else skip('revision_' + blocked); }
         const after = store.one('SELECT * FROM jobs WHERE key=?', job.key)!;
-        if (after.result) await reviewSampleDraft(store, after, a, p, permit);
+        if (after.result) {
+          const again = await reviewSampleDraft(store, after, a, p, permit, deps);
+          if (again === 'ai_approved') report.approved++;
+          if (GLOBAL_BLOCKS.includes(again)) report.stop = { stage: 'revision_review', reason: again };
+        }
       }
     }
     const pool = recordsReady(store, spec.articles, spec.generation_cutoff, [], false);
-    if (shouldAuditPool(pool.length, spec.generation_cutoff))
-      await reviewEdition(store, pool, p, spec.generation_cutoff, permit);
-    const ready = recordsReady(store, spec.articles, spec.generation_cutoff, []).length;
-    console.log(JSON.stringify({ stage: 'launch_progress', candidates_ready: pool.length, ready, attempted_versions: attempted.size }));
-    if (pool.length >= Number(preferences().candidate_target) && ready >= Number(preferences().edition_maximum)) break;
+    if (shouldAuditPool(pool.length, spec.generation_cutoff)) {
+      const audit = await reviewEdition(store, pool, p, spec.generation_cutoff, permit, deps); report.edition_review = audit.status;
+      if (GLOBAL_BLOCKS.includes(audit.status)) report.stop = { stage: 'edition_review', reason: audit.status };
+    }
+    console.log(JSON.stringify({ stage: 'launch_progress', sample: spec.id, candidates_ready: pool.length,
+      ready: recordsReady(store, spec.articles, spec.generation_cutoff, []).length, attempted_versions: attempted.size }));
   }
-  await reviewEdition(store, recordsReady(store, spec.articles, spec.generation_cutoff, [], false), p, spec.generation_cutoff, permit);
+  const finalAudit = await reviewEdition(store, recordsReady(store, spec.articles, spec.generation_cutoff, [], false), p, spec.generation_cutoff, permit, deps);
+  report.edition_review = finalAudit.status;
+  if (GLOBAL_BLOCKS.includes(finalAudit.status) && !report.stop) report.stop = { stage: 'edition_review', reason: finalAudit.status };
   const records = recordsReady(store, spec.articles, spec.generation_cutoff, spec.rejected);
+  report.articles = records.length; report.shortfall = Math.max(0, Number(preferences().edition_minimum) - records.length);
+  report.model_requests = store.one('SELECT COUNT(*) n FROM calls')!.n - callsBefore;
+  report.finished_at = stamp();
+  report.terminal = report.terminal ?? (report.stop ? 'blocked_at_' + report.stop.stage
+    : records.length >= Number(preferences().edition_minimum) ? 'newsletter_frozen' : 'insufficient_content');
+  atomic(store.root + '/durable/sample-reports/' + spec.id + '.json', report);
+  console.log(JSON.stringify({ stage: 'launch_report', ...report }));
   const issue = { ...spec, quality_policy: 'fidelity-1', edition_quality_policy: 'edition-consistency-1', articles: records.map(r => r.article), shortfall: Math.max(0, Number(preferences().edition_minimum) - records.length),
-    editorial_policy: preferences().domain_policy, source_policy: preferences().source_policy, ai_review: 'passed', is_trial_day: false, kind: records.length >= Number(preferences().edition_minimum) ? 'newsletter' : 'diagnostic', engine: 'typescript' };
+    editorial_policy: preferences().domain_policy, source_policy: preferences().source_policy, ai_review: report.edition_review === 'edition_reviewed' ? 'passed' : report.edition_review,
+    is_trial_day: false, kind: records.length >= Number(preferences().edition_minimum) ? 'newsletter' : 'diagnostic', engine: 'typescript' };
   return freezeIssue(store, issue, records);
 }
 export async function verifyApi(store: Store) {
@@ -322,6 +357,13 @@ export async function deliver(store: Store, sample = false, now = new Date(), re
   if (sample) { const path = samplePath(store.root, revision); if (!existsSync(path)) return { status: 'sample_missing' }; id = read(path).id; }
   else id = 'test-' + day(now);
   if (!existsSync(store.root + '/issues/' + id + '/edition.json')) return { status: 'edition_missing_do_not_send' };
+  if (sample) {
+    // 样刊发送前必须先是合格早报：诊断刊只留作排障记录，绝不发到测试邮箱。
+    const edition = read(store.root + '/issues/' + id + '/edition.json');
+    const items = (edition.articles ?? []).length;
+    if (edition.kind !== 'newsletter' || items < Number(preferences().edition_minimum))
+      return { status: 'sample_not_qualified_do_not_send', issue: id, kind: edition.kind, articles: items, required: Number(preferences().edition_minimum) };
+  }
   if (!sample) id = refreshDeliveryIssue(store, id, now);
   return sendOnce(store, id, (revision === 'acceptance' || revision === 'acceptance-retry') && sample ? { ...deps, subscribers: async () => [RECIPIENT] } : deps);
 }

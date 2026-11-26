@@ -61,7 +61,8 @@ test('full source, editing, hash, model validation and price contracts match Pyt
     { op: 'cost', policy: p, usage: { prompt_tokens: 1000, completion_tokens: 200, prompt_cache_hit_tokens: 100 }, multiplier: 2 },
     ...['2026-10-18T04:59:59+08:00', '2026-10-18T05:00:00+08:00', '2026-10-18T06:11:59+08:00', '2026-10-18T06:12:00+08:00', '2026-10-26T00:00:00+08:00'].map(now => ({ op: 'gate', policy: p, now, verified: true })),
   ];
-  const reference = digests(snapshotFile, cases);
+  const outputs = process.env.ETN_RECORD_PARITY === '1' ? cases.map(c => JSON.parse(JSON.stringify(actual(structuredClone(c))))) : undefined;
+  const reference = digests(snapshotFile, cases, outputs);
   cases.forEach((c, i) => {
     const value = digestOf(JSON.parse(JSON.stringify(actual(structuredClone(c)))));
     assert.equal(value, reference[i], `case ${i} ${c.op}`);

@@ -4,6 +4,7 @@ import { load } from 'cheerio/slim';
 import { PROMPT, POOL_PROMPT, POOL_PROMPT_V2 } from './constants.ts';
 import { digest, pyjson, stamp, day, localParts, at, EXPIRY, trial, trialDeadline, type Row } from './core.ts';
 import { complete, whitespace } from './sources.ts';
+import { contentAdmission } from './content-admission.ts';
 import { titleExclusion, articleExclusion } from './editorial-policy.ts';
 import { Store } from './store.ts';
 import { REVIEW_PROMPT, WRITING_SUFFIX, reviewKey, validateReview } from './quality.ts';
@@ -113,7 +114,7 @@ export async function paidRequest(store: Store, key: string, a: Row, p: Row, per
   if (store.one('SELECT id FROM calls WHERE job=? AND cost IS NULL', key)) return 'held_unknown_cost';
   if (job.attempts >= p.max_attempts) return 'attempt_limit';
   if (job.status.startsWith('retry_after:') && now().getTime() < Date.parse(job.status.slice(12))) return 'backoff_pending';
-  if (a.content_status !== 'usable_excerpt' || a.evidence_expired_or_missing || complete(a.text ?? '') !== 'usable_excerpt') return 'insufficient_content';
+  const admission = contentAdmission(a); if (admission) return admission;
   if (['electrek_tesla', 'teslanorth_tesla'].includes(a.source) && a.content_origin !== 'media_article_html') return 'media_article_body_unverified';
   if (cacheKey(a, p) !== key) return 'model_or_prompt_changed_create_new_issue';
   const config = trial(store.root);

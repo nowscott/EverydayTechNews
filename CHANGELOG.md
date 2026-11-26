@@ -1,5 +1,25 @@
 # 更新日志
 
+## ordinary-news-v2.7.37
+
+- 与四端同号；普通版无变化（本轮只改高级版引擎与部署校验）。
+
+## news-engine-v2.7.37
+
+- **正文准入（选稿前置）**：选稿、排队、付费调用共用 `contentAdmission()`，按实际正文判定；`usable_excerpt` 但正文为空/过短/截断、正文核验缺失、证据已失效的条目，在排序、去重、占名额和入队之前就被排除，并进入 assess 漏斗统计（`insufficient_content` / `media_article_body_unverified` / `evidence_expired_or_missing`）。付费入口保留同一条防线，覆盖旧队列与历史样刊规格。
+- **样刊循环不再被单条坏候选打断**：写稿、修订、单篇审核、整期审核的状态统一分类——单条问题只跳过本条并记录原因，只有预算耗尽、凭据缺失、价格规则不确认、许可到期这类全局阻断才停止发起新请求，并记录阻断阶段。样刊报告落盘 `durable/sample-reports/<issue>.json`，含扫描数、准入数、跳过原因、草稿数、审核数、请求数、整期审核状态、终止原因。
+- **诊断刊冻结修复**：`kind: diagnostic` 不再要求整期审核绑定，避免 1–14 条草稿的残缺期直接抛 `freeze_requires_edition_review`。
+- **样刊发送门槛**：`deliver(sample=true)` 只允许 `kind: newsletter` 且条数 ≥ `edition_minimum` 的样刊发送；诊断刊一律返回 `sample_not_qualified_do_not_send`，只留排障记录。
+- **早报写稿阶段可排障**：`morningStep` 在 enrich 之后原子写入 `durable/mornings/<day>-enrichment.json`（状态、调用数、候选数、跳过原因汇总、错误码）并保留当天最近 50 条历史，写稿失败不再只剩一个时间戳。
+
+## nas-dashboard-v2.7.37
+
+- 与四端同号；看板无变化。
+
+## subscription-web-v2.7.37
+
+- 与四端同号；订阅网页无变化。
+
 ## ordinary-news-v2.7.36
 
 - 账本主库指纹只对库里实际存在的表计算（普通版 `issues`/`deliveries`/`outbox`、高级版 `calls`/`issues`）。2.7.35 在 NAS 上升级普通版时，控制器对着没有 `calls` 表的库算指纹，报 `no such table: calls` 并把部署记成不可重试失败，这里修掉。

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { Store } from '../src/store.ts';
 import { morningStep } from '../src/morning.ts';
@@ -36,5 +36,43 @@ test('干净 checkpoint 写入 sqlite 主状态标记', () => {
   const s = setup();
   s.store.checkpoint();
   assert.equal(existsSync(s.root + '/durable/sqlite-primary.json'), true);
+  s.close();
+});
+
+test('写稿阶段落盘状态、调用数与跳过原因，零调用也能看出原因', async () => {
+  const s = setup();
+  const deps = {
+    collect: async () => ({ status: 'collected' }), assess: () => ({ status: 'assessed' }),
+    enrich: async () => ({ status: 'budget_exhausted', calls: 0, jobs: [{ job: 'a', status: 'budget_exhausted' }, { job: 'b', status: 'insufficient_content' }] }),
+    compose: () => ({ id: 'test-2026-11-25' }), deliver: async () => ({ status: 'smtp_accepted' }),
+  } as any;
+  await morningStep(s.store, new Date('2026-11-25T04:05:00+08:00'), deps);
+  await morningStep(s.store, new Date('2026-11-25T04:10:00+08:00'), deps);
+  const r = await morningStep(s.store, new Date('2026-11-25T04:15:00+08:00'), deps);
+  assert.equal(r.status, 'budget_exhausted');
+  const record = JSON.parse(readFileSync(s.root + '/durable/mornings/2026-11-25-enrichment.json', 'utf8'));
+  assert.equal(record.status, 'budget_exhausted'); assert.equal(record.calls, 0);
+  assert.equal(record.skipped.budget_exhausted, 1); assert.equal(record.skipped.insufficient_content, 1);
+  assert.equal(record.jobs, 2);
+  const history = JSON.parse(readFileSync(s.root + '/durable/mornings/2026-11-25-enrichment-history.json', 'utf8'));
+  assert.equal(history.length, 1);
+  // 写稿失败只留阶段记录，不能写入 pool_ready 完成标记。
+  const progress = JSON.parse(readFileSync(s.root + '/durable/mornings/2026-11-25.json', 'utf8'));
+  assert.equal(typeof progress.writing_progress, 'string'); assert.equal(progress.pool_ready, undefined);
+  s.close();
+});
+
+test('写稿抛异常也留下受控错误码，再把错误交给上层', async () => {
+  const s = setup();
+  const deps = {
+    collect: async () => ({ status: 'collected' }), assess: () => ({ status: 'assessed' }),
+    enrich: async () => { throw new Error('paid_transport_requires_authoritative_checkpoint'); },
+    compose: () => ({ id: 'test-2026-11-25' }), deliver: async () => ({ status: 'smtp_accepted' }),
+  } as any;
+  await morningStep(s.store, new Date('2026-11-25T04:05:00+08:00'), deps);
+  await morningStep(s.store, new Date('2026-11-25T04:10:00+08:00'), deps);
+  await assert.rejects(() => morningStep(s.store, new Date('2026-11-25T04:15:00+08:00'), deps), /paid_transport_requires_authoritative_checkpoint/);
+  const record = JSON.parse(readFileSync(s.root + '/durable/mornings/2026-11-25-enrichment.json', 'utf8'));
+  assert.equal(record.status, 'enrich_error'); assert.equal(record.error_code, 'paid_transport_requires_authoritative_checkpoint');
   s.close();
 });
