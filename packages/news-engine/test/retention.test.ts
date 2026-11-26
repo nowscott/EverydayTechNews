@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync, utimesSync }
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../src/store.ts';
-import { applyRetention, retentionDue, retentionPlan } from '../src/retention.ts';
+import { applyRetention, retentionAppliedToday, retentionDue, retentionPlan } from '../src/retention.ts';
 
 const now = new Date('2026-11-26T03:00:00+08:00');
 const at = (daysAgo: number) => new Date(now.getTime() - daysAgo * 86400000).toISOString();
@@ -56,6 +56,8 @@ test('retention keeps recent editions and prunes old noise only', () => {
     assert.equal(existsSync(oldRaw), false);
     assert.ok(existsSync(newRaw));
     assert.ok(existsSync(protectedRaw));
+    assert.equal(retentionAppliedToday(root, now), true);
+    assert.equal(retentionAppliedToday(root, new Date(now.getTime() + 86400000)), false);
   } finally { store.db.close(); rmSync(root, { recursive: true, force: true }); }
 });
 

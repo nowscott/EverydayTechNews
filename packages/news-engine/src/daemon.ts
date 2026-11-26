@@ -19,6 +19,10 @@ export function dueAtPremium(at: Date): boolean {
 }
 
 /** 锁里的 pid 必须真的是调度进程；容器重启后旧 pid 常被别的进程复用。 */
+export function lockHeldByOther(pid: number, self: number, isScheduler: (pid: number) => boolean): boolean {
+  return Number.isInteger(pid) && pid > 0 && pid !== self && isScheduler(pid);
+}
+
 export function pidIsScheduler(pid: number, read: (path: string) => string = (path) => readFileSync(path, 'utf8')): boolean {
   if (!Number.isInteger(pid) || pid <= 0) return false;
   try { return /daemon\.ts|scheduler\.ts/.test(read(`/proc/${pid}/cmdline`)); }
@@ -145,7 +149,8 @@ function main(): void {
   const lock = scheduler + '/daemon.lock';
   if (existsSync(lock)) {
     const pid = Number(readFileSync(lock, 'utf8').trim());
-    if (pidIsScheduler(pid)) { console.log(JSON.stringify({ status: 'already_running', pid })); process.exit(0); }
+    // 容器重启后新进程可能刚好复用同一个 PID（常见是 8）；锁里的 pid 等于自己时必须视为陈旧锁。
+    if (lockHeldByOther(pid, process.pid, pidIsScheduler)) { console.log(JSON.stringify({ status: 'already_running', pid })); process.exit(0); }
     // pid 在容器里可能被别的进程复用，或来自上一个容器；确认不是调度进程就接管。
   }
   writeFileSync(lock, String(process.pid));
