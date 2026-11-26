@@ -49,16 +49,17 @@ git commit -am "chore(version): ordinary-news-v1.1.0"
 git tag -s ordinary-news-v1.1.0 -m ordinary-news-v1.1.0
 git push origin main --follow-tags
 # 2. 在 GitHub 创建 Release（普通版设为 Latest）
-# 3. NAS 部署：python3 deploy/ordinary/install-managed.py --root … --tag ordinary-news-v1.1.0
+# 3. NAS 部署：node deploy/ordinary/install-managed.ts --root … --tag ordinary-news-v1.1.0
 ```
 
 发版后必须运行 `deploy/verify/verify-deploy.ts`，三端版本、容器、心跳与看板 `/api/health` 全对才算完成。
 
 CI（`.github/workflows/ordinary-news.yml`）会在 PR 与 main 上运行 `check-version.mjs`，版本源、包版本与 CHANGELOG 标题任一不一致即失败。
 
-## 现状（2026-11-23）
+## 现状（2026-11-26）
 
-- 当前版本：`2.7.19`。三处同号：普通版 `ordinary-news-v2.7.19`、看板 `nas-dashboard-v2.7.19`、高级版引擎 `news-engine-v2.7.19`（tag 前缀各自独立，数字必须一致）
+- 当前版本：`2.7.34`。三处同号：普通版 `ordinary-news-v2.7.34`、看板 `nas-dashboard-v2.7.34`、高级版引擎 `news-engine-v2.7.34`（tag 前缀各自独立，数字必须一致）
 - 版本线切换：旧 `1.0.x` 系列就此终止；`v1.x` / `v2.0–2.6` 的旧 Python 实现仍为冻结归档，不再发版
-- Docker 侧 `:git-<sha>` 别名自本版起不再生成；旧别名随部署清理
-- GitHub 的 Latest 指向 `ordinary-news-v2.7.0`（发布时设置），不再停留在 `v2.6.4`
+- 自 2.7.34 起仓库不再包含任何 `.py`：控制器、安装器、检查脚本、测试全部为 TypeScript，镜像内 `! command -v python` 断言保留
+- Docker 侧 `:git-<sha>` 别名自 2.7.19 起不再生成；旧别名随部署清理
+- GitHub 的 Latest 指向 `ordinary-news-v2.7.34`（发布时设置）
