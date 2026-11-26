@@ -1,5 +1,21 @@
 # 更新日志
 
+## ordinary-news-v2.7.36
+
+- 账本主库指纹只对库里实际存在的表计算（普通版 `issues`/`deliveries`/`outbox`、高级版 `calls`/`issues`）。2.7.35 在 NAS 上升级普通版时，控制器对着没有 `calls` 表的库算指纹，报 `no such table: calls` 并把部署记成不可重试失败，这里修掉。
+
+## news-engine-v2.7.36
+
+- 与普通版共用 `base-manage.ts`：快照指纹改为按库里的实际表取交集，普通版不再触发 `no such table: calls`；同时把 `deliveries`/`outbox` 纳入比对，投递状态变化也会被快照差异发现。
+
+## nas-dashboard-v2.7.36
+
+- 与四端同号；看板无变化。
+
+## subscription-web-v2.7.36
+
+- 与四端同号；订阅网页无变化。
+
 ## ordinary-news-v2.7.35
 
 - 与四端同号；出刊逻辑无变化。

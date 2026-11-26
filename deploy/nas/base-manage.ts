@@ -168,13 +168,18 @@ export function vacuumInto(source: string, destination: string): void {
   try { db.exec("VACUUM INTO '" + destination.replace(/'/g, "''") + "'"); } finally { db.close(); }
 }
 
-/** 账本主库的原始行指纹（calls/issues），用来比较「在线库」与「备份里的副本」是不是同一份。 */
+/** 账本主库的原始行指纹（calls/issues 等），用来比较「在线库」与「备份里的副本」是不是同一份。 */
 export function primaryLedgerDigest(file: string): string | null {
   if (!fs.existsSync(file)) return null;
   const db = new DatabaseSync(file, { readOnly: true });
-  const digest = crypto.createHash('sha256');
   try {
-    for (const table of ['calls', 'issues']) {
+    // 高级版是 calls/issues，普通版是 issues/deliveries/outbox：按库里的实际表取交集，缺失的表直接跳过。
+    const present = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as Record<string, unknown>[])
+      .map((row) => String(row.name)));
+    const tables = ['calls', 'issues', 'deliveries', 'outbox'].filter((table) => present.has(table));
+    if (!tables.length) return null;
+    const digest = crypto.createHash('sha256');
+    for (const table of tables) {
       digest.update(table + '\0');
       for (const row of db.prepare('SELECT * FROM ' + table + ' ORDER BY id').iterate()) digest.update(JSON.stringify(row) + '\n');
     }
