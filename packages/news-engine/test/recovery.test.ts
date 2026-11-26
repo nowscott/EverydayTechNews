@@ -12,7 +12,7 @@ import { buildEmail, freezeIssue, sendOnce } from '../src/mail.ts';
 import { mapLimit } from '../src/sources.ts';
 import { ACTIVE_SOURCES } from '../src/constants.ts';
 import { reviewDraft } from '../src/review.ts';
-import { reviewKey, displayFields } from '../src/quality.ts';
+import { reviewKey, displayFields, REVIEW_VERSION, draftHash } from '../src/quality.ts';
 import { article } from './fixtures.ts';
 
 const domainTitles = ['AI模型发布', '开源编译器重大更新', 'NVIDIA 芯片发布', '火箭重大突破', '机器人重大升级'];
@@ -152,15 +152,41 @@ test('explicit acceptance sample sends only to the authorized test mailbox', asy
   const { store, root, close } = setup(); const before = { sender: process.env.SENDING_ACCOUNT, password: process.env.SENDING_PASSWORD, server: process.env.SERVER };
   process.env.SENDING_ACCOUNT = 'sender@example.org'; process.env.SENDING_PASSWORD = 'test'; process.env.SERVER = 'smtp.example.org';
   try {
-    const clock = () => new Date('2026-10-19T12:00:00+08:00'); const id = 'sample-ts-acceptance-unit';
+    const clock = () => new Date('2026-10-19T12:00:00+08:00');
+    // 把一期诊断刊改写成「15 条已审核」的合格样刊，只为验证发送门槛与收件人隔离。
+    const asNewsletter = (id: string) => {
+      const frozenAt = stamp(clock()); const p = policy();
+      const frozen = JSON.parse(readFileSync(root + '/issues/' + id + '/edition.json', 'utf8'));
+      const records = Array.from({ length: 15 }, (_, i) => {
+        const a: Row = { ...article(), id: 'item-' + i, url: 'https://example.org/' + i, text, content_fingerprint: digest(text + i), published_at: '2026-10-18T04:00:00+08:00', output_schema: 'dual-2', job_key: 'acceptance-job-' + id + '-' + i };
+        const draft: Row = { title: '人工智能模型测试', summary: '公司计划在中国测试这一模型，尚未独立验证。', short_summary: '模型进入测试阶段，尚未独立验证。', why: '', points: [], uncertainties: [], claims: [{ claim: '模型测试', evidence: '公司计划在中国测试这一人工智能模型' }] };
+        draft.ai_review = { key: reviewKey(a, draft, p), version: REVIEW_VERSION, reviewed_at: frozenAt, result: { verdict: 'pass',
+          checks: [{ field: 'title', pass: true, reason: '一致', evidence: '公司计划在中国测试这一人工智能模型' },
+            { field: 'summary', pass: true, reason: '一致', evidence: '公司计划在中国测试这一人工智能模型' },
+            { field: 'short_summary', pass: true, reason: '一致', evidence: '尚未独立验证。公司计划在中国测试' },
+            { field: 'points', pass: true, reason: '空要点', evidence: '' }, { field: 'why', pass: true, reason: '空关注理由', evidence: '' }],
+          update_has_new_facts: false } };
+        store.run('INSERT OR REPLACE INTO jobs(key,article,status,result) VALUES (?,?,?,?)', a.job_key, pyjson(a), 'ai_approved', pyjson(draft));
+        return { article: a, result: draft };
+      });
+      const edition = { ...frozen, kind: 'newsletter', articles: records.map(r => r.article),
+        approved_drafts: Object.fromEntries(records.map(r => [r.article.id, { hash: draftHash(r.result), review_key: r.result.ai_review.key }])) };
+      writeFileSync(root + '/issues/' + id + '/edition.json', JSON.stringify(edition));
+    };
+    const id = 'sample-ts-acceptance-unit';
     atomic(samplePath(root, 'acceptance'), { id });
     freezeIssue(store, { id, kind: 'diagnostic', quality_policy: 'fidelity-1', articles: [], rejected: [], collection_cutoff: stamp(clock()), generation_cutoff: stamp(clock()), source_health: null }, []);
     let sent = 0; const transport = { sendMail: async (message: Row) => { sent++; assert.equal(message.to, RECIPIENT); return { accepted: [RECIPIENT] }; }, close: () => {} };
     const deps = { transport, now: clock, subscribers: async () => ['someone-else@example.org'] };
+    // 诊断刊只留排障记录，绝不发到测试邮箱。
+    assert.equal((await deliver(store, true, clock(), 'acceptance', deps)).status, 'sample_not_qualified_do_not_send'); assert.equal(sent, 0);
+    // 合格样刊（newsletter、≥15 条、逐篇已审核）才发送，且只发给授权测试邮箱。
+    asNewsletter(id);
     assert.equal((await deliver(store, true, clock(), 'acceptance', deps)).status, 'smtp_accepted');
     assert.equal((await deliver(store, true, clock(), 'acceptance', deps)).reused, true); assert.equal(sent, 1);
     const retry = 'sample-ts-acceptance-retry-unit'; atomic(samplePath(root, 'acceptance-retry'), { id: retry });
     freezeIssue(store, { id: retry, kind: 'diagnostic', quality_policy: 'fidelity-1', articles: [], rejected: [], collection_cutoff: stamp(clock()), generation_cutoff: stamp(clock()), source_health: null }, []);
+    asNewsletter(retry);
     assert.equal((await deliver(store, true, clock(), 'acceptance-retry', deps)).status, 'smtp_accepted'); assert.equal(sent, 2);
   } finally {
     for (const [key, value] of Object.entries({ SENDING_ACCOUNT: before.sender, SENDING_PASSWORD: before.password, SERVER: before.server })) value === undefined ? delete process.env[key] : process.env[key] = value;

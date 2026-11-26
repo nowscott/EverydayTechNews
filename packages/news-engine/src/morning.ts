@@ -12,6 +12,23 @@ export function phase(store: Store, name: string, now = new Date()) {
   store.checkpoint();
 }
 
+/** 写稿阶段只留了时间戳，零调用时看不出原因。这里单独落盘状态、调用数与跳过原因汇总。 */
+export function summarizeEnrich(result: Row = {}): Row {
+  const skipped: Row = {};
+  for (const item of result?.jobs ?? []) { const key = String(item?.status ?? 'unknown'); skipped[key] = (skipped[key] ?? 0) + 1; }
+  return { candidates_ready: result?.candidates_ready ?? null, ready: result?.ready ?? null, jobs: (result?.jobs ?? []).length, skipped };
+}
+
+export function recordEnrichment(store: Store, today: string, entry: Row) {
+  const base = store.root + '/durable/mornings/';
+  atomic(base + today + '-enrichment.json', entry);
+  const historyPath = base + today + '-enrichment-history.json';
+  let history: Row[] = []; try { if (existsSync(historyPath)) history = read(historyPath); } catch { history = []; }
+  history.push(entry); if (history.length > 50) history = history.slice(-50);
+  atomic(historyPath, history);
+  store.checkpoint();
+}
+
 /** 单步可续跑：每次进程只做一步，进度写在 durable/mornings/<day>.json，下一轮从下一步继续。 */
 export async function morningStep(store: Store, now = new Date(), deps = { collect, assess, enrich, compose, deliver }): Promise<Row> {
   const t = trial(store.root);
@@ -47,10 +64,18 @@ export async function morningStep(store: Store, now = new Date(), deps = { colle
     }
     if (!progress.pool_ready) {
       mark('enrich');
-      const result = await deps.enrich(store);
-      phase(store, 'writing_progress', now);
-      if (result.status === 'ready_pool_sufficient') { atomic(progressPath, { ...progress, assessment_completed: progress.assessment_completed ?? stamp(now), writing_progress: stamp(now), pool_ready: stamp(now) }); mark('compose_waiting'); }
-      return { status: result.status ?? 'enriched' };
+      const started = stamp(now);
+      try {
+        const result = await deps.enrich(store);
+        recordEnrichment(store, today, { status: result?.status ?? 'enriched', calls: result?.calls ?? 0, started_at: started,
+          ...summarizeEnrich(result), at: stamp(now) });
+        phase(store, 'writing_progress', now);
+        if (result.status === 'ready_pool_sufficient') { atomic(progressPath, { ...progress, assessment_completed: progress.assessment_completed ?? stamp(now), writing_progress: stamp(now), pool_ready: stamp(now) }); mark('compose_waiting'); }
+        return { status: result.status ?? 'enriched' };
+      } catch (error) {
+        recordEnrichment(store, today, { status: 'enrich_error', calls: 0, started_at: started, error_code: (error as Error).message, at: stamp(now) });
+        throw error;
+      }
     }
     mark('compose_waiting');
     return { status: 'pool_ready_waiting_compose' };

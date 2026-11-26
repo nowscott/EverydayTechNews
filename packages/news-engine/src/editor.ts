@@ -1,5 +1,6 @@
 import { choose, evaluate, preferences, type Article } from './ranking.ts';
 import { search, compareText, microtimestamp } from './compat.ts';
+import { contentAdmission } from './content-admission.ts';
 import type { Row } from './core.ts';
 
 export function topic(a: Row): string {
@@ -53,7 +54,10 @@ export function select(input: Row[], cutoff: string, sample = false, target?: nu
       if (a.update_review_required && microtimestamp(a.fetched_at) >= clock - 86400000000n) a.timeliness = 'older_publication_recent_content_change_pending_review';
       else reason = 'old_news';
     }
-    if (!reason && a.content_status !== 'usable_excerpt') reason = a.content_status === 'discovery_only' ? 'discovery_only_no_body' : 'insufficient_content';
+    if (!reason) {
+      if (a.content_status === 'discovery_only') reason = 'discovery_only_no_body';
+      else { const admission = contentAdmission(a); if (admission) reason = admission; }
+    }
     if (!reason && search('优惠|好价|促销|广告|秒杀|红包|IT早报|新闻汇总|Everything we launched|Top Stories:|Weekly Roundup|Week in Review|Best Deals|Rocket Report:', a.title)) reason = 'promotion_or_roundup';
     const matches = !reason ? selected.filter(b => duplicate(a, b)).map(b => b.id) : [];
     if (matches.length) reason = 'duplicate_or_event_review';

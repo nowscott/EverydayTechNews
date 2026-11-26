@@ -40,7 +40,7 @@ export function freezeIssue(store: Store, issue: Row, records: Row[]) {
     const checked = limitDomains(structuredClone(records));
     if (checked.length !== records.length || checked.some((r, i) => r.article.id !== records[i].article.id)) throw new Error('editorial_policy_changed_before_freeze');
   }
-  if (issue.edition_quality_policy === 'edition-consistency-1') {
+  if (issue.edition_quality_policy === 'edition-consistency-1' && issue.kind !== 'diagnostic') {
     const checked = checkedEdition(store, records, issue.generation_cutoff);
     if (checked.length !== records.length || checked.some((r, i) => r.article.id !== records[i].article.id)) throw new Error('freeze_requires_edition_review');
     issue.edition_review = JSON.parse(store.one("SELECT data FROM meta WHERE key='edition_review'")?.data ?? 'null');
