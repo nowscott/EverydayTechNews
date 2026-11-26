@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** 普通版 NAS 控制器（TS），与 deploy/ordinary/manage.py 对齐；安装到 managed 时导入同目录 base-manage.ts。 */
+/** 普通版 NAS 控制器（TS）；安装到 managed 时导入同目录 base-manage.ts。旧 Python 版已撤除。 */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -61,12 +61,7 @@ class Controller extends base.Controller {
 
   override snapshot(destination: string): void {
     base.copyTree(this.data, destination, (name) => name === 'runtime.lock' || name.startsWith('state.sqlite3'));
-    const source = new DatabaseSync(path.join(this.data, 'state.sqlite3'), { readOnly: true });
-    try {
-      const target = path.join(destination, 'state.sqlite3');
-      const escaped = target.replace(/'/g, "''");
-      source.exec("VACUUM INTO '" + escaped + "'");
-    } finally { source.close(); }
+    base.vacuumInto(path.join(this.data, 'state.sqlite3'), path.join(destination, 'state.sqlite3'));
   }
 
   override startup(candidate: base.Candidate, snapshot: string): void {

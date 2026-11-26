@@ -56,7 +56,6 @@ try {
     } else if (operation === 'run') {
       try {
         reconcile(store); const plan = due(store); const maintenance = flags['maintenance-only'] !== 'false';
-        if (maintenance && retentionDue() && !retentionAppliedToday(root)) console.log(JSON.stringify({ stage: 'retention', result: applyRetention(store, retentionPlan(store)) }));
         const launch = flags.launch === 'true'; const quality = flags['verify-quality'] === 'true'; const verify = flags['verify-api'] === 'true' || quality;
         if (launch && verify) throw new Error('choose_one_acceptance_mode');
         console.log(JSON.stringify({ stage: 'due', maintenance, plan, engine: 'typescript' }));
@@ -87,6 +86,9 @@ try {
           archiveStage(store);
         }
         }
+        // 每日清理放在本轮最后：applyRetention 内部做完整 checkpoint，必须覆盖本轮新增的账本。
+        // 不能和 maintenance 标记绑定——常驻调度只在该分支传真，其余调用方式会静默跳过清理。
+        if (retentionDue() && !retentionAppliedToday(root)) console.log(JSON.stringify({ stage: 'retention', result: applyRetention(store, retentionPlan(store)) }));
       } finally {
         publishMorningReport(store);
         const report = reportTrial(store);

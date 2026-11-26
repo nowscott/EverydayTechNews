@@ -25,27 +25,23 @@ jobs:
           git diff --check "origin/${{ github.base_ref }}"...HEAD
           ! git grep -nE '^(<<<<<<<|>>>>>>>) ' -- . ':!*.lock'
       - name: 泄露与结构检查
+        env: {BASE_REF: '${{ github.base_ref }}'}
         run: |
           ! git grep -nE 'ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY' -- . ':!*.lock'
-          python3 - <<'PY'
-          import glob, re, subprocess, sys
-          base = '${{ github.base_ref }}'
-          names = {}
-          for path in glob.glob('**/compose*.y*ml', recursive=True):
-              if 'node_modules' in path:
-                  continue
-              for line in open(path, encoding='utf-8'):
-                  m = re.match(r'\s*container_name:\s*([A-Za-z0-9_.-]+)', line)
-                  if m:
-                      names.setdefault(m.group(1), []).append(path)
-          dup = {k: v for k, v in names.items() if len(v) > 1}
-          if dup:
-              print('duplicate container_name:', dup)
-              sys.exit(1)
-          added = subprocess.run(['git','diff','--name-only','--diff-filter=A',f'origin/{base}...HEAD'],capture_output=True,text=True).stdout.split()
-          py = [p for p in added if p.endswith('manage.py') or p.endswith('verify-state.py')]
-          if py:
-              print('new legacy python controller files:', py)
-              sys.exit(1)
-          print('structure checks ok')
-          PY
+          node - <<'JS'
+          const { execFileSync } = require('node:child_process');
+          const { readFileSync } = require('node:fs');
+          const files = execFileSync('git', ['ls-files'], { encoding: 'utf8' }).split('\n').filter(f => f && !f.includes('node_modules') && /compose.*\.ya?ml$/.test(f));
+          const names = new Map();
+          for (const path of files) for (const line of readFileSync(path, 'utf8').split('\n')) {
+            const m = /^\s*container_name:\s*([A-Za-z0-9_.-]+)/.exec(line);
+            if (m) { if (!names.has(m[1])) names.set(m[1], []); names.get(m[1]).push(path); }
+          }
+          const dup = [...names].filter(([, paths]) => paths.length > 1);
+          if (dup.length) { console.log('duplicate container_name:', Object.fromEntries(dup)); process.exit(1); }
+          const base = process.env.BASE_REF;
+          const added = execFileSync('git', ['diff', '--name-only', '--diff-filter=A', `origin/${base}...HEAD`], { encoding: 'utf8' }).split('\n').filter(Boolean);
+          const py = added.filter(p => p.endsWith('.py'));
+          if (py.length) { console.log('python files are no longer supported:', py); process.exit(1); }
+          console.log('structure checks ok');
+          JS

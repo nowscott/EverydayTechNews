@@ -1,26 +1,23 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { choose, evaluate, preferences } from '../src/ranking.ts';
 import { execute } from '../src/cli.ts';
 import { round2, timestamp } from '../src/compat.ts';
 import { article, cutoff, parityCases } from './fixtures.ts';
+import { digests, digestOf } from './oracle.ts';
 
-const root = fileURLToPath(new URL('../../../', import.meta.url));
-const python = process.env.PYTHON ?? (existsSync(`${root}.venv/bin/python`) ? `${root}.venv/bin/python` : 'python3');
+const snapshotFile = fileURLToPath(new URL('./fixtures/parity-oracle.json', import.meta.url));
+const digestsFile = fileURLToPath(new URL('./fixtures/ranking-digests.json', import.meta.url));
+
 const config = preferences();
 
 test('all synthetic reference outputs match Python, including Unicode and ties', () => {
   const cases = [...parityCases(), ...['Parser Combinators', 'Show HN: Run ESP32 firmware in the browser', 'A new Rust compiler'].map(title => ({ articles: [article({title})], cutoff })),
     ...['Apple Announces New iPad Mini With OLED Display', 'New iPad Mini Available in Just Two Colors', 'Show HN: A REPL for agents', 'Show HN: Security vulnerability scanner'].map(title => ({ articles:[article({title,source:'hackernews'})], cutoff }))];
-  const result = spawnSync(python, [fileURLToPath(new URL('../tools/python_reference.py', import.meta.url))], {
-    input: JSON.stringify(cases), encoding: 'utf8', maxBuffer: 30 * 1024 * 1024,
-  });
-  assert.equal(result.status, 0, result.stderr);
-  const reference = JSON.parse(result.stdout);
-  cases.forEach((input, i) => assert.deepEqual(JSON.parse(JSON.stringify(execute(input))), reference[i], `case ${i}`));
+  const reference = digests(digestsFile, cases);
+  cases.forEach((input, i) => assert.equal(digestOf(JSON.parse(JSON.stringify(execute(input)))), reference[i], `case ${i}`));
 });
 
 test('interest bonus is a maximum, not a sum; all five interests detected', () => {

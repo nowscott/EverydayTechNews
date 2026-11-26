@@ -2,7 +2,7 @@
 
 当前v0.5.0内容规则与固定评分口径见[QUALITY.md](QUALITY.md)，运行规则以[OPERATIONS.md](OPERATIONS.md)为准：04:07提前启动并持续推进，独立AI验收，06:30–09:00投递，Notion高级订阅筛选，内测仍只发指定邮箱。下方旧版调度与人工待审说明仅供迁移背景；当前流程无需人工审稿。
 
-高级订阅的完整处理链路，Node.js 24 可直接运行 `.ts`。评分子模块保持零运行时第三方依赖；完整链路使用固定版本的 fast-xml-parser、Cheerio、Nodemailer 和 tar。Python 保留为离线对照与兼容参考，普通订阅仍运行原有实现。
+高级订阅的完整处理链路，Node.js 24 可直接运行 `.ts`。评分子模块保持零运行时第三方依赖；完整链路使用固定版本的 fast-xml-parser、Cheerio、Nodemailer 和 tar。Python 参考实现与对照脚本已于 2026-11-26 撤除，跨语言期望值改为冻结快照（`test/fixtures/*.json`），测试不再需要 python。
 
 ## 完整内测入口
 
@@ -17,7 +17,7 @@ node packages/news-engine/src/main.ts status --data /tmp/premium-offline
 
 私有工作流使用 `experiments/premium/private-workflow-ts.yml.template` 并固定完整引擎SHA。仅允许 `nowscott@qq.com`，沿用2026-10-19至25日七天试刊，10月26日00:00上海时间停止新增模型和发送；每日最多2元、100个新格式文章版本、每批4次请求，旧费用与未知预留照常计入。正文不足15条发诊断，模型初稿仍待人工核对。维护、过期清理和日桶归档在内测到期后继续。
 
-`collect/assess/enrich/compose/deliver/reconcile/status/report/archive/restore-artifact/ack-artifact` 均有对应TS命令；`fresh-sample` 是 `launch-sample` 的别名，`send-sample` 只发送已冻结TS验收期。历史导入、历史预览保留为离线Python参考，不是上线运行链路。
+`collect/assess/enrich/compose/deliver/reconcile/status/report/archive/restore-artifact/ack-artifact` 均有对应TS命令；`fresh-sample` 是 `launch-sample` 的别名，`send-sample` 只发送已冻结TS验收期。历史导入、历史预览曾有 Python 参考实现，已随 2026-11-26 撤除。
 
 昨天样稿中的文章只要仍在滚动24小时内，允许在后续日报再次入选，并复用原概括；同一天的重复测试、正常日报之间仍保持已发去重。已冻结期刊和账本不覆盖，扩大范围不等于自动补发逾时邮件。
 
@@ -51,10 +51,9 @@ HN采用[官方API](https://github.com/HackerNews/API)的热门60与最新40投�
 npm ci --prefix packages/news-engine --ignore-scripts --no-audit --no-fund
 npm run typecheck --prefix packages/news-engine
 npm test --prefix packages/news-engine
-.venv/bin/python -m unittest discover -s tests -v
 ```
 
-开发检查使用 TypeScript 和 Node 类型声明。完整跨语言对照需先安装根目录 `requirements.txt`；仅评分对照只需要Python标准库。默认优先使用根目录 `.venv/bin/python`，不存在则使用 `python3`，也可通过 `PYTHON` 指定解释器。独立 CI 在 Node 24 / Python 3.14 上执行类型、故障恢复及对照检查。部署验证与工作流证据见迁移记录。
+开发检查使用 TypeScript 和 Node 类型声明。评分/采集/编辑的跨语言期望值已冻结为测试快照，`npm test` 不再调用任何外部解释器；CI 只在 Node 24 上执行类型、故障恢复与快照对照。部署验证与工作流证据见迁移记录。
 
 ## 接口
 
@@ -105,20 +104,15 @@ node packages/news-engine/src/cli.ts input.json
 ## 离线性能对照
 
 ```sh
-node packages/news-engine/tools/benchmark.ts --output /tmp/ranking-benchmark.json
+node packages/news-engine/tools/node_benchmark.ts <input.json> 5
 ```
 
-自动验证合成408篇和10000篇输入的 Python/TS 完整输出，再分别测试原 Python、配置加载一次的 Python、TS。每种实现三个新进程，每进程一次预热、五次计时；相邻轮交替顺序。读取输入及复制数据不计入热运行时间。另测空进程启动、包含输入/导入/计算/输出的冷调用和进程峰值 RSS，互不相加。Python 冷调用经过参考脚本，TS 冷调用经过 CLI，属于工具链对照，并非解释器启动的纯语言结论。
+只测 TypeScript 实现：对合成或私有输入跑一次预热、五次计时，取中位数并记录进程峰值 RSS。原 Python/TS 双实现对照工具 `tools/benchmark.ts` 已随 Python 撤除，历史结果保留在 `benchmark-results.json`。
 
-有本地私有证据时，可从已冻结且已筛选的期刊导出文章；导出会验证正文哈希和到期时间，不打开可写数据库，不修改正文保留期：
+有本地私有证据时，可自行从已冻结且已筛选的期刊导出样本到被忽略的私有路径（只导出正文，验证后删除）；原 `tools/export_local_sample.py` 已随 Python 撤除，没有替换脚本。
 
 ```sh
-.venv/bin/python packages/news-engine/tools/export_local_sample.py \
-  --state-root premium_data/pool --issue sample-current-2026-10-18 \
-  --output premium_data/performance/ts-ranking-private-input.json
-node packages/news-engine/tools/benchmark.ts \
-  --input premium_data/performance/ts-ranking-private-input.json \
-  --output premium_data/performance/ts-ranking-benchmark.json
+node packages/news-engine/tools/node_benchmark.ts premium_data/performance/ts-ranking-private-input.json 5
 ```
 
 导出文件含正文，仅保存在被忽略的私有路径，验证后删除；不得上传 Git。基准报告只包含数量、时间、环境和内存，不包含正文、标题、文章标识或原始路径。旧证据到期后必须换用新的合格样本，不能永久保存派生全文以绕过90天保留期。

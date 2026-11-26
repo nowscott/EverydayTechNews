@@ -10,8 +10,7 @@
   "scripts": {
     "test": "node --test test/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "rank": "node src/cli.ts",
-    "benchmark": "node tools/benchmark.ts"
+    "rank": "node src/cli.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

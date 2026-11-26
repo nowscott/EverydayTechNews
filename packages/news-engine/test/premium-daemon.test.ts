@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dueAtPremium, nextRun, policy, quietNow, pidIsScheduler, lockHeldByOther } from '../src/daemon.ts';
+import { dueAtPremium, nextRun, policy, quietNow, pidIsScheduler, lockHeldByOther, maintenanceRound } from '../src/daemon.ts';
 
 const at = (h: number, m: number, s = 0) => new Date(2026, 10, 22, h, m, s);
 const hm = (d: Date) => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
@@ -63,4 +63,13 @@ test('锁里的 pid 必须确认是调度进程', () => {
   assert.equal(lockHeldByOther(8, 8, () => true), false);
   assert.equal(lockHeldByOther(8, 7, () => true), true);
   assert.equal(lockHeldByOther(0, 7, () => true), false);
+});
+
+test('只有 03:00 的轮次请求维护模式，清理与完整 checkpoint 才不会被跳过', () => {
+  assert.equal(maintenanceRound(at(3, 0)), true);
+  for (const [h, m] of [[3, 30], [23, 0], [0, 0], [2, 59], [4, 0], [10, 30]]) {
+    assert.equal(maintenanceRound(at(h, m)), false, `${h}:${m} 不应走维护模式`);
+  }
+  // 03:00 必须是调度节奏里的有效时刻，否则这轮永远不会发生。
+  assert.equal(dueAtPremium(at(3, 0)), true);
 });

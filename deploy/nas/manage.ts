@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** 高级版 NAS 控制器入口（TS）：与 deploy/nas/manage.py 的命令行行为一致。 */
+/** 高级版 NAS 控制器入口（TS）；旧 Python 版已撤除。 */
 import * as base from './base-manage.ts';
 import path from 'node:path';
 

@@ -1,0 +1,53 @@
+name: 普通版手动样刊测试（TS）
+
+# 只读最新一期公开归档，渲染一封样刊；填写 SEND 才真的发信，收件人固定为测试邮箱。
+# 不写账本、不占用正式投递状态、不触发采集或排序，可以随时手动跑。
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: '填写 SEND 表示真的发送；留空只渲染并输出统计'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ordinary-manual-send
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: packages/ordinary-news/package-lock.json
+
+      - run: npm ci --prefix packages/ordinary-news --ignore-scripts --no-audit --no-fund
+
+      - name: 只渲染样刊（不发信）
+        if: inputs.confirm != 'SEND'
+        env:
+          ORDINARY_SMOKE_DRY: '1'
+        run: node packages/ordinary-news/src/main.ts smoke-send --data .
+
+      - name: 发送单封测试邮件
+        if: inputs.confirm == 'SEND'
+        env:
+          ORDINARY_SMOKE_SEND: 'YES'
+          SENDING_ACCOUNT: ${{ secrets.SENDING_ACCOUNT }}
+          SENDING_PASSWORD: ${{ secrets.SENDING_PASSWORD }}
+          SERVER: ${{ secrets.SERVER }}
+          APP_BASE_URL: https://mailist.nowscott.top
+          SUBSCRIPTION_CONFIRMATION_SECRET: ${{ secrets.SUBSCRIPTION_CONFIRMATION_SECRET }}
+        run: node packages/ordinary-news/src/main.ts smoke-send --data .

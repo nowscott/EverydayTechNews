@@ -39,7 +39,11 @@ export class Store {
       const repo = JSON.parse(command(['gh', 'repo', 'view', '--json', 'nameWithOwner,visibility'], this.root));
       if (repo.nameWithOwner !== 'nowscott/EverydayTechNews-data' || repo.visibility !== 'PRIVATE') throw new Error('only_designated_private_state_repository_allowed');
     }
-    this.db = new DatabaseSync(this.root + '/state.sqlite3', { timeout: 30000 });
+    // 必须在开库前记录是否存在：DatabaseSync 会顺带创建空库，之后再 existsSync 永远为真，
+    // 丢失的 SQLite 就会被当成“已有主库”而跳过 state.json 恢复。
+    const database = this.root + '/state.sqlite3';
+    const existingDatabase = existsSync(database) && lstatSync(database).size > 0;
+    this.db = new DatabaseSync(database, { timeout: 30000 });
     this.db.exec(`CREATE TABLE IF NOT EXISTS articles (id TEXT, fingerprint TEXT, data TEXT, PRIMARY KEY(id,fingerprint));
       CREATE TABLE IF NOT EXISTS issues (id TEXT PRIMARY KEY, data TEXT);
       CREATE TABLE IF NOT EXISTS jobs (key TEXT PRIMARY KEY, article TEXT, status TEXT, result TEXT, attempts INTEGER DEFAULT 0);
@@ -54,7 +58,7 @@ export class Store {
     this.objects = existsSync(this.root + '/archive-manifests/objects.json') ? read(this.root + '/archive-manifests/objects.json') : {};
     try {
       const state = this.root + '/durable/state.json';
-      const fast = this.mode.sqlitePrimary && existsSync(state) && existsSync(this.root + '/state.sqlite3') && existsSync(this.root + '/durable/sqlite-primary.json');
+      const fast = this.mode.sqlitePrimary && existingDatabase && existsSync(state) && existsSync(this.root + '/durable/sqlite-primary.json');
       if (!fast && existsSync(state)) { this.restore(); this.markPrimary(); }
     } catch (error) { this.db.close(); throw error; }
   }

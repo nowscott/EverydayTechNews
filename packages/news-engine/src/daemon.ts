@@ -29,6 +29,11 @@ export function pidIsScheduler(pid: number, read: (path: string) => string = (pa
   catch { try { process.kill(pid, 0); return true; } catch { return false; } }
 }
 
+/** 03:00 的夜间轮次走维护模式：分层清理与完整 checkpoint 只在该分支执行。 */
+export function maintenanceRound(at: Date = new Date()): boolean {
+  return at.getHours() === 3 && at.getMinutes() === 0;
+}
+
 export function nextRun(from: Date): Date {
   const next = new Date(from.getTime());
   next.setSeconds(0, 0);
@@ -64,10 +69,13 @@ function inMorningWindow(): boolean {
   return hour >= 4 && hour < 9;
 }
 
-function runRound(options: Options): Promise<{ exit: number; seconds: number; tail: string }> {
+function runRound(options: Options, at: Date): Promise<{ exit: number; seconds: number; tail: string }> {
   return new Promise((done) => {
     const started = Date.now();
-    const child = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', CLI, 'run', '--data', options.data, '--local-authority', '--maintenance-only', 'false'], {
+    // 维护分支（03:00 清理 + 完整 checkpoint）只在 maintenance 为真时执行；其余轮次必须显式 false，
+    // 否则会退化成只维护而不出刊。
+    const child = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', CLI, 'run', '--data', options.data, '--local-authority',
+      '--maintenance-only', maintenanceRound(at) ? 'true' : 'false'], {
       env: { ...process.env, TZ: 'Asia/Shanghai' }, stdio: ['ignore', 'pipe', 'pipe'], detached: true,
     });
     const pid = child.pid ?? 0;
@@ -111,7 +119,7 @@ function main(): void {
     writeFileSync(scheduler + '/runs/latest.json', JSON.stringify(record));
     try {
       // 早报窗口内 runMorning 最长 340 分钟；600 秒超时会每轮杀死回放中的进程并留下截断证据。
-      const result = await runRound({ ...options, timeoutMs: inMorningWindow() ? 2 * 3600 * 1000 : 60 * 60 * 1000 });
+      const result = await runRound({ ...options, timeoutMs: inMorningWindow() ? 2 * 3600 * 1000 : 60 * 60 * 1000 }, new Date(at));
       if (result.exit === 0) ticks++; else failures++;
       last = { at, status: result.exit === 0 ? 'completed' : 'failed', exit_code: result.exit, seconds: result.seconds };
       Object.assign(record, { finished_at: new Date().toISOString(), state: 'completed', exit_code: result.exit });
