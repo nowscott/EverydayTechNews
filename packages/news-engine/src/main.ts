@@ -7,21 +7,22 @@ import { spawnSync } from 'node:child_process';
 import { Store, restoreArtifacts, acknowledgeArtifact } from './store.ts';
 import { atomic, read, day, EXPIRY, RECIPIENT, type Row } from './core.ts';
 import { collect, assess, enrich, compose, deliver, launchSample, verifyApi, reconcile, status, reportTrial, due } from './pool.ts';
+import { applyRetention, retentionPlan, retentionSummary, retentionDue } from './retention.ts';
 
 const args = process.argv.slice(2); const operation = args.shift(); const flags: Row = {};
 for (let i = 0; i < args.length; i += 2) {
-  if (!['--data', '--sync-git', '--local-authority', '--collect-workers', '--maintenance-only', '--launch', '--verify-api', '--verify-quality', '--sample-revision'].includes(args[i])) throw new Error('unknown_argument');
+  if (!['--data', '--sync-git', '--local-authority', '--collect-workers', '--maintenance-only', '--launch', '--verify-api', '--verify-quality', '--sample-revision', '--apply'].includes(args[i])) throw new Error('unknown_argument');
   if (args[i] === '--sync-git') { flags.syncGit = true; i--; continue; }
   if (args[i] === '--local-authority') { flags.localAuthority = true; i--; continue; }
   if (!args[i + 1] || args[i + 1].startsWith('--')) throw new Error('missing_argument');
   flags[args[i].slice(2)] = args[i + 1];
 }
-for (const key of ['maintenance-only', 'launch', 'verify-api', 'verify-quality']) if (flags[key] !== undefined && !['true', 'false'].includes(flags[key])) throw new Error('invalid_boolean');
+for (const key of ['maintenance-only', 'launch', 'verify-api', 'verify-quality', 'apply']) if (flags[key] !== undefined && !['true', 'false'].includes(flags[key])) throw new Error('invalid_boolean');
 if (flags['sample-revision'] !== undefined && !['initial', 'serif', 'serif-retry', 'makeup', 'acceptance', 'acceptance-retry'].includes(flags['sample-revision'])) throw new Error('invalid_sample_revision');
 const root = resolve(flags.data ?? 'premium_data/pool'); mkdirSync(root, { recursive: true });
 if (flags.syncGit && flags.localAuthority) throw new Error('choose_one_state_authority');
 if (flags.localAuthority && process.platform !== 'linux') throw new Error('nas_authority_requires_linux_flock');
-const allowed = ['init', 'run', 'collect', 'assess', 'enrich', 'verify-api', 'launch-sample', 'fresh-sample', 'send-sample', 'compose', 'deliver', 'reconcile', 'status', 'report', 'archive', 'restore-artifact', 'ack-artifact', 'sync-subscribers'];
+const allowed = ['init', 'run', 'collect', 'assess', 'enrich', 'verify-api', 'launch-sample', 'fresh-sample', 'send-sample', 'compose', 'deliver', 'reconcile', 'status', 'report', 'archive', 'restore-artifact', 'ack-artifact', 'sync-subscribers', 'retention'];
 if (!operation || !allowed.includes(operation)) throw new Error('unknown_command');
 const stagedMorning = operation === 'run' && !!flags.localAuthority && flags['maintenance-only'] === 'false' && !flags.launch && !flags['verify-quality'] && !flags['verify-api'] && morningTime(new Date());
 let localLock: string | undefined;
@@ -55,6 +56,7 @@ try {
     } else if (operation === 'run') {
       try {
         reconcile(store); const plan = due(store); const maintenance = flags['maintenance-only'] !== 'false';
+        if (maintenance && retentionDue()) console.log(JSON.stringify({ stage: 'retention', result: applyRetention(store, retentionPlan(store)) }));
         const launch = flags.launch === 'true'; const quality = flags['verify-quality'] === 'true'; const verify = flags['verify-api'] === 'true' || quality;
         if (launch && verify) throw new Error('choose_one_acceptance_mode');
         console.log(JSON.stringify({ stage: 'due', maintenance, plan, engine: 'typescript' }));
@@ -80,7 +82,7 @@ try {
         else if (!maintenance && plan.enrich) console.log(JSON.stringify({ stage: 'enrichment', result: await enrich(store) }));
         if (maintenance) {
           // 缓存回收 + 只归档当日证据：4.2GB 全量 gzip 是单轮 5 分钟的主要来源。
-          const pruned = store.pruneTransient(Number(flags['keep-transient-days'] ?? process.env.NEWS_TRANSIENT_KEEP_DAYS ?? 30));
+          const pruned = store.pruneTransient(Number(flags['keep-transient-days'] ?? process.env.NEWS_TRANSIENT_KEEP_DAYS ?? 7));
           if (pruned.files) console.log(JSON.stringify({ stage: 'prune', result: pruned }));
           archiveStage(store);
         }
@@ -114,6 +116,7 @@ try {
         case 'report': result = reportTrial(store); break;
         case 'archive': result = { archive: store.archive(process.env.GITHUB_ACTIONS === 'true' ? day() : undefined) }; break;
         case 'ack-artifact': acknowledgeArtifact(store); result = { status: 'artifact_pointer_saved' }; break;
+        case 'retention': { const plan = retentionPlan(store); result = flags.apply === 'true' ? applyRetention(store, plan) : retentionSummary(plan); break; }
       }
       console.log(JSON.stringify(result));
     }
