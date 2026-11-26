@@ -6,10 +6,14 @@ on:
       - main
     paths:
       - 'apps/subscription-web/**'
+      - 'scripts/check-version.mjs'
+      - 'CHANGELOG.md'
       - '.github/workflows/subscription-web.yml'
   pull_request:
     paths:
       - 'apps/subscription-web/**'
+      - 'scripts/check-version.mjs'
+      - 'CHANGELOG.md'
       - '.github/workflows/subscription-web.yml'
 
 permissions:
@@ -33,6 +37,9 @@ jobs:
 
       - run: npm ci
       - run: npm audit --audit-level=moderate
+      - name: Version single source check
+        working-directory: .
+        run: node scripts/check-version.mjs --component subscription-web
       - run: npm run typecheck
       - run: npm test
       - run: npm run build

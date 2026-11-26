@@ -13,14 +13,14 @@
 
 ## 日常操作
 
-首次由发布源码执行 `python3 deploy/nas/install-managed.py --legacy <原部署根目录> --root <新的管理根目录>`。安装器保留原目录、配置、数据和镜像，成功验证后才替换本项目的计划任务，原始 crontab 保存为管理目录中的 crontab-before.txt。
+首次由发布源码执行 `node deploy/nas/install-managed.ts --legacy <原部署根目录> --root <新的管理根目录>`。安装器保留原目录、配置、数据和镜像，成功验证后才替换本项目的计划任务，原始 crontab 保存为管理目录中的 crontab-before.txt。
 
 以下命令中的 `<管理目录>` 指首次安装使用的 root：
 
 ```sh
-python3 <管理目录>/manage.py --root <管理目录> status
-python3 <管理目录>/manage.py --root <管理目录> update
-python3 <管理目录>/manage.py --root <管理目录> rollback news-engine-v0.4.0
+node <管理目录>/manage.ts --root <管理目录> status
+node <管理目录>/manage.ts --root <管理目录> update
+node <管理目录>/manage.ts --root <管理目录> rollback news-engine-v0.4.0
 ```
 
 保留的首次迁移旧版可用 `rollback legacy-20261019` 回退。回退前同样验证最新数据副本，回退不覆盖实时数据或恢复旧账本。曾部署版本的最高版本号会保留，避免回退后下一轮自动升级回故障版本；发布更高的修复版本恢复自动更新。

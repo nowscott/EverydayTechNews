@@ -1,4 +1,5 @@
 # NOT INSTALLED. Alternative local scheduler; do not install alongside private Actions.
+# 2026-11-26: Python 实现（run_trial.py / pool.py / benchmark.py）已从仓库撤除，以下命令仅为历史记录，不要安装。
 # UTC host: previous-day21:00=Shanghai05:00;22:15=06:15;22:30=06:30.
 # Initialize pool and finite trial first. Secrets come from a private external wrapper.
 # tick reconciles collection/AI/compose/delivery due work; each stage keeps its own state.

@@ -1,5 +1,7 @@
 # 控制器迁移到 TypeScript（2.7.6 → 2.7.7）
 
+> 历史记录：文中提及的 `manage.py`、`record-run.py`、Python 测试与「找不到 Node 时回退 Python」都已在 2.7.34 撤除，现状以 `deploy/ordinary/README.md` 为准。
+
 日期：2026-11-22
 tag：`ordinary-news-v2.7.6`、`ordinary-news-v2.7.7`、`nas-dashboard-v2.7.6`、`nas-dashboard-v2.7.7`
 

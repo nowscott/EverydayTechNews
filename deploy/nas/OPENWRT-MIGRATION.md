@@ -19,6 +19,6 @@
 
 1. 先确认 OpenWrt 代理已验证可用、网络迁移期间的服务变更暂停已解除；验证 NAS 实际代理、DNS、Notion 鉴权、GitHub 和主要来源。记录当前代码、镜像、配置和调度，并备份上述文件。验证期间不触发采集、模型、邮件或归档写入；旧代理可在业务切换后再停用。
 2. 在 09:00 之后协调控制器和业务切换；先暂停两个版本更新任务并等待当前业务及归档任务退出，保留原计划任务以便恢复。将私有设置和看板的 `snapshots`、`proxy.env` 准备好。不要让旧控制器先部署新版。
-3. 在 main 对应提交的普通版、高级版及看板 CI 全部通过后发布各自的正式 Release。使用已验证正式版本源码运行普通版 `deploy/ordinary/install-managed.py --root /vol3/1000/Docker/everydaytechnews-ordinary --tag <普通版正式标签> --upgrade-controller`，以及高级版原有 `deploy/nas/install-managed.py --legacy <原部署根目录> --root /vol3/1000/Docker/everydaytechnews-managed --upgrade-controller`。控制器单独备份，升级检查正式标签、main 和 CI；控制器与账本均受现有锁保护。
+3. 在 main 对应提交的普通版、高级版及看板 CI 全部通过后发布各自的正式 Release。使用已验证正式版本源码运行普通版 `node deploy/ordinary/install-managed.ts --root /vol3/1000/Docker/everydaytechnews-ordinary --tag <普通版正式标签> --upgrade-controller`，以及高级版原有 `node deploy/nas/install-managed.ts --legacy <原部署根目录> --root /vol3/1000/Docker/everydaytechnews-managed --upgrade-controller`。控制器单独备份，升级检查正式标签、main 和 CI；控制器与账本均受现有锁保护。
 4. 使用现有控制器逐项部署固定版本，先验证离线状态副本与发送账本；看板备份 Compose 和镜像配置后使用新 Compose 构建并启动两个服务。恢复原更新调度，确认版本、状态、权限、代理读取和正文采集器健康。服务更新失败只回退代码与配置，保留最新数据库、费用和发送账本。
 5. 不主动重跑业务任务。下一次自然早报核对来源、内容、投递数量、未知和重复状态，人工确认收件单独记录。旧代理停用及重启后的网络、容器和来源连接由网络迁移流程验证。

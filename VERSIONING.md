@@ -9,6 +9,7 @@
 | 普通版出刊 | `ordinary-news-v` | 线上正式产品，NAS 部署 | 是（唯一） |
 | 高级版引擎 | `news-engine-v` | 内部实验，非公开产品；**版本号与普通版统一到同一数字**（tag 前缀各自独立） | 否（`--latest=false`） |
 | NAS 工作台 | `nas-dashboard-v` | 局域网只读看板 | 否 |
+| 订阅网页 | `subscription-web-v` | Vercel 上的订阅管理页，按同一数字对齐 | 否 |
 | 旧 Python 应用 | `v1.x` / `v2.x` | 已冻结，仅归档，不再发版 | 否 |
 
 普通版版本号与 `v2.x`、`news-engine-v0.x` 相互独立，升级互不影响。
@@ -58,7 +59,7 @@ CI（`.github/workflows/ordinary-news.yml`）会在 PR 与 main 上运行 `check
 
 ## 现状（2026-11-26）
 
-- 当前版本：`2.7.34`。三处同号：普通版 `ordinary-news-v2.7.34`、看板 `nas-dashboard-v2.7.34`、高级版引擎 `news-engine-v2.7.34`（tag 前缀各自独立，数字必须一致）
+- 当前版本：`2.7.34`。四个组件同号：普通版 `ordinary-news-v2.7.34`、看板 `nas-dashboard-v2.7.34`、高级版引擎 `news-engine-v2.7.34`、订阅网页 `subscription-web-v2.7.34`（tag 前缀各自独立，数字必须一致）
 - 版本线切换：旧 `1.0.x` 系列就此终止；`v1.x` / `v2.0–2.6` 的旧 Python 实现仍为冻结归档，不再发版
 - 自 2.7.34 起仓库不再包含任何 `.py`：控制器、安装器、检查脚本、测试全部为 TypeScript，镜像内 `! command -v python` 断言保留
 - Docker 侧 `:git-<sha>` 别名自 2.7.19 起不再生成；旧别名随部署清理

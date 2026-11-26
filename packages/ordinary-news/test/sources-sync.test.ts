@@ -52,10 +52,10 @@ const sha=(content:string)=>createHash('sha1').update('blob '+Buffer.byteLength(
 test('archive publisher is shadow-disabled, detects conflicts and uses compare-and-set without force',async()=>{
  const root=mkdtempSync(tmpdir()+'/ordinary-sync-'),archive=root+'/archive',state=root+'/sync';const path='news_archive/2026-10/20.md';
  atomicText(archive+'/2026-10/20.md','new content');atomic(state+'/baseline.json',{files:{[path]:sha('old content')}});
- let remote=sha('old content'),commits=0,patches=0,dropResponse=true;const visited:any[]=[];
+ let remote=sha('old content'),commits=0,patches=0,dropResponse=true,wfState='disabled_manually';const visited:any[]=[];
  const fetcher=(async(url:any,options:any)=>{
   const u=String(url);const body=options.body?JSON.parse(options.body):null;visited.push({u,body});
-  if(u.includes('/actions/workflows/'))return Response.json({state:'disabled_manually'});
+  if(u.includes('/actions/workflows/'))return wfState==='deleted'?new Response('Not Found',{status:404}):Response.json({state:wfState});
   if(u.endsWith('/git/ref/heads/main'))return Response.json({object:{sha:'head'}});
   if(u.endsWith('/git/commits/head'))return Response.json({tree:{sha:'tree'}});
   if(u.includes('/git/trees/tree?'))return Response.json({tree:[{path,sha:remote,type:'blob'},{path:'README.md',sha:'untouched',type:'blob'}]});
@@ -69,8 +69,10 @@ test('archive publisher is shadow-disabled, detects conflicts and uses compare-a
   assert.equal((await syncArchive(archive,state,{mode:'shadow'},'test',fetcher)).status,'disabled_in_shadow');assert.equal(visited.length,0);
   const c={mode:'production',archive_sync_enabled:true};assert.equal((await syncArchive(archive,state,c,'',fetcher)).status,'archive_credential_missing');
   remote=sha('conflicting manual edit');assert.equal((await syncArchive(archive,state,c,'test',fetcher)).status,'archive_conflict_preserved');assert.equal(commits,0);
-  remote=sha('old content');assert.equal((await syncArchive(archive,state,c,'test',fetcher)).status,'archive_sync_failed');
+  remote=sha('old content');wfState='active';assert.equal((await syncArchive(archive,state,c,'test',fetcher)).status,'legacy_archive_writers_not_disabled');assert.equal(commits,0);
+  wfState='disabled_manually';assert.equal((await syncArchive(archive,state,c,'test',fetcher)).status,'archive_sync_failed');
   assert.equal((await syncArchive(archive,state,c,'test',fetcher)).status,'synced');assert.equal(commits,1);assert.equal(patches,1);
+  wfState='deleted';assert.equal((await syncArchive(archive,state,c,'test',fetcher)).status,'synced');
  }finally{rmSync(root,{recursive:true,force:true});}
 });
 

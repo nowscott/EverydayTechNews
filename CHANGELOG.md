@@ -1,5 +1,9 @@
 # 更新日志
 
+## subscription-web-v2.7.34
+
+- 版本号与三端对齐为 2.7.34，纳入 `scripts/check-version.mjs` 的一致性检查；订阅网页本身无功能变化。
+
 ## ordinary-news-v2.7.34
 
 - 仓库撤除 Python：`src/*.py`、`tests/*.py`、`deploy/**/*.py`（含控制器、安装器、检查脚本与 Python 测试）、`experiments/premium/*.py`、`tools/*.py` 与 `requirements.txt` 全部删除，运行和测试都不再需要解释器。

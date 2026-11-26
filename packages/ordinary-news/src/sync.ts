@@ -17,7 +17,13 @@ export async function syncArchive(archive:string,state:string,control:Row,token:
     if(!r.ok)throw new Error('archive_github_'+r.status);return await r.json() as Row;
   }
   try {
-    for(const workflow of WORKFLOWS)if((await api('/actions/workflows/'+workflow,undefined,false)).state!=='disabled_manually')return pending('legacy_archive_writers_not_disabled');
+    for(const workflow of WORKFLOWS){
+      // 旧工作流已在 2.7.34 删除：404 说明它不可能再写入，等同于永久停用。
+      const r=await fetcher(API+'/actions/workflows/'+workflow,{method:'GET',headers:{Accept:'application/vnd.github+json'},signal:AbortSignal.timeout(30000),redirect:'error'});
+      if(r.status===404)continue;
+      if(!r.ok)throw new Error('archive_github_'+r.status);
+      if(((await r.json()) as Row).state!=='disabled_manually')return pending('legacy_archive_writers_not_disabled');
+    }
     const head=await api('/git/ref/heads/main');const commit=await api('/git/commits/'+head.object.sha);const tree=await api('/git/trees/'+commit.tree.sha+'?recursive=1');
     if(tree.truncated)throw new Error('archive_remote_tree_truncated');
     const remote=new Map<string,string>(tree.tree.filter((r:Row)=>r.type==='blob'&&r.path.startsWith('news_archive/')).map((r:Row)=>[r.path,r.sha]));

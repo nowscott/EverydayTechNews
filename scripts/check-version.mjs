@@ -26,6 +26,12 @@ const COMPONENTS = {
     lock: 'apps/nas-dashboard/package-lock.json',
     prefix: 'nas-dashboard-v',
   },
+  'subscription-web': {
+    manifest: 'apps/subscription-web/package.json',
+    package: 'apps/subscription-web/package.json',
+    lock: 'apps/subscription-web/package-lock.json',
+    prefix: 'subscription-web-v',
+  },
 };
 
 const args = process.argv.slice(2);
@@ -74,7 +80,7 @@ for (const name of selected) {
 
 if (found.size > 1) {
   const versions = new Set(found.values());
-  if (versions.size !== 1) failures.push(`三端版本未统一 ${JSON.stringify(Object.fromEntries(found))}`);
+  if (versions.size !== 1) failures.push(`各组件版本未统一 ${JSON.stringify(Object.fromEntries(found))}`);
 }
 
 if (failures.length) {
