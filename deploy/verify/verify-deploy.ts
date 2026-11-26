@@ -41,7 +41,10 @@ async function main(): Promise<number> {
   const errors: string[] = [];
   const check = (name: string, ok: boolean, detail: string) => { rows.push({ name, detail, ok }); if (!ok) errors.push(name); };
 
-  const ordinary = readJson(path.join(ordinaryRoot, 'deployment.json'));
+  // 普通版的部署记录在 <root>/managed 下；直接传根目录时自动下探一层，避免只报 missing。
+  const ordinaryDeployment = path.join(ordinaryRoot, 'deployment.json');
+  const ordinaryBase = fs.existsSync(ordinaryDeployment) ? ordinaryRoot : path.join(ordinaryRoot, 'managed');
+  const ordinary = readJson(path.join(ordinaryBase, 'deployment.json'));
   const premium = readJson(path.join(premiumRoot, 'deployment.json'));
   const dashboard = readJson(path.join(dashboardRoot, 'installation.json'));
   const tags = [ordinary.active?.tag, premium.active?.tag, dashboard.tag];
@@ -60,7 +63,7 @@ async function main(): Promise<number> {
   }
 
   for (const [label, data] of [['ordinary', ordinary], ['premium', premium]] as const) {
-    const root = label === 'ordinary' ? ordinaryRoot : premiumRoot;
+    const root = label === 'ordinary' ? ordinaryBase : premiumRoot;
     const config = readJson(path.join(root, 'config.json'));
     const dataDir = data.dataDir || config.data || path.join(root, 'data');
     const statusPath = path.join(dataDir, 'scheduler/status.json');
