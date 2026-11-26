@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { Store, restoreArtifacts, acknowledgeArtifact } from './store.ts';
 import { atomic, read, day, EXPIRY, RECIPIENT, type Row } from './core.ts';
 import { collect, assess, enrich, compose, deliver, launchSample, verifyApi, reconcile, status, reportTrial, due } from './pool.ts';
-import { applyRetention, retentionPlan, retentionSummary, retentionDue } from './retention.ts';
+import { applyRetention, retentionPlan, retentionSummary, retentionAppliedToday, retentionDue } from './retention.ts';
 
 const args = process.argv.slice(2); const operation = args.shift(); const flags: Row = {};
 for (let i = 0; i < args.length; i += 2) {
@@ -56,7 +56,7 @@ try {
     } else if (operation === 'run') {
       try {
         reconcile(store); const plan = due(store); const maintenance = flags['maintenance-only'] !== 'false';
-        if (maintenance && retentionDue()) console.log(JSON.stringify({ stage: 'retention', result: applyRetention(store, retentionPlan(store)) }));
+        if (maintenance && retentionDue() && !retentionAppliedToday(root)) console.log(JSON.stringify({ stage: 'retention', result: applyRetention(store, retentionPlan(store)) }));
         const launch = flags.launch === 'true'; const quality = flags['verify-quality'] === 'true'; const verify = flags['verify-api'] === 'true' || quality;
         if (launch && verify) throw new Error('choose_one_acceptance_mode');
         console.log(JSON.stringify({ stage: 'due', maintenance, plan, engine: 'typescript' }));

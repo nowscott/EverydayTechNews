@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dueAtPremium, nextRun, policy, quietNow, pidIsScheduler } from '../src/daemon.ts';
+import { dueAtPremium, nextRun, policy, quietNow, pidIsScheduler, lockHeldByOther } from '../src/daemon.ts';
 
 const at = (h: number, m: number, s = 0) => new Date(2026, 10, 22, h, m, s);
 const hm = (d: Date) => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
@@ -60,4 +60,7 @@ test('锁里的 pid 必须确认是调度进程', () => {
   assert.equal(pidIsScheduler(7, () => 'node\0packages/news-engine/src/daemon.ts\0'), true);
   assert.equal(pidIsScheduler(7, () => 'node\0server.js\0'), false);
   assert.equal(pidIsScheduler(0, () => 'x'), false);
+  assert.equal(lockHeldByOther(8, 8, () => true), false);
+  assert.equal(lockHeldByOther(8, 7, () => true), true);
+  assert.equal(lockHeldByOther(0, 7, () => true), false);
 });

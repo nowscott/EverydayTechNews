@@ -1,6 +1,6 @@
 import { existsSync, lstatSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { atomic, day, stamp, type Row } from './core.ts';
+import { atomic, day, read, stamp, type Row } from './core.ts';
 import { Store, files } from './store.ts';
 
 export interface RetentionPolicy {
@@ -145,6 +145,12 @@ export function applyRetention(store: Store, plan: RetentionPlan, now = new Date
     estimated_bytes: plan.estimated_bytes } };
   atomic(join(store.root, 'durable', 'retention.json'), result);
   return result;
+}
+
+export function retentionAppliedToday(root: string, now = new Date()): boolean {
+  const path = join(root, 'durable', 'retention.json');
+  if (!existsSync(path)) return false;
+  try { return day(new Date(read(path).at)) === day(now); } catch { return false; }
 }
 
 export function retentionDue(now = new Date()): boolean {
