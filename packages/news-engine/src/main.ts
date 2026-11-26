@@ -40,7 +40,7 @@ try {
   if (operation === 'restore-artifact') { restoreArtifacts(root); console.log(JSON.stringify({ status: 'restored' })); }
   else {
     if (operation === 'run') restoreArtifacts(root);
-    store = new Store(root, !!flags.syncGit, !!flags.localAuthority, { sqlitePrimary: stagedMorning || !!flags.localAuthority, lightCheckpoint: stagedMorning });
+    store = new Store(root, !!flags.syncGit, !!flags.localAuthority, { sqlitePrimary: stagedMorning || !!flags.localAuthority, lightCheckpoint: !!flags.localAuthority });
     if (operation === 'init') {
       if (!existsSync(root + '/trial.json')) {
         atomic(root + '/trial.json', { schema_version: 1, mode: 'internal_test', enabled: false, start: '2026-10-19', days: 7, expires_at: EXPIRY, allowed_recipient: RECIPIENT,

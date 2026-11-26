@@ -1,5 +1,20 @@
 # 更新日志
 
+## ordinary-news-v2.7.33
+
+- 与三端同号；普通版逻辑未变。
+
+## news-engine-v2.7.33
+
+- NAS 本地轮次默认使用轻量 checkpoint：SQLite 为主状态，不再每 30 分钟重写 431MB `state.json`；每日 03:00 的分层清理仍执行完整 checkpoint 刷新归档状态。
+- 部署校验改为读取一次 `state.json` 后核对 SQLite 的 `calls` / `issues` 行数，不再完整重写 `state.json` 和第二次 restore，显著缩短候选/旧版校验时间。
+- 保留 2.7.32 的调度器陈旧锁修复与每日清理去重。
+- 测试与类型检查通过。
+
+## nas-dashboard-v2.7.33
+
+- 与三端同号；看板无变化。
+
 ## ordinary-news-v2.7.32
 
 - 与三端同号；普通版逻辑未变。

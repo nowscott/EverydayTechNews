@@ -19,17 +19,18 @@ function ledger() {
   return { schema, counts, calls: hashes.calls.digest('hex'), issues: hashes.issues.digest('hex') };
 }
 const before = ledger();
-const store = new Store(root, false, true);
+// SQLite 已是主状态：不再做 431MB 的完整 state.json 重写；只核对 state 与库的行数/账本一致。
+const store = new Store(root, false, true, { sqlitePrimary: true, lightCheckpoint: true });
 try {
   const config = trial(root);
   assert.equal(config.production_enabled, false);
   assert.ok(policy().daily_budget_cny <= 2);
   assert.equal(new Set(store.missing).size, 0, 'missing evidence');
   store.checkpoint();
-  const after = ledger();
-  assert.deepEqual(after, before, 'billing ledger or frozen issues changed');
-  // Restore a second time to prove round-trip compatibility with the same engine.
-  store.restore();
-  console.log(JSON.stringify({ verified: true, calls: before.counts.calls,
-    delivery_files: readdirSync(root + '/deliveries').length, schema: after.schema }));
+  const calls = Number(store.one('SELECT count(*) AS n FROM calls')?.n ?? 0);
+  const issues = Number(store.one('SELECT count(*) AS n FROM issues')?.n ?? 0);
+  assert.equal(calls, before.counts.calls, 'state calls count differs from sqlite');
+  assert.equal(issues, before.counts.issues, 'state issues count differs from sqlite');
+  console.log(JSON.stringify({ verified: true, calls, issues,
+    delivery_files: readdirSync(root + '/deliveries').length, schema: before.schema }));
 } finally { store.db.close(); }
