@@ -61,6 +61,9 @@ test('score thresholds, sample mode and capacity reasons are preserved', () => {
   const below = { ...boundary, published_at: '2026-10-17T07:11:02+08:00' };
   assert.equal(evaluate(below, cutoff, config).score, 57.99);
   assert.equal(choose([below], cutoff, config)[0].length, 0);
+  assert.equal(choose([below], cutoff, config, { minimum: 55 })[0].length, 1);
+  const model = article({ title: '腾讯混元开源新模型', source: 'ithome' });
+  assert.deepEqual(evaluate(model, cutoff, config).interests, ['AI']);
 });
 
 test('diversity can reorder within three points, never outside it', () => {

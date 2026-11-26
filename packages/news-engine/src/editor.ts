@@ -36,7 +36,7 @@ export function duplicate(a: Row, b: Row): boolean {
   const bt = terms(b.title);
   return [...terms(a.title)].some(t => bt.has(t)) && actions.some(p => search(p, a.title) && search(p, b.title));
 }
-export function select(input: Row[], cutoff: string, sample = false, target?: number): [Row[], Row[]] {
+export function select(input: Row[], cutoff: string, sample = false, target?: number, minimum?: number): [Row[], Row[]] {
   const selected: Row[] = []; const rejected: Row[] = []; const latest = new Map<string, Row>();
   const clock = microtimestamp(cutoff);
   const rows = input.map(a => ({ ...a })).sort((a, b) => compareText(a._last_observed_at ?? a.fetched_at, b._last_observed_at ?? b.fetched_at));
@@ -60,6 +60,6 @@ export function select(input: Row[], cutoff: string, sample = false, target?: nu
     if (reason) { rejected.push({ id: a.id, content_fingerprint:a.content_fingerprint, title: a.title, reason, event_matches: matches }); continue; }
     a.topic = topic(a); a.event_group = a.id; selected.push(a);
   }
-  const [chosen, extra] = choose(selected as Article[], cutoff, preferences(), { sample, target });
+  const [chosen, extra] = choose(selected as Article[], cutoff, preferences(), { sample, target, minimum });
   return [chosen, [...rejected, ...extra]];
 }

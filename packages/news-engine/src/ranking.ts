@@ -85,10 +85,10 @@ export function evaluate(a: Article, cutoff: string, config: EditorialConfig): R
 
 /** Pure counterpart of ranking.choose: preserves input records without mutating them. */
 export function choose(candidates: Article[], cutoff: string, config: EditorialConfig,
-  options: { sample?: boolean; target?: number | null } = {}): [RankedArticle[], Rejection[]] {
+  options: { sample?: boolean; target?: number | null; minimum?: number } = {}): [RankedArticle[], Rejection[]] {
   const target = options.target || config.edition_maximum; // Python treats zero as default.
   if (!Number.isInteger(target) || target < 0) throw new Error('target must be a non-negative integer');
-  const minimum = options.sample ? 40 : 58;
+  const minimum = options.minimum ?? (options.sample ? 40 : 58);
   const pending: RankedArticle[] = candidates.map(a => ({ ...a, ranking: evaluate(a, cutoff, config) }));
   pending.sort((a, b) => b.ranking.score - a.ranking.score || compareText(b.published_at, a.published_at) || compareText(b.id, a.id));
   const sources = new Map<string, number>(); const topics = new Map<string | null | undefined, number>(); const counts = new Map<string, number>();
