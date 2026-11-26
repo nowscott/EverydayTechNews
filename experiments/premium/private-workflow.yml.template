@@ -1,3 +1,5 @@
+# 2026-11-26：本模板调用的 Python 脚本（pool.py / schedule.py 等）已从仓库撤除，此文件仅作历史记录，不要部署；
+# 现行入口见 private-workflow-ts.yml.template。
 name: Internal premium pool (private data only)
 
 on:
