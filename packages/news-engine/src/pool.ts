@@ -16,7 +16,7 @@ export function rows(store: Store, cutoff = stamp()): Row[] {
   const last = new Map(store.all('SELECT id,fingerprint,MAX(observed_at) observed FROM observations WHERE observed_at<=? GROUP BY id,fingerprint', cutoff).map(r => [r.id + '\0' + r.fingerprint, r.observed]));
   return store.all('SELECT data FROM articles').map(r => { const a = JSON.parse(r.data); a._last_observed_at = last.get(a.id + '\0' + a.content_fingerprint) ?? a.fetched_at; return a; });
 }
-export function candidates(store: Store, cutoff: string, target = Number.MAX_SAFE_INTEGER, floor?: string): [Row[], Row[]] {
+export function candidates(store: Store, cutoff: string, target = Number.MAX_SAFE_INTEGER, floor?: string, minimum?: number): [Row[], Row[]] {
   const prior = files(store.root + '/deliveries').map(read).filter(r => r.status === 'smtp_accepted').flatMap(r => {
     const path = store.root + '/issues/' + r.issue + '/edition.json';
     if (!existsSync(path)) return [];
@@ -46,7 +46,7 @@ export function candidates(store: Store, cutoff: string, target = Number.MAX_SAF
     if (job?.result && !editionExclusions(store, [{ article: a, result: JSON.parse(job.result) }], cutoff, reasons).length) continue;
     articles.push(a);
   }
-  const [chosen, rejected] = select(articles, cutoff, false, target); const approved: Row[] = [];
+  const [chosen, rejected] = select(articles, cutoff, false, target, minimum); const approved: Row[] = [];
   for (const a of chosen) {
     if (a.update_review_required) {
       if (!a.prior_evidence?.length) {
@@ -130,6 +130,8 @@ export async function enrich(store: Store) {
   const [cutoff, floor] = writingWindow(); const [candidatesForWriting] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER, floor); const eligible = writingOrder(candidatesForWriting);
   const completed = recordsReady(store, eligible, deadline, [], false);
   const target = Number(preferences().candidate_target);
+  const clock = localParts(new Date());
+  const batchSize = clock.hour >= 4 && clock.hour < 7 ? Math.max(8, Number(preferences().batch_size)) : Number(preferences().batch_size);
   const audit = shouldAuditPool(completed.length, deadline)
     ? await reviewEdition(store, completed, p, deadline) : { calls: 0 };
   const ready = recordsReady(store, eligible, deadline, []);
@@ -144,14 +146,14 @@ export async function enrich(store: Store) {
     const outcome = await reviewDraft(store, job, a, p);
     reviewCalls += store.one('SELECT COUNT(*) n FROM calls')!.n - before;
     if (outcome === 'ai_rejected') prepareRevision(store, store.one('SELECT * FROM jobs WHERE key=?', job.key)!, p);
-    if (reviewCalls >= Number(preferences().batch_size)) return { status: 'review_batch', calls: reviewCalls };
+    if (reviewCalls >= batchSize) return { status: 'review_batch', calls: reviewCalls };
     if (['budget_exhausted', 'official_rules_unconfirmed', 'missing_api_key'].includes(outcome)) return { status: outcome, calls: reviewCalls };
   }
   const attempted = attemptedVersions(store); let invoked = reviewCalls; const statuses: Row[] = [];
   const queued = new Map(store.all('SELECT * FROM jobs WHERE result IS NULL').map(job => [job.key, job]));
   const jobs = eligible.map(a => queued.get(cacheKey(a, p))).filter((job): job is Row => !!job);
   for (const job of jobs) {
-    if (invoked >= Number(preferences().batch_size)) break;
+    if (invoked >= batchSize) break;
     if (!attempted.has(job.key) && attempted.size >= Number(preferences().new_versions_per_day)) continue;
     const candidate = eligible.find(a => cacheKey(a, p) === job.key)!; const a: Row = { ...candidate, revision_feedback: JSON.parse(job.article).revision_feedback }; if (!a.text || a.evidence_expired_or_missing) continue;
     const completed = recordsReady(store, eligible, deadline, [], false);
@@ -220,8 +222,15 @@ export function compose(store: Store, now = new Date()) {
   const cutoff = stamp(now); const deadline = stamp(at(day(now), '06:15:00'));
   if (now.getTime() < Date.parse(deadline)) return { status: 'generation_deadline_not_reached' };
   const id = 'test-' + day(now); const path = store.root + '/issues/' + id + '/edition.json'; if (existsSync(path)) return read(path);
-  const [chosen, rejected] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER); const records = recordsReady(store, chosen, deadline, rejected);
-  const issue = { id, pool_edition: true, quality_policy: 'fidelity-1', edition_quality_policy: 'edition-consistency-1', mode: 'daily_24h', selection_window: 'rolling_24h', collection_window_start: writingWindow(now)[1], reuse_previous_day_samples: !!preferences().reuse_previous_day_samples, collection_cutoff: cutoff, generation_cutoff: deadline, frozen_at: stamp(now), articles: records.map(r => r.article), rejected,
+  const [chosen, rejected] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER); let records = recordsReady(store, chosen, deadline, rejected);
+  let rejectedByFloor = rejected; let editorialFloor = 58; let degradedEditorialFloor = false;
+  if (records.length < Number(preferences().edition_minimum) && now >= at(day(now), '06:00:00')) {
+    // 06:00 后仍凑不够最低篇数时，按 55 分兜底重选一次，并在刊头明确标记，避免整期直接变成 0 篇诊断。
+    const [fallbackChosen, fallbackRejected] = candidates(store, cutoff, Number.MAX_SAFE_INTEGER, undefined, 55);
+    const fallbackRecords = recordsReady(store, fallbackChosen, deadline, fallbackRejected);
+    if (fallbackRecords.length > records.length) { records = fallbackRecords; rejectedByFloor = fallbackRejected; editorialFloor = 55; degradedEditorialFloor = true; }
+  }
+  const issue = { id, pool_edition: true, quality_policy: 'fidelity-1', edition_quality_policy: 'edition-consistency-1', mode: 'daily_24h', selection_window: 'rolling_24h', collection_window_start: writingWindow(now)[1], reuse_previous_day_samples: !!preferences().reuse_previous_day_samples, collection_cutoff: cutoff, generation_cutoff: deadline, frozen_at: stamp(now), articles: records.map(r => r.article), rejected: rejectedByFloor, editorial_floor: editorialFloor, degraded_editorial_floor: degradedEditorialFloor,
     source_health: status(store).sources, shortfall: Math.max(0, Number(preferences().edition_minimum) - records.length), editorial_policy: preferences().domain_policy, source_policy: preferences().source_policy, ai_review: 'passed', kind: records.length >= Number(preferences().edition_minimum) ? 'newsletter' : 'diagnostic', sendable_count: 0, engine: 'typescript' };
   return freezeIssue(store, issue, records);
 }
