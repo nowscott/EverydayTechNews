@@ -1,5 +1,19 @@
 # 更新日志
 
+## ordinary-news-v2.7.34
+
+- 与三端同号；普通版逻辑未变。
+
+## news-engine-v2.7.34
+
+- 修正部署校验归档文件：快照不包含 `state.sqlite3`，校验必须从 `state.json` 恢复；仅做轻量 checkpoint，避免再次完整重写 431MB。
+- 与 2.7.33 的运行逻辑一致：NAS 本地轮次轻量 checkpoint，部署校验不再完整重写。
+- 类型检查通过。
+
+## nas-dashboard-v2.7.34
+
+- 与三端同号；看板无变化。
+
 ## ordinary-news-v2.7.33
 
 - 与三端同号；普通版逻辑未变。

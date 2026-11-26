@@ -19,8 +19,8 @@ function ledger() {
   return { schema, counts, calls: hashes.calls.digest('hex'), issues: hashes.issues.digest('hex') };
 }
 const before = ledger();
-// SQLite 已是主状态：不再做 431MB 的完整 state.json 重写；只核对 state 与库的行数/账本一致。
-const store = new Store(root, false, true, { sqlitePrimary: true, lightCheckpoint: true });
+// 快照里没有 state.sqlite3，必须从 state.json 恢复；但只做轻量 checkpoint，避免再完整重写 431MB。
+const store = new Store(root, false, true, { sqlitePrimary: false, lightCheckpoint: true });
 try {
   const config = trial(root);
   assert.equal(config.production_enabled, false);
