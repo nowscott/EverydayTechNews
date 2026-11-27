@@ -92,9 +92,19 @@ export async function inspectRules(p: Row, fetcher: typeof fetch = fetch): Promi
   } catch { return { verified: false, reason: 'network_or_parse_failure' }; }
 }
 export async function verifyRules(p: Row, fetcher: typeof fetch = fetch): Promise<boolean> {
-  const check = await inspectRules(p, fetcher);
-  if (!check.verified) console.log(JSON.stringify({ stage: 'pricing_check', ...check }));
-  return check.verified;
+  let last: Row = {};
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const check = await inspectRules(p, fetcher);
+    if (check.verified) return true;
+    last = check;
+    // 只有取不到页面这类瞬时失败才重试一次；价格/版本/时间规则不一致说明规则真的变了，立刻阻断。
+    const transient = check.reason === 'network_or_parse_failure' || check.reason === 'http_error';
+    if (!transient || attempt === 2) break;
+    console.log(JSON.stringify({ stage: 'pricing_check_retry', attempt, reason: check.reason }));
+    await new Promise(resolve => setTimeout(resolve, 400));
+  }
+  console.log(JSON.stringify({ stage: 'pricing_check', ...last }));
+  return false;
 }
 
 export interface PaidDependencies {

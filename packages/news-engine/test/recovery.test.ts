@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as tar from 'tar';
 import { Store, extractEvidence } from '../src/store.ts';
@@ -285,6 +285,16 @@ test('official price parser handles header footnotes and rejects changed rules o
   assert.equal(await verifyRules(p, fake(html.replace('0.02元', '0.03元'))), false);
   assert.equal(await verifyRules(p, fake(html.replace('9:00', '8:00'))), false);
 });
+test('定价页瞬时取不到会重试一次，规则真的变了才阻断', async () => {
+  const p = policy();
+  const html = `<table><tr><th>模型</th><th>deepseek-flash<sup>(1)</sup></th><th>other</th></tr><tr><td>base</td></tr><tr><td>base2</td></tr><tr><td>模型版本</td><td>${p.model_version}</td><td>other</td></tr><tr><td>空闲时段</td><td>0.02元</td><td>1元</td></tr><tr><td>空闲时段</td><td>1元</td><td>2元</td></tr><tr><td>空闲时段</td><td>4元</td><td>8元</td></tr></table><p>北京时间周一至周五（不含中国法定节假日）9:00 - 12:00、14:00 - 18:00 为高峰时段；其余时段，包括周末及中国法定节假日全天均为空闲时段。</p>`;
+  let count = 0;
+  const flaky = (async () => { count += 1; if (count === 1) throw Error('ECONNRESET'); return new Response(html); }) as typeof fetch;
+  assert.equal(await verifyRules(p, flaky), true); assert.equal(count, 2);
+  count = 0;
+  const down = (async () => { count += 1; throw Error('ECONNRESET'); }) as typeof fetch;
+  assert.equal(await verifyRules(p, down), false); assert.equal(count, 2);
+});
 test('known-cost repairs stop at the shared three-attempt limit', async () => {
   const { store, p, key, close } = setup(); let count = 0;
   try {
@@ -537,6 +547,20 @@ test('legacy human-review drafts migrate durably to automatic review without app
   } finally { close(); }
 });
 
+test('早报路径的诊断刊只投内部地址，不外发订阅者', async () => {
+  const { store, close } = setup(); const saved = { ...process.env };
+  Object.assign(process.env, { SENDING_ACCOUNT: 'sender@example.org', SENDING_PASSWORD: 'test', SERVER: 'smtp.example.org' });
+  try {
+    const clock = () => new Date('2026-10-19T06:35:00+08:00');
+    const issue = { id: 'test-2026-10-19', kind: 'diagnostic', mode: 'daily_24h', pool_edition: true, quality_policy: 'fidelity-1',
+      collection_cutoff: '2026-10-19T06:00:00+08:00', generation_cutoff: '2026-10-19T06:15:00+08:00', articles: [], rejected: [], source_health: null };
+    freezeIssue(store, issue, []);
+    const sent: string[] = []; const deps = { now: clock, subscribers: async () => [RECIPIENT, 'outside@example.org'], transport: {
+      sendMail: async (m: Row) => { sent.push(m.to); return { accepted: [m.to] }; }, close() {} } };
+    assert.equal((await deliver(store, false, clock(), 'initial', deps)).status, 'smtp_accepted');
+    assert.deepEqual(sent, [RECIPIENT]);
+  } finally { for (const [key, value] of Object.entries({ SENDING_ACCOUNT: saved.SENDING_ACCOUNT, SENDING_PASSWORD: saved.SENDING_PASSWORD, SERVER: saved.SERVER })) value === undefined ? delete process.env[key] : process.env[key] = value; close(); }
+});
 test('Notion audience uses private independent receipts and never repeats uncertain SMTP', async () => {
   const { store, root, close } = setup(); const saved = { ...process.env };
   Object.assign(process.env, { SENDING_ACCOUNT: 'sender@example.org', SENDING_PASSWORD: 'test', SERVER: 'smtp.example.org' });
@@ -568,9 +592,9 @@ test('scheduled writer uses the configured continuous deadline after the legacy 
   const fresh:Row={...a,id:'continuous-writer',fetched_at:'2026-10-26T04:50:00+08:00',published_at:'2026-10-26T04:00:00+08:00',original_article_published_at:'2026-10-26T04:00:00+08:00'};
   store.run('INSERT INTO articles VALUES (?,?,?)',fresh.id,fresh.content_fingerprint,pyjson(fresh));assess(store,clock);
   let gets=0,posts=0;t.mock.method(globalThis,'fetch',(async(_u:any,options:any)=>{if(options?.method==='POST')posts++;else gets++;return new Response('pricing unavailable',{status:503});}) as typeof fetch);
-  const permitted=await enrich(store);assert.equal(permitted.status,'processed_or_pending');assert.equal(permitted.jobs?.[0]?.status,'official_rules_unconfirmed');assert.equal(gets,1);assert.equal(posts,0);
-  t.mock.timers.setTime(new Date('2026-10-26T06:14:00+08:00').getTime());assert.equal((await enrich(store)).status,'outside_window_or_margin');assert.equal(gets,1);
+  const permitted=await enrich(store);assert.equal(permitted.status,'processed_or_pending');assert.equal(permitted.jobs?.[0]?.status,'official_rules_unconfirmed');assert.equal(gets,2);assert.equal(posts,0);
+  t.mock.timers.setTime(new Date('2026-10-26T06:14:00+08:00').getTime());assert.equal((await enrich(store)).status,'outside_window_or_margin');assert.equal(gets,2);
   atomic(root+'/trial.json',{...continuous,testing_period:'bounded',days:7,expires_at:EXPIRY});
-  t.mock.timers.setTime(clock.getTime());assert.equal((await enrich(store)).status,'trial_or_model_disabled_or_expired');assert.equal(gets,1);assert.equal(posts,0);
+  t.mock.timers.setTime(clock.getTime());assert.equal((await enrich(store)).status,'trial_or_model_disabled_or_expired');assert.equal(gets,2);assert.equal(posts,0);
  }finally{close();t.mock.timers.reset();}
 });
