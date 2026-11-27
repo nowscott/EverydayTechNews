@@ -1,5 +1,21 @@
 # 更新日志
 
+## ordinary-news-v2.7.39
+
+- 与四端同号；普通版无变化（本轮只修高级版镜像内自检脚本的文件权限）。
+
+## news-engine-v2.7.39
+
+- **镜像内自检脚本恢复可读**：`deploy/nas/Dockerfile` 的收尾 chmod 补上 `/app/verify-state.ts`。此前构建 umask 为 077，该文件落库后是 `root:root 700`，而运行用户是 `node`（uid 1000），进容器执行 `node /app/verify-state.ts` 会直接 `EACCES`；部署校验用的是宿主机挂载源码文件、不受影响，但镜像内自查这条路径现在能正常跑。
+
+## nas-dashboard-v2.7.39
+
+- 与四端同号；看板无变化。
+
+## subscription-web-v2.7.39
+
+- 与四端同号；订阅网页无变化。
+
 ## ordinary-news-v2.7.38
 
 - 与四端同号；普通版无变化（本轮修高级版写稿链路与看板展示）。
