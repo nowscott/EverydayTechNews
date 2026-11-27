@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
-import { mkdirSync, readFileSync, readSync, writeFileSync, readdirSync, rmSync, unlinkSync, lstatSync, existsSync, openSync, closeSync, fsyncSync, renameSync } from 'node:fs';
+import { mkdirSync, readFileSync, readSync, writeFileSync, readdirSync, rmSync, unlinkSync, lstatSync, existsSync, openSync, closeSync, fsyncSync, renameSync, copyFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import * as tar from 'tar';
 import { JSONParser } from '@streamparser/json';
@@ -221,6 +221,13 @@ export class Store {
     mkdirSync(this.root + '/transient', { recursive: true });
     if (paths.length) tar.c({ file: path, cwd: this.root, sync: true, gzip: true, portable: true }, paths);
     else { const empty = this.root + '/.cache/empty'; mkdirSync(empty + '/transient', { recursive: true }); tar.c({ file: path, cwd: empty, sync: true, gzip: true, portable: true }, ['transient']); }
+    // NAS 上没有 GitHub Artifact 通道，正文证据过期后无处可寻；本地按日留一份，保留 400 天覆盖一年审计。
+    if (process.env.GITHUB_ACTIONS !== 'true' && process.env.ETN_LOCAL_ARCHIVE !== '0') {
+      const dir = this.root + '/evidence-archive'; mkdirSync(dir, { recursive: true, mode: 0o700 });
+      copyFileSync(path, dir + '/evidence-' + day() + '.tar.gz');
+      const names = readdirSync(dir).filter(name => /^evidence-\d{4}-\d{2}-\d{2}\.tar\.gz$/.test(name)).sort();
+      for (const old of names.slice(0, Math.max(0, names.length - 400))) unlinkSync(dir + '/' + old);
+    }
     return path;
   }
 }

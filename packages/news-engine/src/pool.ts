@@ -125,7 +125,7 @@ export async function collect(store: Store, workers = 4, fetcher: typeof fetch =
     coverage_gaps: [{ source: 'spacex', status: 'no_verified_accessible_official_feed', note: 'Official updates page blocked; NASA is partial coverage only' }], engine: 'typescript' };
   store.run('INSERT OR REPLACE INTO meta VALUES (?,?)', 'health', pyjson(health)); atomic(store.root + '/source-health.json', health); store.checkpoint(); assess(store); return health;
 }
-export async function enrich(store: Store) {
+export async function enrich(store: Store): Promise<Row> {
   const config = trial(store.root); if (!active(config) || !config.model_enabled) return { status: 'trial_or_model_disabled_or_expired', calls: 0 };
   const p = policy(); p.daily_budget_cny = Math.min(p.daily_budget_cny, config.daily_budget_cny);
   const blockedByTime = gate(p, new Date(), true, undefined, trialDeadline(config));
@@ -139,7 +139,12 @@ export async function enrich(store: Store) {
   const audit = shouldAuditPool(completed.length, deadline)
     ? await reviewEdition(store, completed, p, deadline) : { calls: 0 };
   const ready = recordsReady(store, eligible, deadline, []);
-  if (completed.length >= target && ready.length >= Number(preferences().edition_maximum)) return { status: 'ready_pool_sufficient', candidates_ready: completed.length, ready: ready.length, calls: audit.calls };
+  // 待审核 = 已有草稿但尚未通过审核的候选；可出刊 = 已通过审核且受栏目/来源配额约束的条数。零调用时也能说明卡在哪。
+  const counts = () => ({ pending_review: eligible.filter(a => {
+    const job = store.one('SELECT result FROM jobs WHERE key=?', cacheKey(a, p)); if (!job?.result) return false;
+    try { return !isApproved(a, JSON.parse(job.result as string), p, deadline); } catch { return false; }
+  }).length, publishable: recordsReady(store, eligible, deadline, []).length });
+  if (completed.length >= target && ready.length >= Number(preferences().edition_maximum)) return { status: 'ready_pool_sufficient', candidates_ready: completed.length, ready: ready.length, calls: audit.calls, ...counts() };
   let reviewCalls = audit.calls;
   for (const a of eligible) {
     if (publisherCapacityReached(a, recordsReady(store, eligible, deadline, [], false), 3)) continue;
@@ -150,8 +155,8 @@ export async function enrich(store: Store) {
     const outcome = await reviewDraft(store, job, a, p);
     reviewCalls += store.one('SELECT COUNT(*) n FROM calls')!.n - before;
     if (outcome === 'ai_rejected') prepareRevision(store, store.one('SELECT * FROM jobs WHERE key=?', job.key)!, p);
-    if (reviewCalls >= batchSize) return { status: 'review_batch', calls: reviewCalls };
-    if (['budget_exhausted', 'official_rules_unconfirmed', 'missing_api_key'].includes(outcome)) return { status: outcome, calls: reviewCalls };
+    if (reviewCalls >= batchSize) return { status: 'review_batch', calls: reviewCalls, ...counts() };
+    if (['budget_exhausted', 'official_rules_unconfirmed', 'missing_api_key'].includes(outcome)) return { status: outcome, calls: reviewCalls, ...counts() };
   }
   const attempted = attemptedVersions(store); let invoked = reviewCalls; const statuses: Row[] = [];
   const queued = new Map(store.all('SELECT * FROM jobs WHERE result IS NULL').map(job => [job.key, job]));
@@ -171,7 +176,7 @@ export async function enrich(store: Store) {
     invoked += added; if (added) attempted.add(job.key); statuses.push({ job: job.key, status: blocked ?? store.one('SELECT status FROM jobs WHERE key=?', job.key)!.status });
     if (blocked && ['budget_exhausted', 'missing_api_key', 'official_rules_unconfirmed', 'rules_expired_or_future', 'test_permit_expired', 'trial_expired'].includes(blocked)) break;
   }
-  store.checkpoint(); return { status: 'processed_or_pending', calls: invoked, jobs: statuses };
+  store.checkpoint(); return { status: 'processed_or_pending', calls: invoked, jobs: statuses, ...counts() };
 }
 export function status(store: Store) {
   const ledger = store.all('SELECT day,COUNT(*) calls,SUM(cost) estimated_cny,SUM(CASE WHEN cost IS NULL THEN reserved ELSE 0 END) unknown_reserved_cny FROM calls GROUP BY day');
@@ -365,6 +370,9 @@ export async function deliver(store: Store, sample = false, now = new Date(), re
       return { status: 'sample_not_qualified_do_not_send', issue: id, kind: edition.kind, articles: items, required: Number(preferences().edition_minimum) };
   }
   if (!sample) id = refreshDeliveryIssue(store, id, now);
+  // 诊断刊只作为排障记录投给内部地址，不能当作早报发给订阅者。
+  if (!sample && read(store.root + '/issues/' + id + '/edition.json').kind === 'diagnostic')
+    return sendOnce(store, id, { ...deps, subscribers: async () => [RECIPIENT] });
   return sendOnce(store, id, (revision === 'acceptance' || revision === 'acceptance-retry') && sample ? { ...deps, subscribers: async () => [RECIPIENT] } : deps);
 }
 export function reportTrial(store: Store, now = new Date()) {

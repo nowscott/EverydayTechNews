@@ -1,5 +1,24 @@
 # 更新日志
 
+## ordinary-news-v2.7.38
+
+- 与四端同号；普通版无变化（本轮修高级版写稿链路与看板展示）。
+
+## news-engine-v2.7.38
+
+- **定价页瞬时失败不再整天停摆**：`verifyRules` 对「取不到页面/HTTP 错误」这类瞬时失败重试一次（400ms 退避），仍失败才按 `official_rules_unconfirmed` 阻断；价格、模型版本、时间规则真的不一致时依旧当场阻断，不重试。
+- **诊断刊不再外发订阅者**：早报路径遇到 `kind: diagnostic` 只投内部地址 `nowscott@qq.com`，不再走 Notion 订阅者列表；样刊路径的 `sample_not_qualified_do_not_send` 保持不变。
+- **写稿阶段记录补齐**：`durable/mornings/<day>-enrichment.json` 增加 `day`、`stage`、`finished_at`、`pending_review`（待审核草稿数）、`publishable`（可出刊条数）；enrich 的每条返回都带这两个计数。
+- **NAS 本地证据归档**：非 GitHub Actions 模式下 `store.archive()` 额外把当日证据包写入 `<data>/evidence-archive/evidence-<day>.tar.gz`，保留最近 400 天，补上正文快照 90 天过期后无处回溯的空档。
+
+## nas-dashboard-v2.7.38
+
+- 高级版服务卡片新增「写稿阶段」一行：状态、模型调用数、候选/就绪/待审核/可出刊、开始与结束时间，数据取自 `durable/mornings/<day>-enrichment.json`。
+
+## subscription-web-v2.7.38
+
+- 与四端同号；订阅网页无变化。
+
 ## ordinary-news-v2.7.37
 
 - 与四端同号；普通版无变化（本轮只改高级版引擎与部署校验）。

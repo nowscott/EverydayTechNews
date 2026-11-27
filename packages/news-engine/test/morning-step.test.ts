@@ -54,6 +54,9 @@ test('写稿阶段落盘状态、调用数与跳过原因，零调用也能看�
   assert.equal(record.status, 'budget_exhausted'); assert.equal(record.calls, 0);
   assert.equal(record.skipped.budget_exhausted, 1); assert.equal(record.skipped.insufficient_content, 1);
   assert.equal(record.jobs, 2);
+  assert.equal(record.day, '2026-11-25'); assert.equal(record.stage, 'enrich');
+  assert.equal(Number.isFinite(Date.parse(record.finished_at)), true);
+  assert.equal(record.pending_review, null); assert.equal(record.publishable, null);
   const history = JSON.parse(readFileSync(s.root + '/durable/mornings/2026-11-25-enrichment-history.json', 'utf8'));
   assert.equal(history.length, 1);
   // 写稿失败只留阶段记录，不能写入 pool_ready 完成标记。

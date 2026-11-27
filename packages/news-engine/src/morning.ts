@@ -16,7 +16,8 @@ export function phase(store: Store, name: string, now = new Date()) {
 export function summarizeEnrich(result: Row = {}): Row {
   const skipped: Row = {};
   for (const item of result?.jobs ?? []) { const key = String(item?.status ?? 'unknown'); skipped[key] = (skipped[key] ?? 0) + 1; }
-  return { candidates_ready: result?.candidates_ready ?? null, ready: result?.ready ?? null, jobs: (result?.jobs ?? []).length, skipped };
+  return { candidates_ready: result?.candidates_ready ?? null, ready: result?.ready ?? null, pending_review: result?.pending_review ?? null,
+    publishable: result?.publishable ?? null, jobs: (result?.jobs ?? []).length, skipped };
 }
 
 export function recordEnrichment(store: Store, today: string, entry: Row) {
@@ -67,13 +68,14 @@ export async function morningStep(store: Store, now = new Date(), deps = { colle
       const started = stamp(now);
       try {
         const result = await deps.enrich(store);
-        recordEnrichment(store, today, { status: result?.status ?? 'enriched', calls: result?.calls ?? 0, started_at: started,
-          ...summarizeEnrich(result), at: stamp(now) });
+        recordEnrichment(store, today, { day: today, stage: 'enrich', status: result?.status ?? 'enriched', calls: result?.calls ?? 0,
+          started_at: started, finished_at: stamp(now), ...summarizeEnrich(result), at: stamp(now) });
         phase(store, 'writing_progress', now);
         if (result.status === 'ready_pool_sufficient') { atomic(progressPath, { ...progress, assessment_completed: progress.assessment_completed ?? stamp(now), writing_progress: stamp(now), pool_ready: stamp(now) }); mark('compose_waiting'); }
         return { status: result.status ?? 'enriched' };
       } catch (error) {
-        recordEnrichment(store, today, { status: 'enrich_error', calls: 0, started_at: started, error_code: (error as Error).message, at: stamp(now) });
+        recordEnrichment(store, today, { day: today, stage: 'enrich', status: 'enrich_error', calls: 0, started_at: started,
+          finished_at: stamp(now), pending_review: null, publishable: null, error_code: (error as Error).message, at: stamp(now) });
         throw error;
       }
     }

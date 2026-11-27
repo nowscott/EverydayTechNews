@@ -305,6 +305,7 @@ export class Dashboard {
         estimated_cny: component === 'premium' && !dbUnavailable ? calls.reduce((n,c)=>n+Number(c.cost??0),0) : null,
         unknown_reserved_cny: component === 'premium' && !dbUnavailable ? calls.reduce((n,c)=>n+(c.cost==null?Number(c.reserved??0):0),0) : null,
         funnel:dbUnavailable?null:{date,news_date_basis:component==='ordinary'?'source_archive_day':'first_fetch_day',collected:all.length,usable_body:component==='premium'?all.filter(a=>a.content_status==='usable_excerpt').length:null,candidates:component==='premium'?all.filter(a=>a.job_key).length:null,rewritten:component==='premium'?all.filter(a=>a.rewrite).length:null,approved:component==='premium'?all.filter(a=>a.review==='passed').length:null,edition_items:todayIssues.reduce((n,i)=>n+i.count,0),accepted_receipts:current.filter(v=>v.status==='smtp_accepted').length,edition_date_basis:'collection_cutoff_day',calls_date_basis:'call_ledger_day',invalid_calls:calls.filter(c=>c.status==='invalid_response').length,unknown_cost_calls:calls.filter(c=>c.cost==null).length},
+        morning: component === 'premium' ? r.file('durable/mornings/' + date + '-enrichment.json', 'json', { optional: true }) ?? null : null,
         sources, alerts, count_basis: component === 'ordinary' ? '新闻数按来源归档日期；未记录精确首次抓取时间。普通版不调用 AI。' : '新闻数按首次抓取日期，按文章及正文指纹去重；各阶段为这些新闻的当前状态。模型调用和费用按调用账本日期。',
         report_time: report?.at ?? r.evidence.find(e=>e.source==='status.json')?.source_time ?? null };
     }));
