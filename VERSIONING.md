@@ -57,10 +57,10 @@ git push origin main --follow-tags
 
 CI（`.github/workflows/ordinary-news.yml`）会在 PR 与 main 上运行 `check-version.mjs`，版本源、包版本与 CHANGELOG 标题任一不一致即失败。
 
-## 现状（2026-11-26）
+## 现状（2026-11-27）
 
-- 当前版本：`2.7.38`。四个组件同号：普通版 `ordinary-news-v2.7.38`、看板 `nas-dashboard-v2.7.38`、高级版引擎 `news-engine-v2.7.38`、订阅网页 `subscription-web-v2.7.38`（tag 前缀各自独立，数字必须一致）
+- 当前版本：`2.7.39`。四个组件同号：普通版 `ordinary-news-v2.7.39`、看板 `nas-dashboard-v2.7.39`、高级版引擎 `news-engine-v2.7.39`、订阅网页 `subscription-web-v2.7.39`（tag 前缀各自独立，数字必须一致）
 - 版本线切换：旧 `1.0.x` 系列就此终止；`v1.x` / `v2.0–2.6` 的旧 Python 实现仍为冻结归档，不再发版
 - 自 2.7.34 起仓库不再包含任何 `.py`：控制器、安装器、检查脚本、测试全部为 TypeScript，镜像内 `! command -v python` 断言保留
 - Docker 侧 `:git-<sha>` 别名自 2.7.19 起不再生成；旧别名随部署清理
-- GitHub 的 Latest 指向 `ordinary-news-v2.7.38`（发布时设置）
+- GitHub 的 Latest 指向 `ordinary-news-v2.7.39`（发布时设置）
